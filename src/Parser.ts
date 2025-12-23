@@ -19,6 +19,11 @@ const Semi = createToken({ name: "Semi", pattern: /;/ });
 const Dot = createToken({ name: "Dot", pattern: /\./ });
 const Equal = createToken({ name: "Equal", pattern: /=/ });
 
+const Plus = createToken({ name: "Plus", pattern: /\+/ });
+const Minus = createToken({ name: "Minus", pattern: /-/ });
+const Star = createToken({ name: "Star", pattern: /\*/ });
+const Slash = createToken({ name: "Slash", pattern: /\// });
+
 const Identifier = createToken({ name: "Identifier", pattern: /[a-zA-Z_][a-zA-Z0-9_:]*/ });
 const StringLiteral = createToken({ name: "StringLiteral", pattern: /"[^"]*"/ });
 const BooleanLiteral = createToken({ name: "BooleanLiteral", pattern: /true|false/ });
@@ -29,6 +34,7 @@ export const allTokens = [
   Comment, WhiteSpace,
   ClassKeyword, ExtendsKeyword, PublicKeyword, PrivateKeyword,
   LBracket, RBracket, LCurly, RCurly, LParen, RParen, Dot, Comma, Semi, Equal,
+  Plus, Minus, Star, Slash,
   Identifier, StringLiteral, BooleanLiteral, IntegerLiteral, DecimalLiteral,
 ];
 
@@ -135,6 +141,50 @@ export class ProgramParser extends CstParser {
   });
 
   expression = this.RULE("expression", () => {
+    this.SUBRULE(this.additiveExpression);
+  });
+
+  additiveExpression = this.RULE("additiveExpression", () => {
+    this.SUBRULE(this.multiplicativeExpression);
+    this.MANY(() => {
+      this.OR([
+        { 
+          ALT: () => {
+            this.CONSUME(Plus);
+            this.SUBRULE2(this.multiplicativeExpression);
+          }
+        },
+        {
+          ALT: () => {
+            this.CONSUME(Minus);
+            this.SUBRULE3(this.multiplicativeExpression);
+          }
+        },
+      ]);
+    });
+  });
+
+  multiplicativeExpression = this.RULE("multiplicativeExpression", () => {
+    this.SUBRULE(this.memberExpression);
+    this.MANY(() => {
+      this.OR([
+        {
+          ALT: () => {
+            this.CONSUME(Star);
+            this.SUBRULE2(this.memberExpression);
+          }
+        },
+        {
+          ALT: () => {
+            this.CONSUME(Slash);
+            this.SUBRULE3(this.memberExpression);
+          }
+        },
+      ]);
+    });
+  });
+
+  memberExpression = this.RULE("memberExpression", () => {
     this.SUBRULE(this.primaryExpression);
     this.MANY(() => this.SUBRULE(this.suffix));
   });

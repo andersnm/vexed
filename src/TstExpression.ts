@@ -47,6 +47,10 @@ export function isIndexExpression(expr: TstExpression): expr is TstIndexExpressi
     return expr.exprType === "index";
 }
 
+export function isBinaryExpression(expr: TstExpression): expr is TstBinaryExpression {
+    return expr.exprType === "binary";
+}
+
 export interface TstVariable {
     name: string;
     value: TstExpression;
@@ -130,4 +134,11 @@ export interface TstMemberExpression extends TstExpression {
 
 export interface TstThisExpression extends TstExpression {
     exprType: "this";
+}
+
+export interface TstBinaryExpression extends TstExpression {
+    exprType: "binary";
+    operator: string;
+    left: TstExpression;
+    right: TstExpression;
 }

@@ -1,4 +1,4 @@
-import { InstanceMeta, isInstanceExpression, TstExpression, TstIdentifierExpression, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstMemberExpression, TstNewExpression, TstParameterExpression, TstScopedExpression, TstThisExpression, TstVariable, TypeMeta } from "../TstExpression.js";
+import { InstanceMeta, isInstanceExpression, TstBinaryExpression, TstExpression, TstIdentifierExpression, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstMemberExpression, TstNewExpression, TstParameterExpression, TstScopedExpression, TstThisExpression, TstVariable, TypeMeta } from "../TstExpression.js";
 import { TstRuntime } from "../TstRuntime.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
 
@@ -119,5 +119,37 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
             object: objectExpr,
             index: indexExpr
         } as TstIndexExpression;
+    }
+
+    visitBinaryExpression(expr: TstBinaryExpression): TstExpression {
+        const leftExpr = this.visit(expr.left);
+        const rightExpr = this.visit(expr.right);
+
+        if (isInstanceExpression(leftExpr) && isInstanceExpression(rightExpr)) {
+            const leftType = leftExpr.instance[TypeMeta];
+            const rightType = rightExpr.instance[TypeMeta];
+
+            // We know both sides have same type at this point
+            if (leftType === this.runtime.getType("int")) {
+                const leftValue = leftExpr.instance[InstanceMeta] as number;
+                const rightValue = rightExpr.instance[InstanceMeta] as number;
+
+                if (expr.operator === "+") {
+                    return {
+                        exprType: "instance",
+                        instance: this.runtime.createInt(leftValue + rightValue)
+                    } as TstInstanceExpression;
+                }
+
+                throw new Error("Operator not implemented: " + expr.operator);
+            }
+        }
+
+        return {
+            exprType: "binary",
+            left: leftExpr,
+            right: rightExpr,
+            operator: expr.operator
+        } as TstBinaryExpression;
     }
 }

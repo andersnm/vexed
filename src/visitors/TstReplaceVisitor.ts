@@ -1,4 +1,4 @@
-import { isDecimalLiteral, isFunctionCall, isIdentifier, isIndexExpression, isInstanceExpression, isMemberExpression, isNewExpression, isParameter, isScopedExpression, isThisExpression, TstDecimalLiteralExpression, TstExpression, TstFunctionCallExpression, TstIdentifierExpression, TstIndexExpression, TstInstanceExpression, TstMemberExpression, TstNewExpression, TstParameterExpression, TstScopedExpression, TstThisExpression } from "../TstExpression.js";
+import { isBinaryExpression, isDecimalLiteral, isFunctionCall, isIdentifier, isIndexExpression, isInstanceExpression, isMemberExpression, isNewExpression, isParameter, isScopedExpression, isThisExpression, TstBinaryExpression, TstDecimalLiteralExpression, TstExpression, TstFunctionCallExpression, TstIdentifierExpression, TstIndexExpression, TstInstanceExpression, TstMemberExpression, TstNewExpression, TstParameterExpression, TstScopedExpression, TstThisExpression } from "../TstExpression.js";
 
 export class TstReplaceVisitor {
 
@@ -32,6 +32,9 @@ export class TstReplaceVisitor {
         }
         if (isIndexExpression(expr)) {
             return this.visitIndexExpression(expr);
+        }
+        if (isBinaryExpression(expr)) {
+            return this.visitBinaryExpression(expr);
         }
 
         // keep a clear error for unexpected node kinds
@@ -115,5 +118,14 @@ export class TstReplaceVisitor {
             object: this.visit(expr.object),
             index: this.visit(expr.index),
         } as TstIndexExpression;
+    }
+
+    visitBinaryExpression(expr: TstBinaryExpression): TstExpression {
+        return {
+            exprType: expr.exprType,
+            left: this.visit(expr.left),
+            right: this.visit(expr.right),
+            operator: expr.operator,
+        } as TstBinaryExpression;
     }
 }

@@ -1,5 +1,5 @@
 import { ProgramParser } from "./Parser.js"; // your token definitions
-import { AstClass, AstClassUnit, AstPropertyStatement, AstParameter, AstProgram, AstPropertyDefinition, AstExpression, AstIdentifierExpression, AstStringLiteralExpression, AstFunctionCallExpression, AstMemberExpression, AstIndexExpression, AstIntegerLiteralExpression, AstDecimalLiteralExpression, AstArrayLiteralExpression, isAstIdentifier } from "./AstProgram.js";
+import { AstClass, AstClassUnit, AstPropertyStatement, AstParameter, AstProgram, AstPropertyDefinition, AstExpression, AstIdentifierExpression, AstStringLiteralExpression, AstFunctionCallExpression, AstMemberExpression, AstIndexExpression, AstIntegerLiteralExpression, AstDecimalLiteralExpression, AstArrayLiteralExpression, isAstIdentifier, AstBinaryExpression } from "./AstProgram.js";
 
 export function createVisitor(parser: ProgramParser) {
     const BaseCstVisitor = parser.getBaseCstVisitorConstructor();
@@ -100,16 +100,79 @@ export function createVisitor(parser: ProgramParser) {
         }
 
         expression(ctx: any): AstExpression {
-            // Start with the primary expression
-            let node = this.visit(ctx.primaryExpression);
-
-            // console.log("Expression with suffixes:", ctx);
-            if (ctx.suffix) {
-                for (const s of ctx.suffix) {
-                    node = this.visit(s, node);
-                }
+            if (ctx.additiveExpression) {
+                return this.visit(ctx.additiveExpression);
             }
+
+            throw new Error("Unexpected expression shape");
+        }
+
+        additiveExpression(ctx: any): AstExpression {
+            let node = this.visit(ctx.multiplicativeExpression[0]);
+
+            const opsCount = (ctx.multiplicativeExpression?.length ?? 1) - 1;
+            for (let i = 0; i < opsCount; i++) {
+                let operatorToken = undefined;
+                if (ctx.Plus && ctx.Plus[i]) operatorToken = ctx.Plus[i];
+                else if (ctx.Minus && ctx.Minus[i]) operatorToken = ctx.Minus[i];
+
+                if (!operatorToken) {
+                    throw new Error("Missing additive operator token");
+                }
+
+                const right = this.visit(ctx.multiplicativeExpression[i + 1]);
+                node = {
+                    exprType: "binary",
+                    operator: operatorToken.image,
+                    lhs: node,
+                    rhs: right
+                } as AstBinaryExpression;
+            }
+
             return node;
+        }
+
+        multiplicativeExpression(ctx: any): AstExpression {
+            let node = this.visit(ctx.memberExpression[0]);
+
+            const opsCount = ctx.memberExpression ? ctx.memberExpression.length - 1 : 0;
+            for (let i = 0; i < opsCount; i++) {
+                let operatorToken = undefined;
+                if (ctx.Star && ctx.Star[i]) operatorToken = ctx.Star[i];
+                else if (ctx.Slash && ctx.Slash[i]) operatorToken = ctx.Slash[i];
+
+                if (!operatorToken) {
+                    throw new Error("Missing multiplicative operator token");
+                }
+
+                const right = this.visit(ctx.memberExpression[i + 1]);
+                node = {
+                    exprType: "binary",
+                    operator: operatorToken.image,
+                    lhs: node,
+                    rhs: right
+                } as AstBinaryExpression;
+            }
+
+            return node;
+        }
+
+        memberExpression(ctx: any, baseArg?: AstExpression): AstExpression {
+            // if called as a subrule result it will have memberExpression array
+            if (ctx.primaryExpression) {
+                let node = this.visit(ctx.primaryExpression);
+                if (ctx.suffix) {
+                    for (const s of ctx.suffix) {
+                        node = this.visit(s, node);
+                    }
+                }
+                return node;
+            }
+
+            // if called from suffix visitor with a base argument, just return it
+            if (baseArg) return baseArg;
+
+            throw new Error("Unexpected memberExpression shape");
         }
 
         suffix(ctx: any, base: AstExpression): AstExpression {

@@ -43,6 +43,10 @@ export function isAstIndexExpression(expr: AstExpression): expr is AstIndexExpre
     return expr.exprType === "index";
 }
 
+export function isAstBinaryExpression(expr: AstExpression): expr is AstBinaryExpression {
+    return expr.exprType === "binary";
+}
+
 export interface AstExpression {
     exprType: string;
     // type: string;
@@ -92,7 +96,8 @@ export interface AstIndexExpression {
 }
 
 export interface AstBinaryExpression extends AstExpression {
-    exprType: "Plus" | "Minus" | "Multiply" | "Divide" | "Modulus";
+    exprType: "binary";
+    operator: string;
     lhs: AstExpression;
     rhs: AstExpression;
 }

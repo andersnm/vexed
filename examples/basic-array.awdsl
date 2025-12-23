@@ -7,5 +7,5 @@ class Base(int num, string newthing) {
 
 class Main() extends Base(this.test2, this.test) {
   public string test = "Anders";
-  public int test2 = 123;
+  public int test2 = 123 + 1;
 }

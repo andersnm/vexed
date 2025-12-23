@@ -1,4 +1,4 @@
-import { TstDecimalLiteralExpression, TstExpression, TstIdentifierExpression, TstInstanceExpression, TstMemberExpression, TstNewExpression, TstParameterExpression, TstThisExpression, TstVariable, TypeMeta } from "../TstExpression.js";
+import { TstBinaryExpression, TstDecimalLiteralExpression, TstExpression, TstIdentifierExpression, TstInstanceExpression, TstMemberExpression, TstNewExpression, TstParameterExpression, TstThisExpression, TstVariable, TypeMeta } from "../TstExpression.js";
 import { TstRuntime } from "../TstRuntime.js";
 import { TypeDefinition } from "../TstType.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
@@ -59,6 +59,20 @@ export class TstExpressionTypeVisitor extends TstReplaceVisitor {
 
     visitInstanceExpression(expr: TstInstanceExpression): TstExpression {
         this.visitType = expr.instance[TypeMeta];
+        return expr;
+    }
+
+    visitBinaryExpression(expr: TstBinaryExpression): TstExpression {
+        this.visit(expr.left);
+        const lhsType = this.visitType;
+
+        this.visit(expr.right);
+        const rhsType = this.visitType;
+
+        if (lhsType != rhsType) {
+            throw new Error("Binary expression must have same types on both sides");
+        }
+
         return expr;
     }
 }

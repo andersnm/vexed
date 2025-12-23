@@ -1,4 +1,4 @@
-import { InstanceMeta, TstExpression, TstFunctionCallExpression, TstIdentifierExpression, TstInstanceExpression, TstInstanceObject, TstMemberExpression, TstNewExpression, TstParameterExpression, TstScopedExpression, TstThisExpression, TypeMeta } from "../TstExpression.js";
+import { InstanceMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIdentifierExpression, TstInstanceExpression, TstInstanceObject, TstMemberExpression, TstNewExpression, TstParameterExpression, TstScopedExpression, TstThisExpression, TypeMeta } from "../TstExpression.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
 
 export const printExpression = (expr: TstExpression|TstExpression[]|undefined): string => {
@@ -163,6 +163,15 @@ export class TstPrintVisitor extends TstReplaceVisitor {
                     this.output.push(", ");
                 }
             });
+        this.output.push(")");
+        return expr;
+    }
+
+    visitBinaryExpression(expr: TstBinaryExpression): TstExpression {
+        this.output.push("(");
+        this.visit(expr.left);
+        this.output.push(" " + expr.operator + " ");
+        this.visit(expr.right);
         this.output.push(")");
         return expr;
     }

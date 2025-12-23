@@ -1,5 +1,5 @@
-import { AstExpression, AstIdentifierExpression, AstProgram, isAstArrayLiteral, isAstDecimalLiteral, isAstFunctionCall, isAstIdentifier, isAstIndexExpression, isAstIntegerLiteral, isAstMember, isAstStringLiteral, isClass, isPropertyDefinition, isPropertyStatement } from "./AstProgram.js";
-import { InstanceMeta, TstExpression, TstIdentifierExpression, TstIndexExpression, TstInstanceExpression, TstMemberExpression, TstNewExpression, TstParameterExpression, TstThisExpression } from "./TstExpression.js";
+import { AstExpression, AstIdentifierExpression, AstProgram, isAstArrayLiteral, isAstBinaryExpression, isAstDecimalLiteral, isAstFunctionCall, isAstIdentifier, isAstIndexExpression, isAstIntegerLiteral, isAstMember, isAstStringLiteral, isClass, isPropertyDefinition, isPropertyStatement } from "./AstProgram.js";
+import { InstanceMeta, TstBinaryExpression, TstExpression, TstIdentifierExpression, TstIndexExpression, TstInstanceExpression, TstMemberExpression, TstNewExpression, TstParameterExpression, TstThisExpression } from "./TstExpression.js";
 import { TypeDefinition } from "./TstType.js";
 import { TstRuntime } from "./TstRuntime.js";
 import { TstExpressionTypeVisitor } from "./visitors/TstExpressionTypeVisitor.js";
@@ -113,6 +113,15 @@ export class TstBuilder {
                 object: objectExpr,
                 index: indexExpr
             } as TstIndexExpression;
+        }
+
+        if (isAstBinaryExpression(expr)) {
+            return {
+                exprType: "binary",
+                left: this.resolveExpression(expr.lhs, thisType),
+                right: this.resolveExpression(expr.rhs, thisType),
+                operator: expr.operator
+            } as TstBinaryExpression;
         }
 
         throw new Error(`Unsupported expression type ${expr.exprType} in AstTypeResolver`);
