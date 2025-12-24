@@ -129,20 +129,12 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
             const leftType = leftExpr.instance[TypeMeta];
             const rightType = rightExpr.instance[TypeMeta];
 
-            // We know both sides have same type at this point
-            if (leftType === this.runtime.getType("int")) {
-                const leftValue = leftExpr.instance[InstanceMeta] as number;
-                const rightValue = rightExpr.instance[InstanceMeta] as number;
-
-                if (expr.operator === "+") {
-                    return {
-                        exprType: "instance",
-                        instance: this.runtime.createInt(leftValue + rightValue)
-                    } as TstInstanceExpression;
-                }
-
-                throw new Error("Operator not implemented: " + expr.operator);
+            // TODO: allow auto-cast int->decimal, warn if cast decimal->int
+            if (leftType !== rightType) {
+                throw new Error("Binary expression must have same types on both sides");
             }
+
+            return leftType.resolveOperator(leftExpr.instance, rightExpr.instance, expr.operator);
         }
 
         return {

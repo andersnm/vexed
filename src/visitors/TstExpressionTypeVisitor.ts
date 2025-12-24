@@ -69,7 +69,7 @@ export class TstExpressionTypeVisitor extends TstReplaceVisitor {
         this.visit(expr.right);
         const rhsType = this.visitType;
 
-        if (lhsType != rhsType) {
+        if (lhsType !== rhsType) {
             throw new Error("Binary expression must have same types on both sides");
         }
 

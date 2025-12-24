@@ -1,4 +1,4 @@
-import { TstExpression, TstInitializer, TstInstanceObject } from "./TstExpression.js";
+import { InstanceMeta, TstExpression, TstInitializer, TstInstanceExpression, TstInstanceObject } from "./TstExpression.js";
 import { TstRuntime } from "./TstRuntime.js";
 
 export interface TypeMember {
@@ -49,6 +49,42 @@ export class TypeDefinition {
     resolveIndex(instance: TstInstanceObject, index: number): TstExpression | null {
         // Native objects can override
         throw new Error("Index resolution not implemented for type: " + this.name);
+    }
+
+    createValueInstance(value: any) {
+        if (typeof value === "number") {
+            return this.runtime.createInt(value);
+        }
+
+        if (typeof value === "string") {
+            return this.runtime.createString(value);
+        }
+
+        throw new Error("Dont know how to convert " + value + " to expression");
+    }
+
+    createValueExpression(value: any): TstExpression {
+        const instance: TstInstanceObject = this.createValueInstance(value);
+        return { exprType: "instance", instance } as TstInstanceExpression;
+    }
+
+    resolveOperator(lhs: TstInstanceObject, rhs: TstInstanceObject, operator: string): TstExpression {
+        // Native objects can override, just use javascript conventions for now:
+        const leftValue = lhs[InstanceMeta];
+        const rightValue = rhs[InstanceMeta];
+
+        switch (operator) {
+            case "+":
+                return this.createValueExpression(leftValue + rightValue);
+            case "-":
+                return this.createValueExpression(leftValue - rightValue);
+            case "*":
+                return this.createValueExpression(leftValue * rightValue);
+            case "/":
+                return this.createValueExpression(leftValue / rightValue);
+        }
+
+        throw new Error("Operator " + operator + " not supported for type " + this.name);
     }
 
     // callFunction(instance: TstInstanceObject, functionName: string, args: TstExpression[]): TstExpression | null {

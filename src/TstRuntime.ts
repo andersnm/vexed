@@ -261,4 +261,11 @@ export class TstRuntime {
         intObject[InstanceMeta] = value | 0;
         return intObject;
     }
+
+    createString(value: string): TstInstanceObject {
+        const stringType = this.getType("string");
+        const stringObject = stringType.createInstance([]);
+        stringObject[InstanceMeta] = value;
+        return stringObject;
+    }
 }
