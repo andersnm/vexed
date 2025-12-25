@@ -3,6 +3,10 @@ export function isClass(programUnit: AstProgramUnit): programUnit is AstClass {
     return programUnit.type === "class";
 }
 
+export function isMethodDeclaration(resource: AstClassUnit): resource is AstMethodDeclaration {
+    return resource.type === "methodDeclaration";
+}
+
 export function isPropertyStatement(resource: AstClassUnit): resource is AstPropertyStatement {
     return resource.type === "propertyStatement";
 }
@@ -108,11 +112,19 @@ export interface AstParameter {
 }
 
 export interface AstClassUnit {
-    type: "propertyStatement" | "propertyDefinition";
+    type: "methodDeclaration" | "propertyStatement" | "propertyDefinition";
 }
 
 export interface AstProgramUnit {
     type: "class";
+}
+
+export interface AstMethodDeclaration extends AstClassUnit {
+    type: "methodDeclaration";
+    name: string;
+    returnType: string;
+    parameters: AstParameter[];
+    // body: AstBlock;
 }
 
 export interface AstPropertyStatement extends AstClassUnit {
@@ -140,4 +152,12 @@ export interface AstClass extends AstProgramUnit {
 
 export interface AstProgram {
     programUnits: AstProgramUnit[];
+}
+
+export interface AstLocation {
+    line: number;
+    column: number;
+    startOffset: number;
+    endOffset: number;
+    image: string;
 }

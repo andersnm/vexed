@@ -102,9 +102,30 @@ export class ProgramParser extends CstParser {
 
   classUnit = this.RULE("classUnit", () => {
     this.OR([
+      {
+        GATE: () => this.LA(3).tokenType === LParen,
+        ALT: () => this.SUBRULE(this.methodDeclaration)
+      },
       { ALT: () => this.SUBRULE(this.propertyStatement) },
       { ALT: () => this.SUBRULE(this.propertyDefinition) }
     ]);
+  });
+
+  methodDeclaration = this.RULE("methodDeclaration", () => {
+    this.SUBRULE(this.type);
+    this.CONSUME(Identifier);
+
+    this.CONSUME(LParen);
+    this.OPTION(() => this.SUBRULE(this.parameterList));
+    this.CONSUME(RParen);
+
+    this.SUBRULE(this.block);
+  });
+
+  block = this.RULE("block", () => {
+    this.CONSUME(LCurly);
+    // this.MANY(() => this.SUBRULE(this.statement));
+    this.CONSUME(RCurly);
   });
 
   propertyDefinition = this.RULE("propertyDefinition", () => {

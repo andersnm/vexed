@@ -78,7 +78,8 @@ export class TstReplaceVisitor {
 
     visitFunctionCallExpression(expr: TstFunctionCallExpression): TstExpression {
         return {
-            functionName: expr.functionName,
+            method: expr.method,
+            object: this.visit(expr.object),
             exprType: expr.exprType,
             args: expr.args.map(arg => this.visit(arg)),
         } as TstFunctionCallExpression;

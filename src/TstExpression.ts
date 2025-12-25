@@ -1,4 +1,4 @@
-import { TypeDefinition } from "./TstType.js";
+import { TypeDefinition, TypeMethod } from "./TstType.js";
 
 export const TypeMeta: unique symbol = Symbol("TypeMeta");
 export const InstanceMeta: unique symbol = Symbol("InstanceMeta");
@@ -95,7 +95,8 @@ export interface TstNewExpression extends TstExpression {
 
 export interface TstFunctionCallExpression extends TstExpression {
     exprType: "functionCall";
-    functionName: string;
+    method: TypeMethod;
+    object: TstExpression;
     args: TstExpression[];
 }
 

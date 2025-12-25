@@ -1,5 +1,5 @@
-import { AstExpression, AstIdentifierExpression, AstProgram, isAstArrayLiteral, isAstBinaryExpression, isAstDecimalLiteral, isAstFunctionCall, isAstIdentifier, isAstIndexExpression, isAstIntegerLiteral, isAstMember, isAstStringLiteral, isClass, isPropertyDefinition, isPropertyStatement } from "./AstProgram.js";
-import { InstanceMeta, TstBinaryExpression, TstExpression, TstIdentifierExpression, TstIndexExpression, TstInstanceExpression, TstMemberExpression, TstNewExpression, TstParameterExpression, TstThisExpression } from "./TstExpression.js";
+import { AstExpression, AstIdentifierExpression, AstMemberExpression, AstProgram, isAstArrayLiteral, isAstBinaryExpression, isAstDecimalLiteral, isAstFunctionCall, isAstIdentifier, isAstIndexExpression, isAstIntegerLiteral, isAstMember, isAstStringLiteral, isClass, isMethodDeclaration, isPropertyDefinition, isPropertyStatement } from "./AstProgram.js";
+import { InstanceMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIdentifierExpression, TstIndexExpression, TstInstanceExpression, TstMemberExpression, TstNewExpression, TstParameterExpression, TstThisExpression } from "./TstExpression.js";
 import { TypeDefinition } from "./TstType.js";
 import { TstRuntime } from "./TstRuntime.js";
 import { TstExpressionTypeVisitor } from "./visitors/TstExpressionTypeVisitor.js";
@@ -56,12 +56,30 @@ export class TstBuilder {
         }
 
         if (isAstFunctionCall(expr)) {
-            if (expr.callee.exprType == "identifier") {
-                const functionName = (expr.callee as AstIdentifierExpression).value;
+            if (isAstIdentifier(expr.callee)) {
+                const functionName = expr.callee.value;
                 const typeIfNewExpression = this.runtime.getType(functionName);
-                if (typeIfNewExpression) {
-                    return { exprType: "new", type: typeIfNewExpression, args: expr.args.map(arg => this.resolveExpression(arg, thisType)) } as TstNewExpression;
+                if (!typeIfNewExpression) {
+                    throw new Error("Unknown type: " + functionName);
                 }
+
+                return { exprType: "new", type: typeIfNewExpression, args: expr.args.map(arg => this.resolveExpression(arg, thisType)) } as TstNewExpression;
+            }
+
+            if (isAstMember(expr.callee)) {
+                const functionName = expr.callee.property;
+                const object = this.resolveExpression(expr.callee.object, thisType) as TstMemberExpression;
+                const calleeType = this.runtime.getExpressionType(object, thisType);
+                if (!calleeType) {
+                    throw new Error(`Could not find type for member ${functionName}`);
+                }
+
+                const method = calleeType.methods.find(m => m.name === functionName);
+                if (!method) {
+                    throw new Error(`Method ${functionName} not found on type ${calleeType.name}`);
+                }
+
+                return { exprType: "functionCall", object, method, args: expr.args.map(arg => this.resolveExpression(arg, thisType)) } as TstFunctionCallExpression;
             }
 
             throw new Error("Function calls not implemented yet: " + expr.callee + " " + expr.callee.exprType);
@@ -207,6 +225,20 @@ export class TstBuilder {
                             name: unit.name,
                             type: propertyType,
                             initializer: unit.argument ? this.resolveExpression(unit.argument, type) : undefined,
+                        });
+                    } else if (isMethodDeclaration(unit)) {
+                        const methodType = this.runtime.getType(unit.returnType);
+                        if (!methodType) {
+                            throw new Error(`Could not find type ${unit.returnType} for method ${unit.name} of type ${programUnit.name}`);
+                        }
+
+                        type.methods.push({
+                            name: unit.name,
+                            returnType: methodType,
+                            parameters: unit.parameters.map(param => ({
+                                name: param.name,
+                                type: this.runtime.getType(param.type)
+                            }))
                         });
                     }
                 }

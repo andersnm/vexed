@@ -110,7 +110,9 @@ export class TstPrintVisitor extends TstReplaceVisitor {
     }
 
     visitFunctionCallExpression(expr: TstFunctionCallExpression): TstExpression {
-        this.output.push(expr.functionName + "(");
+        this.visit(expr.object);
+        this.output.push(".");
+        this.output.push(expr.method.name + "(");
         this.printExpressionList(expr.args);
         this.output.push(")");
         return expr;

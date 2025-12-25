@@ -1,5 +1,16 @@
 import { ProgramParser } from "./Parser.js"; // your token definitions
-import { AstClass, AstClassUnit, AstPropertyStatement, AstParameter, AstProgram, AstPropertyDefinition, AstExpression, AstIdentifierExpression, AstStringLiteralExpression, AstFunctionCallExpression, AstMemberExpression, AstIndexExpression, AstIntegerLiteralExpression, AstDecimalLiteralExpression, AstArrayLiteralExpression, isAstIdentifier, AstBinaryExpression } from "./AstProgram.js";
+import { AstClass, AstClassUnit, AstPropertyStatement, AstParameter, AstProgram, AstPropertyDefinition, AstExpression, AstIdentifierExpression, AstStringLiteralExpression, AstFunctionCallExpression, AstMemberExpression, AstIndexExpression, AstIntegerLiteralExpression, AstDecimalLiteralExpression, AstArrayLiteralExpression, isAstIdentifier, AstBinaryExpression, AstLocation, AstMethodDeclaration } from "./AstProgram.js";
+import { IToken } from "chevrotain";
+
+function createTokenLocation(tok: IToken): AstLocation {
+    return {
+        line: tok.startLine!,
+        column: tok.startColumn!,
+        startOffset: tok.startOffset,
+        endOffset: tok.endOffset!,
+        image: tok.image
+    };
+}
 
 export function createVisitor(parser: ProgramParser) {
     const BaseCstVisitor = parser.getBaseCstVisitorConstructor();
@@ -70,6 +81,29 @@ export function createVisitor(parser: ProgramParser) {
             }
 
             return this.visit(ctx[keys[0]]);
+        }
+
+        methodDeclaration(ctx: any): AstMethodDeclaration {
+            const returnType = this.visit(ctx.type[0]);
+            const nameToken = ctx.Identifier[0];
+
+            const parameters = ctx.parameterList
+                ? this.visit(ctx.parameterList[0])
+                : [];
+
+            const body = this.visit(ctx.block[0]);
+
+            return {
+                type: "methodDeclaration",
+                name: nameToken.image,
+                returnType,
+                parameters,
+                // body
+            };
+        }
+
+        block(ctx: any) {
+            console.log("block");
         }
 
         propertyStatement(ctx: any): AstPropertyStatement {

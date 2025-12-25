@@ -14,6 +14,13 @@ export interface TypeParameter {
     type: TypeDefinition;
 }
 
+export interface TypeMethod {
+    name: string;
+    parameters: TypeParameter[];
+    returnType: TypeDefinition;
+    // body
+}
+
 export class TypeDefinition {
     runtime: TstRuntime;
     name: string;
@@ -21,6 +28,7 @@ export class TypeDefinition {
     extendsArguments?: TstExpression[];
     parameters: TypeParameter[];
     properties: TypeMember[];
+    methods: TypeMethod[];
     initializers: TstInitializer[];  // TstVariable?? name+expr
 
     constructor(runtime: TstRuntime, name: string) {
@@ -28,6 +36,7 @@ export class TypeDefinition {
         this.name = name;
         this.parameters = [];
         this.properties = [];
+        this.methods = [];
         this.initializers = [];
     }
 
