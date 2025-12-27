@@ -59,7 +59,7 @@ async function main() {
 
     runtime.reduceInstance(instance);
     runtime.reduceInstance(instance);
-    // runtime.reduceInstance(instance);
+    runtime.reduceInstance(instance);
     // runtime.reduceInstance(instance);
     // runtime.reduceInstance(instance);
     // runtime.reduceInstance(instance);

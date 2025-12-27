@@ -1,4 +1,4 @@
-import { InstanceMeta, isInstanceExpression, TstBinaryExpression, TstExpression, TstIdentifierExpression, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstMemberExpression, TstNewExpression, TstParameterExpression, TstScopedExpression, TstThisExpression, TstVariable, TypeMeta } from "../TstExpression.js";
+import { InstanceMeta, isIfStatement, isInstanceExpression, isReturnStatement, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIdentifierExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstVariable, TypeMeta } from "../TstExpression.js";
 import { TstRuntime } from "../TstRuntime.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
 
@@ -66,7 +66,8 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
 
     visitScopedExpression(expr: TstScopedExpression): TstExpression {
         // TODO: can only reduce this if all parameters are reduced!
-        const scopeVisitor = new TstReduceExpressionVisitor(this.runtime, this.thisObject, expr.parameters, this.visitedInstances);
+        const scopeVisitor = new TstReduceExpressionVisitor(this.runtime, expr.thisObject, expr.parameters, this.visitedInstances);
+        // const scopeVisitor = new TstReduceExpressionVisitor(this.runtime, this.thisObject, expr.parameters, this.visitedInstances);
         const visited = scopeVisitor.visit(expr.expr);
         return visited;
     }
@@ -129,7 +130,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
             const leftType = leftExpr.instance[TypeMeta];
             const rightType = rightExpr.instance[TypeMeta];
 
-            // TODO: allow auto-cast int->decimal, warn if cast decimal->int
+            // TODO: allow auto-cast int->decimal, warn or err if cast decimal->int
             if (leftType !== rightType) {
                 throw new Error("Binary expression must have same types on both sides");
             }
@@ -144,4 +145,74 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
             operator: expr.operator
         } as TstBinaryExpression;
     }
+
+    visitFunctionCallExpression(expr: TstFunctionCallExpression): TstExpression {
+        const objectExpr = this.visit(expr.object);
+        const argsExpr = expr.args.map(arg => this.visit(arg));
+        const chainNamedArguments: TstVariable[] = expr.method.parameters.map((p, index) => ({
+            name: p.name,
+            value: argsExpr[index],
+        }));
+
+        if (isInstanceExpression(objectExpr)) {
+            return {
+                exprType: "scoped",
+                thisObject: objectExpr.instance,
+                parameters: chainNamedArguments,
+                expr: {
+                    exprType: "statement",
+                    statements: expr.method.body,
+                    returnType: expr.method.returnType,
+                } as TstStatementExpression
+            } as TstScopedExpression;
+        }
+
+        return {
+            exprType: "functionCall",
+            object: objectExpr,
+            method: expr.method,
+            args: argsExpr
+        } as TstFunctionCallExpression;
+    }
+
+    visitStatementExpression(expr: TstStatementExpression): TstExpression {
+        const stmts = this.visitStatementList(expr.statements);
+        if (stmts.length === 1 && isReturnStatement(stmts[0])) {
+            return stmts[0].returnValue;
+        }
+
+        return {
+            exprType: "statement",
+            statements: stmts,
+            returnType: expr.returnType,
+        } as TstStatementExpression;
+    }
+
+    visitIfStatement(stmt: TstIfStatement): TstStatement[] {
+        const condition = this.visit(stmt.condition);
+        const thenStmts = this.visitStatementList(stmt.then);
+        const elseStmts = this.visitStatementList(stmt.else);
+
+        if (isInstanceExpression(condition)) {
+            const value = condition.instance[InstanceMeta];
+            if (!!value) {
+                return thenStmts;
+            } else {
+                return elseStmts;
+            }
+        } else {
+            return [{ stmtType: "if", condition, then: thenStmts, else: elseStmts } as TstIfStatement];
+        }
+    }
+
+    scope: TstVariable[] = [];
+
+    visitLocalVarDeclaration(stmt: TstLocalVarDeclaration): TstStatement[] {
+        // TODO: should create local variable in scope and return no-op
+        // scope = statementexpression? 
+        const initializer = this.visit(stmt.initializer);
+        this.scope.push({ name: stmt.name, value: initializer });
+        return []; //{ stmtType: "localVarDeclaration", name: stmt.name, varType: stmt.varType, initializer } as TstLocalVarDeclaration];
+    }
+
 }

@@ -1,4 +1,4 @@
-import { InstanceMeta, TstExpression, TstInitializer, TstInstanceExpression, TstInstanceObject } from "./TstExpression.js";
+import { InstanceMeta, TstExpression, TstInitializer, TstInstanceExpression, TstInstanceObject, TstStatement } from "./TstExpression.js";
 import { TstRuntime } from "./TstRuntime.js";
 
 export interface TypeMember {
@@ -18,7 +18,7 @@ export interface TypeMethod {
     name: string;
     parameters: TypeParameter[];
     returnType: TypeDefinition;
-    // body
+    body: TstStatement[];
 }
 
 export class TypeDefinition {
@@ -69,6 +69,10 @@ export class TypeDefinition {
             return this.runtime.createString(value);
         }
 
+        if (typeof value === "boolean") {
+            return this.runtime.createBool(value);
+        }
+
         throw new Error("Dont know how to convert " + value + " to expression");
     }
 
@@ -91,6 +95,14 @@ export class TypeDefinition {
                 return this.createValueExpression(leftValue * rightValue);
             case "/":
                 return this.createValueExpression(leftValue / rightValue);
+            case "<":
+                return this.createValueExpression(leftValue < rightValue);
+            case "<=":
+                return this.createValueExpression(leftValue <= rightValue);
+            case ">":
+                return this.createValueExpression(leftValue > rightValue);
+            case ">=":
+                return this.createValueExpression(leftValue >= rightValue);
         }
 
         throw new Error("Operator " + operator + " not supported for type " + this.name);

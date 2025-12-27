@@ -1,5 +1,5 @@
 import { ProgramParser } from "./Parser.js"; // your token definitions
-import { AstClass, AstClassUnit, AstPropertyStatement, AstParameter, AstProgram, AstPropertyDefinition, AstExpression, AstIdentifierExpression, AstStringLiteralExpression, AstFunctionCallExpression, AstMemberExpression, AstIndexExpression, AstIntegerLiteralExpression, AstDecimalLiteralExpression, AstArrayLiteralExpression, isAstIdentifier, AstBinaryExpression, AstLocation, AstMethodDeclaration } from "./AstProgram.js";
+import { AstClass, AstClassUnit, AstPropertyStatement, AstParameter, AstProgram, AstPropertyDefinition, AstExpression, AstIdentifierExpression, AstStringLiteralExpression, AstFunctionCallExpression, AstMemberExpression, AstIndexExpression, AstIntegerLiteralExpression, AstDecimalLiteralExpression, AstArrayLiteralExpression, isAstIdentifier, AstBinaryExpression, AstLocation, AstMethodDeclaration, AstIfStatement, AstStatement, AstReturnStatement, AstUnaryExpression, AstLocalVarDeclaration } from "./AstProgram.js";
 import { IToken } from "chevrotain";
 
 function createTokenLocation(tok: IToken): AstLocation {
@@ -91,19 +91,70 @@ export function createVisitor(parser: ProgramParser) {
                 ? this.visit(ctx.parameterList[0])
                 : [];
 
-            const body = this.visit(ctx.block[0]);
+
+            const statementList = ctx.statementList ? this.visit(ctx.statementList[0]) : null;
 
             return {
                 type: "methodDeclaration",
                 name: nameToken.image,
                 returnType,
                 parameters,
-                // body
+                statementList,
             };
         }
 
-        block(ctx: any) {
-            console.log("block");
+        statementList(ctx: any): AstStatement[] {
+            const statements = ctx.statement ? ctx.statement.map((s: any) => this.visit(s)) : [];
+            return statements;
+        }
+
+        statement(ctx: any): AstStatement {
+            if (ctx.ifStatement) return this.visit(ctx.ifStatement);
+            if (ctx.returnStatement) return this.visit(ctx.returnStatement);
+            if (ctx.localVarDeclaration) return this.visit(ctx.localVarDeclaration);
+            throw new Error("Unsupported statement kind");
+        }
+
+        localVarDeclaration(ctx: any): AstLocalVarDeclaration {
+            return {
+                stmtType: "localVarDeclaration",
+                varType: this.visit(ctx.type),
+                name: ctx.Identifier[0].image,
+                initializer: ctx.expression ? this.visit(ctx.expression) : null,
+            };
+        }
+
+        ifStatement(ctx: any): AstIfStatement {
+            const condition = this.visit(ctx.expression);
+
+            const thenBlock = this.visit(ctx.statementList[0]);
+
+            let elseBlock: AstStatement[];
+            if (ctx.Else) {
+                if (ctx.ifStatement && ctx.ifStatement[0]) {
+                    elseBlock = [ this.visit(ctx.ifStatement[0]) ];
+                } else if (ctx.statementList && ctx.statementList[1]) {
+                    elseBlock = this.visit(ctx.statementList[1]);
+                } else {
+                    throw new Error("Unsupported else block");
+                }
+            } else {
+                elseBlock = [];
+            }
+
+            return {
+                stmtType: "if",
+                condition,
+                thenBlock,
+                elseBlock
+            };
+        }
+
+        returnStatement(ctx: any): AstReturnStatement {
+            return {
+                stmtType: "return",
+                returnValue: this.visit(ctx.expression),
+            };
         }
 
         propertyStatement(ctx: any): AstPropertyStatement {
@@ -134,11 +185,121 @@ export function createVisitor(parser: ProgramParser) {
         }
 
         expression(ctx: any): AstExpression {
-            if (ctx.additiveExpression) {
-                return this.visit(ctx.additiveExpression);
+            if (ctx.logicalOr) {
+                return this.visit(ctx.logicalOr);
             }
 
             throw new Error("Unexpected expression shape");
+        }
+
+        logicalOr(ctx: any): AstExpression {
+            let node = this.visit(ctx.logicalAnd[0]);
+
+            const opsCount = (ctx.logicalAnd?.length ?? 1) - 1;
+            for (let i = 0; i < opsCount; i++) {
+                let operatorToken = ctx.Or[i];
+                if (!operatorToken) {
+                    throw new Error("Missing logical OR operator token");
+                }
+
+                const right = this.visit(ctx.logicalAnd[i + 1]);
+                node = {
+                    exprType: "binary",
+                    operator: operatorToken.image,
+                    lhs: node,
+                    rhs: right
+                } as AstBinaryExpression;
+            }
+
+            return node;
+        }
+
+        logicalAnd(ctx: any): AstExpression {
+            let node = this.visit(ctx.logicalNot[0]);
+
+            const opsCount = (ctx.logicalNot?.length ?? 1) - 1;
+            for (let i = 0; i < opsCount; i++) {
+                let operatorToken = ctx.And[i];
+                if (!operatorToken) {
+                    throw new Error("Missing logical AND operator token");
+                }
+
+                const right = this.visit(ctx.logicalNot[i + 1]);
+                node = {
+                    exprType: "binary",
+                    operator: operatorToken.image,
+                    lhs: node,
+                    rhs: right
+                } as AstBinaryExpression;
+            }
+
+            return node;
+        }
+
+        logicalNot(ctx: any): AstExpression {
+            let expr = this.visit(ctx.equality[0]);
+
+            if (ctx.Not && ctx.Not[0]) {
+                return {
+                    exprType: "unary",
+                    operator: "!",
+                    operand: expr,
+                } as AstUnaryExpression;
+            }
+
+            return expr;
+        }
+
+        equality(ctx: any): AstExpression {
+            let node = this.visit(ctx.comparison[0]);
+
+            const opsCount = (ctx.comparison?.length ?? 1) - 1;
+            for (let i = 0; i < opsCount; i++) {
+                let operatorToken = ctx.EqualsEquals[i] || ctx.NotEquals[i];
+                if (!operatorToken) {
+                    throw new Error("Missing equality operator token");
+                }
+
+                const right = this.visit(ctx.comparison[i + 1]);
+                node = {
+                    exprType: "binary",
+                    operator: operatorToken.image,
+                    lhs: node,
+                    rhs: right
+                } as AstBinaryExpression;
+            }
+
+            return node;
+        }
+
+        comparison(ctx: any): AstExpression {
+            let node = this.visit(ctx.additiveExpression[0]);
+
+            const opsCount = (ctx.additiveExpression?.length ?? 1) - 1;
+            for (let i = 0; i < opsCount; i++) {
+                let operatorToken = ctx.LessThan && ctx.LessThan[i];
+                if (!operatorToken && ctx.GreaterThan && ctx.GreaterThan[i]) {
+                    operatorToken = ctx.GreaterThan[i];
+                } else if (!operatorToken && ctx.LessThanOrEqual && ctx.LessThanOrEqual[i]) {
+                    operatorToken = ctx.LessThanOrEqual[i];
+                } else if (!operatorToken && ctx.GreaterThanOrEqual && ctx.GreaterThanOrEqual[i]) {
+                    operatorToken = ctx.GreaterThanOrEqual[i];
+                }
+
+                if (!operatorToken) {
+                    throw new Error("Missing comparison operator token");
+                }
+
+                const right = this.visit(ctx.additiveExpression[i + 1]);
+                node = {
+                    exprType: "binary",
+                    operator: operatorToken.image,
+                    lhs: node,
+                    rhs: right
+                } as AstBinaryExpression;
+            }
+
+            return node;
         }
 
         additiveExpression(ctx: any): AstExpression {

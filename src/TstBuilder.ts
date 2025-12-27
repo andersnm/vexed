@@ -1,6 +1,6 @@
-import { AstExpression, AstIdentifierExpression, AstMemberExpression, AstProgram, isAstArrayLiteral, isAstBinaryExpression, isAstDecimalLiteral, isAstFunctionCall, isAstIdentifier, isAstIndexExpression, isAstIntegerLiteral, isAstMember, isAstStringLiteral, isClass, isMethodDeclaration, isPropertyDefinition, isPropertyStatement } from "./AstProgram.js";
-import { InstanceMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIdentifierExpression, TstIndexExpression, TstInstanceExpression, TstMemberExpression, TstNewExpression, TstParameterExpression, TstThisExpression } from "./TstExpression.js";
-import { TypeDefinition } from "./TstType.js";
+import { AstExpression, AstIdentifierExpression, AstMemberExpression, AstProgram, AstStatement, isAstArrayLiteral, isAstBinaryExpression, isAstDecimalLiteral, isAstFunctionCall, isAstIdentifier, isAstIfStatement, isAstIndexExpression, isAstIntegerLiteral, isAstLocalVarDeclaration, isAstMember, isAstReturnStatement, isAstStringLiteral, isClass, isMethodDeclaration, isPropertyDefinition, isPropertyStatement } from "./AstProgram.js";
+import { InstanceMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIdentifierExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstReturnStatement, TstStatement, TstThisExpression, TstVariable } from "./TstExpression.js";
+import { TypeDefinition, TypeParameter } from "./TstType.js";
 import { TstRuntime } from "./TstRuntime.js";
 import { TstExpressionTypeVisitor } from "./visitors/TstExpressionTypeVisitor.js";
 
@@ -26,7 +26,7 @@ export class TstBuilder {
         this.runtime = runtime;
     }
 
-    resolveExpression(expr: AstExpression, thisType: TypeDefinition): TstExpression {
+    resolveExpression(expr: AstExpression, thisType: TypeDefinition, parameters: TypeParameter[]): TstExpression {
         if (isAstStringLiteral(expr)) {
             const stringType = this.runtime.getType("string");
             const stringObject = stringType.createInstance([]);
@@ -63,12 +63,12 @@ export class TstBuilder {
                     throw new Error("Unknown type: " + functionName);
                 }
 
-                return { exprType: "new", type: typeIfNewExpression, args: expr.args.map(arg => this.resolveExpression(arg, thisType)) } as TstNewExpression;
+                return { exprType: "new", type: typeIfNewExpression, args: expr.args.map(arg => this.resolveExpression(arg, thisType, parameters)) } as TstNewExpression;
             }
 
             if (isAstMember(expr.callee)) {
                 const functionName = expr.callee.property;
-                const object = this.resolveExpression(expr.callee.object, thisType) as TstMemberExpression;
+                const object = this.resolveExpression(expr.callee.object, thisType, parameters) as TstMemberExpression;
                 const calleeType = this.runtime.getExpressionType(object, thisType);
                 if (!calleeType) {
                     throw new Error(`Could not find type for member ${functionName}`);
@@ -79,7 +79,8 @@ export class TstBuilder {
                     throw new Error(`Method ${functionName} not found on type ${calleeType.name}`);
                 }
 
-                return { exprType: "functionCall", object, method, args: expr.args.map(arg => this.resolveExpression(arg, thisType)) } as TstFunctionCallExpression;
+                // TODO: unwrap to StatementExpression here?? and embed parameter expressions - may be too early
+                return { exprType: "functionCall", object, method, args: expr.args.map(arg => this.resolveExpression(arg, thisType, parameters)) } as TstFunctionCallExpression;
             }
 
             throw new Error("Function calls not implemented yet: " + expr.callee + " " + expr.callee.exprType);
@@ -92,21 +93,26 @@ export class TstBuilder {
                 return { exprType: "this" } as TstThisExpression;
             } else {
                 // const pi = parameters.find(p => p.name == expr.value);
-                const pi = thisType.parameters.find(p => p.name == expr.value);
+                // console.log("ARE WE RESOLVING THE SAME HERE??", thisType.parameters, parameters)
+                const pi = parameters.find(p => p.name == expr.value);
                 if (pi) {
                     return { exprType: "parameter", name: expr.value, type: pi.type } as TstParameterExpression;
                 }
 
-                return { exprType: "identifier", value: expr.value } as TstIdentifierExpression;
+                // TODO: parameters = scope, convert to local variables
+
+                throw new Error("Unknown identifier " + expr.value)
+                // console.log("PASSING THROUGH IDENTIFIER " + expr.value);
+                // return { exprType: "identifier", value: expr.value } as TstIdentifierExpression;
             }
         }
 
         if (isAstMember(expr)) {
-            return { exprType: "member", object: this.resolveExpression(expr.object, thisType), property: expr.property } as TstMemberExpression;
+            return { exprType: "member", object: this.resolveExpression(expr.object, thisType, parameters), property: expr.property } as TstMemberExpression;
         }
 
         if (isAstArrayLiteral(expr)) {
-            const elements = expr.elements.map(e => this.resolveExpression(e, thisType));
+            const elements = expr.elements.map(e => this.resolveExpression(e, thisType, parameters));
             const visitor = new TstExpressionTypeVisitor(this.runtime, thisType)
             const arrayType = this.runtime.findArrayType(visitor, elements);
             if (!arrayType) {
@@ -124,8 +130,8 @@ export class TstBuilder {
         }
 
         if (isAstIndexExpression(expr)) {
-            const objectExpr = this.resolveExpression(expr.object, thisType);
-            const indexExpr = this.resolveExpression(expr.index, thisType);
+            const objectExpr = this.resolveExpression(expr.object, thisType, parameters);
+            const indexExpr = this.resolveExpression(expr.index, thisType, parameters);
             return {
                 exprType: "index",
                 object: objectExpr,
@@ -136,13 +142,13 @@ export class TstBuilder {
         if (isAstBinaryExpression(expr)) {
             return {
                 exprType: "binary",
-                left: this.resolveExpression(expr.lhs, thisType),
-                right: this.resolveExpression(expr.rhs, thisType),
+                left: this.resolveExpression(expr.lhs, thisType, parameters),
+                right: this.resolveExpression(expr.rhs, thisType, parameters),
                 operator: expr.operator
             } as TstBinaryExpression;
         }
 
-        throw new Error(`Unsupported expression type ${expr.exprType} in AstTypeResolver`);
+        throw new Error(`Unsupported expression type ${expr.exprType} in TstBuilder`);
     }
 
     resolveProgram(visited: AstProgram) {
@@ -206,13 +212,13 @@ export class TstBuilder {
                 }
 
                 if (programUnit.extends && programUnit.extendsArguments) {
-                    type.extendsArguments = programUnit.extendsArguments.map(arg => this.resolveExpression(arg, type));
+                    type.extendsArguments = programUnit.extendsArguments.map(arg => this.resolveExpression(arg, type, type.parameters));
                 }
 
                 for (let unit of programUnit.units) {
                     if (isPropertyStatement(unit)) {
                         // TODO: resolve with a target type? then we can deduce type for empty array literal "[]"
-                        type.initializers.push({ name: unit.name, argument: this.resolveExpression(unit.argument, type) })
+                        type.initializers.push({ name: unit.name, argument: this.resolveExpression(unit.argument, type, type.parameters) })
                     } else
                     if (isPropertyDefinition(unit)) {
                         const propertyType = this.runtime.getType(unit.propertyType);
@@ -224,12 +230,22 @@ export class TstBuilder {
                             modifier: unit.modifier,
                             name: unit.name,
                             type: propertyType,
-                            initializer: unit.argument ? this.resolveExpression(unit.argument, type) : undefined,
+                            initializer: unit.argument ? this.resolveExpression(unit.argument, type, type.parameters) : undefined,
                         });
                     } else if (isMethodDeclaration(unit)) {
                         const methodType = this.runtime.getType(unit.returnType);
                         if (!methodType) {
                             throw new Error(`Could not find type ${unit.returnType} for method ${unit.name} of type ${programUnit.name}`);
+                        }
+
+                        const params: TypeParameter[] = unit.parameters.map(param => ({
+                                name: param.name,
+                                type: this.runtime.getType(param.type)
+                            }));
+                        const stmts: TstStatement[] = [];
+                        for (let astStmt of unit.statementList) {
+                            const stmt = this.resolveStatement(astStmt, type, params);
+                            stmts.push(stmt);
                         }
 
                         type.methods.push({
@@ -238,11 +254,38 @@ export class TstBuilder {
                             parameters: unit.parameters.map(param => ({
                                 name: param.name,
                                 type: this.runtime.getType(param.type)
-                            }))
+                            })),
+                            body: stmts,
                         });
                     }
                 }
             }
         }
+    }
+
+    resolveStatement(stmt: AstStatement, thisType: TypeDefinition, parameters: TypeParameter[]): TstStatement {
+        if (isAstReturnStatement(stmt)) {
+            return {
+                stmtType: "return",
+                returnValue: this.resolveExpression(stmt.returnValue, thisType, parameters),
+            } as TstReturnStatement;
+        } else if (isAstIfStatement(stmt)) {
+            return {
+                stmtType: "if",
+                condition: this.resolveExpression(stmt.condition, thisType, parameters),
+                then: stmt.thenBlock.map(s => this.resolveStatement(s, thisType, parameters)),
+                else: stmt.elseBlock ? stmt.elseBlock.map(s => this.resolveStatement(s, thisType, parameters)) : null
+            } as TstIfStatement;
+        } else if (isAstLocalVarDeclaration(stmt)) {
+            // TODO: register in a kind of scope, like "parameters" -> identifier references should be resolved to TstLocalVarExpression
+            return {
+                stmtType: "localVarDeclaration",
+                varType: this.runtime.getType(stmt.varType),
+                name: stmt.name,
+                initializer: stmt.initializer ? this.resolveExpression(stmt.initializer, thisType, parameters) : null,
+            } as TstLocalVarDeclaration;
+        }
+
+        throw new Error("Unknown statement type");
     }
 }

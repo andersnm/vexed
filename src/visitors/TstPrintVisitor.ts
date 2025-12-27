@@ -1,5 +1,13 @@
-import { InstanceMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIdentifierExpression, TstInstanceExpression, TstInstanceObject, TstMemberExpression, TstNewExpression, TstParameterExpression, TstScopedExpression, TstThisExpression, TypeMeta } from "../TstExpression.js";
+import { InstanceMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIdentifierExpression, TstIfStatement, TstInstanceExpression, TstInstanceObject, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TypeMeta } from "../TstExpression.js";
+// import { TstPrintStatementVisitor } from "./TstPrintStatementVisitor.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
+
+// export const printStatementList = (stmts: TstStatement[]): string => {
+//     const printer = new TstPrintVisitor();
+//     const stmtPrinter = new TstPrintStatementVisitor(printer);
+//     stmts.forEach(stmt => stmtPrinter.visit(stmt));
+//     return printer.output.join("");
+// }
 
 export const printExpression = (expr: TstExpression|TstExpression[]|undefined): string => {
     if (!expr) return "<undefined";
@@ -78,6 +86,8 @@ export class TstPrintVisitor extends TstReplaceVisitor {
             this.output.push("\n");
         }
 
+        // TODO: enumerate methods on class and base classes, print implementations
+
         this.dedent();
 
         this.printIndent();
@@ -133,6 +143,11 @@ export class TstPrintVisitor extends TstReplaceVisitor {
             return expr;
         }
 
+        if (instanceType === instanceType.runtime.getType("bool")) {
+            this.output.push(`${expr.instance[InstanceMeta]}`);
+            return expr;
+        }
+
         this.output.push("(#" + instanceType.name + ")");
         // TODO: printobject can recurse infinitely
         if (this.printedInstances.has(expr.instance)) {
@@ -177,4 +192,66 @@ export class TstPrintVisitor extends TstReplaceVisitor {
         this.output.push(")");
         return expr;
     }
+
+    visitStatementExpression(expr: TstStatementExpression): TstExpression {
+        this.output.push("{\n");
+        this.indent();
+        expr.statements.forEach((stmt) => {
+            this.printIndent();
+            this.visitStatement(stmt);
+        });
+        this.dedent();
+        this.printIndent();
+        this.output.push("}");
+        return expr;
+    }
+
+    visitIfStatement(stmt: TstIfStatement): TstStatement[] {
+        this.output.push("if (");
+        this.visit(stmt.condition);
+        this.output.push(") {\n");
+        this.indent();
+        stmt.then.forEach((s) => {
+            this.printIndent();
+            this.visitStatement(s);
+        });
+        this.dedent();
+        this.printIndent();
+        this.output.push("}");
+        if (stmt.else) {
+            this.output.push(" else {\n");
+            this.indent();
+            stmt.else.forEach((s) => {
+                this.printIndent();
+                this.visitStatement(s);
+            });
+            this.dedent();
+            this.printIndent();
+            this.output.push("}\n");
+        }
+        return [ stmt ];
+    }
+
+    visitReturnStatement(stmt: TstReturnStatement): TstStatement[] {
+        this.output.push("return ");
+        this.visit(stmt.returnValue);
+        this.output.push(";\n");
+        return [ stmt ];
+    }
+
+    visitLocalVarDeclaration(stmt: TstLocalVarDeclaration): TstStatement[] {
+        this.output.push(stmt.varType.name + " " + stmt.name + " = ");
+        this.visit(stmt.initializer);
+        this.output.push(";\n");
+        return [ stmt ];
+    }
+
+    // visitStatement(stmt: TstStatement): TstStatement {
+    //     this.output.push("{");
+    //     this.indent();
+    //     this.visit(stmt);
+    //     this.dedent();
+    //     this.output.push("}");
+    //     return stmt;
+    // }
 }

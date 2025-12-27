@@ -51,6 +51,22 @@ export function isBinaryExpression(expr: TstExpression): expr is TstBinaryExpres
     return expr.exprType === "binary";
 }
 
+export function isIfStatement(stmt: TstStatement): stmt is TstIfStatement {
+    return stmt.stmtType === "if";
+}
+
+export function isReturnStatement(stmt: TstStatement): stmt is TstReturnStatement {
+    return stmt.stmtType === "return";
+}
+
+export function isStatementExpression(expr: TstExpression): expr is TstStatementExpression {
+    return expr.exprType === "statement";
+}
+
+export function isLocalVarDeclaration(stmt: TstStatement): stmt is TstLocalVarDeclaration {
+    return stmt.stmtType === "localVarDeclaration";
+}
+
 export interface TstVariable {
     name: string;
     value: TstExpression;
@@ -100,6 +116,12 @@ export interface TstFunctionCallExpression extends TstExpression {
     args: TstExpression[];
 }
 
+export interface TstStatementExpression extends TstExpression {
+    exprType: "statement";
+    statements: TstStatement[];
+    returnType: TypeDefinition;
+}
+
 // TODO: This can simplify initialization:
 // export interface TstInstancePropertyExpression extends TstExpression {
 //     expr: TstExpression[];
@@ -108,6 +130,7 @@ export interface TstFunctionCallExpression extends TstExpression {
 
 export interface TstScopedExpression extends TstExpression {
     exprType: "scoped";
+    thisObject: TstInstanceObject;
     parameters: TstVariable[];
     expr: TstExpression;
 }
@@ -142,4 +165,27 @@ export interface TstBinaryExpression extends TstExpression {
     operator: string;
     left: TstExpression;
     right: TstExpression;
+}
+
+export interface TstStatement {
+    stmtType: "if" | "return" | "localVarDeclaration";
+}
+
+export interface TstIfStatement extends TstStatement {
+    stmtType: "if";
+    condition: TstExpression;
+    then: TstStatement[];
+    else: TstStatement[];
+}
+
+export interface TstReturnStatement extends TstStatement {
+    stmtType: "return";
+    returnValue: TstExpression;
+}
+
+export interface TstLocalVarDeclaration extends TstStatement {
+    stmtType: "localVarDeclaration";
+    varType: TypeDefinition;
+    name: string;
+    initializer: TstExpression;
 }

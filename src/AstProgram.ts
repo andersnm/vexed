@@ -51,6 +51,18 @@ export function isAstBinaryExpression(expr: AstExpression): expr is AstBinaryExp
     return expr.exprType === "binary";
 }
 
+export function isAstIfStatement(expr: AstStatement): expr is AstIfStatement {
+    return expr.stmtType === "if";
+}
+
+export function isAstReturnStatement(expr: AstStatement): expr is AstReturnStatement {
+    return expr.stmtType === "return";
+}
+
+export function isAstLocalVarDeclaration(expr: AstStatement): expr is AstLocalVarDeclaration {
+    return expr.stmtType === "localVarDeclaration";
+}
+
 export interface AstExpression {
     exprType: string;
     // type: string;
@@ -106,6 +118,12 @@ export interface AstBinaryExpression extends AstExpression {
     rhs: AstExpression;
 }
 
+export interface AstUnaryExpression extends AstExpression {
+    exprType: "unary";
+    operator: string;
+    operand: AstExpression;
+}
+
 export interface AstParameter {
     name: string;
     type: string;
@@ -124,7 +142,30 @@ export interface AstMethodDeclaration extends AstClassUnit {
     name: string;
     returnType: string;
     parameters: AstParameter[];
-    // body: AstBlock;
+    statementList: AstStatement[];
+}
+
+export interface AstStatement {
+    stmtType: "if" | "return" | "localVarDeclaration";
+}
+
+export interface AstLocalVarDeclaration extends AstStatement {
+    stmtType: "localVarDeclaration";
+    varType: string;
+    name: string;
+    initializer: AstExpression | null;
+}
+
+export interface AstIfStatement extends AstStatement {
+    stmtType: "if";
+    condition: AstExpression;
+    thenBlock: AstStatement[];
+    elseBlock: AstStatement[];
+}
+
+export interface AstReturnStatement extends AstStatement {
+    stmtType: "return";
+    returnValue: AstExpression;
 }
 
 export interface AstPropertyStatement extends AstClassUnit {

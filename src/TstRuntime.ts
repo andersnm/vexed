@@ -9,6 +9,17 @@ class AnyTypeDefinition extends TypeDefinition {
     }
 }
 
+class BoolTypeDefinition extends TypeDefinition {
+    constructor(runtime: TstRuntime) {
+        super(runtime, "bool");
+    }
+
+    createInstance(args: TstExpression[]): TstInstanceObject {
+        return this.runtime.createInstance(this, args, false);
+    }
+
+}
+
 class StringTypeDefinition extends TypeDefinition {
     constructor(runtime: TstRuntime) {
         super(runtime, "string");
@@ -107,6 +118,7 @@ export class TstRuntime {
     constructor() {
         this.types.push(new AnyTypeDefinition(this));
         this.types.push(new IntTypeDefinition(this));
+        this.types.push(new BoolTypeDefinition(this));
         this.types.push(new ArrayBaseTypeDefinition(this, "any[]"));
         this.types.push(new StringTypeDefinition(this));
         // this.types.push(new ArrayTypeDefinition(this, "string[]"));
@@ -164,11 +176,11 @@ export class TstRuntime {
             // Doing it here works for most cases, but probably not for some cases when "this.XX" is used in a argument
             // to a base class constructor and resolves to the default instead of an overridden initializer.
 
-            obj[prop.name] = { exprType: "scoped", parameters: chainNamedArguments, expr: prop.initializer! } as TstScopedExpression;
+            obj[prop.name] = { exprType: "scoped", thisObject: obj, parameters: chainNamedArguments, expr: prop.initializer! } as TstScopedExpression;
         }
 
         for (let stmt of scopeType.initializers) {
-            obj[stmt.name] = { exprType: "scoped", parameters: chainNamedArguments, expr: stmt.argument } as TstScopedExpression;
+            obj[stmt.name] = { exprType: "scoped", thisObject: obj, parameters: chainNamedArguments, expr: stmt.argument } as TstScopedExpression;
         }
     }
 
@@ -267,5 +279,12 @@ export class TstRuntime {
         const stringObject = stringType.createInstance([]);
         stringObject[InstanceMeta] = value;
         return stringObject;
+    }
+
+    createBool(value: boolean): TstInstanceObject {
+        const boolType = this.getType("bool");
+        const boolObject = boolType.createInstance([]);
+        boolObject[InstanceMeta] = value;
+        return boolObject;
     }
 }

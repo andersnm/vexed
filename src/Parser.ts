@@ -7,6 +7,9 @@ const ClassKeyword = createToken({ name: "Class", pattern: /class/ });
 const ExtendsKeyword = createToken({ name: "Extends", pattern: /extends/ });
 const PublicKeyword = createToken({ name: "Public", pattern: /public/ });
 const PrivateKeyword = createToken({ name: "Private", pattern: /private/ });
+const IfKeyword = createToken({ name: "If", pattern: /if/ });
+const ElseKeyword = createToken({ name: "Else", pattern: /else/ });
+const ReturnKeyword = createToken({ name: "Return", pattern: /return/ });
 
 const LCurly = createToken({ name: "LCurly", pattern: /{/ });
 const RCurly = createToken({ name: "RCurly", pattern: /}/ });
@@ -24,6 +27,16 @@ const Minus = createToken({ name: "Minus", pattern: /-/ });
 const Star = createToken({ name: "Star", pattern: /\*/ });
 const Slash = createToken({ name: "Slash", pattern: /\// });
 
+const Or = createToken({ name: "Or", pattern: /\|\|/ });
+const And = createToken({ name: "And", pattern: /&&/ });
+const Not = createToken({ name: "Not", pattern: /!/ });
+const EqualsEquals = createToken({ name: "EqualsEquals", pattern: /==/ });
+const NotEquals = createToken({ name: "NotEquals", pattern: /!=/ });
+const LessThan = createToken({ name: "LessThan", pattern: /</ });
+const LessThanOrEqual = createToken({ name: "LessThanOrEqual", pattern: /<=/ });
+const GreaterThan = createToken({ name: "GreaterThan", pattern: />/ });
+const GreaterThanOrEqual = createToken({ name: "GreaterThanOrEqual", pattern: />=/ });
+
 const Identifier = createToken({ name: "Identifier", pattern: /[a-zA-Z_][a-zA-Z0-9_:]*/ });
 const StringLiteral = createToken({ name: "StringLiteral", pattern: /"[^"]*"/ });
 const BooleanLiteral = createToken({ name: "BooleanLiteral", pattern: /true|false/ });
@@ -32,9 +45,10 @@ const DecimalLiteral = createToken({ name: "DecimalLiteral", pattern: /(?:[0-9]+
 
 export const allTokens = [
   Comment, WhiteSpace,
-  ClassKeyword, ExtendsKeyword, PublicKeyword, PrivateKeyword,
-  LBracket, RBracket, LCurly, RCurly, LParen, RParen, Dot, Comma, Semi, Equal,
-  Plus, Minus, Star, Slash,
+  ClassKeyword, ExtendsKeyword, PublicKeyword, PrivateKeyword, IfKeyword, ElseKeyword, ReturnKeyword,
+  LBracket, RBracket, LCurly, RCurly, LParen, RParen, Dot, Comma, Semi, 
+  Or, And, EqualsEquals, NotEquals, LessThanOrEqual, LessThan, GreaterThanOrEqual, GreaterThan,
+  Not, Equal, Plus, Minus, Star, Slash, 
   Identifier, StringLiteral, BooleanLiteral, IntegerLiteral, DecimalLiteral,
 ];
 
@@ -119,13 +133,52 @@ export class ProgramParser extends CstParser {
     this.OPTION(() => this.SUBRULE(this.parameterList));
     this.CONSUME(RParen);
 
-    this.SUBRULE(this.block);
+    this.SUBRULE(this.statementList);
   });
 
-  block = this.RULE("block", () => {
+  statementList = this.RULE("statementList", () => {
     this.CONSUME(LCurly);
-    // this.MANY(() => this.SUBRULE(this.statement));
+    this.MANY(() => this.SUBRULE(this.statement));
     this.CONSUME(RCurly);
+  });
+
+  statement = this.RULE("statement", () => {
+    this.OR([
+      { ALT: () => this.SUBRULE(this.ifStatement) },
+      { ALT: () => this.SUBRULE(this.returnStatement) },
+      { ALT: () => this.SUBRULE(this.localVarDeclaration) },
+      // { ALT: () => this.SUBRULE(this.localVarAssignment) },
+      // { ALT: () => this.SUBRULE(this.expressionStatement) }
+    ]);
+  });
+
+  localVarDeclaration = this.RULE("localVarDeclaration", () => {
+    this.SUBRULE(this.type);
+    this.CONSUME(Identifier);
+    this.CONSUME(Equal);
+    this.SUBRULE(this.expression);
+    this.CONSUME(Semi);
+  });
+
+  ifStatement = this.RULE("ifStatement", () => {
+    this.CONSUME(IfKeyword);
+    this.CONSUME(LParen);
+    this.SUBRULE(this.expression);
+    this.CONSUME(RParen);
+    this.SUBRULE(this.statementList);
+    this.OPTION(() => {
+      this.CONSUME(ElseKeyword);
+      this.OR([
+        { ALT: () => this.SUBRULE(this.ifStatement) },
+        { ALT: () => this.SUBRULE2(this.statementList) },
+      ]);
+    });
+  });
+
+  returnStatement = this.RULE("returnStatement", () => {
+    this.CONSUME(ReturnKeyword);
+    this.OPTION(() => this.SUBRULE(this.expression));
+    this.CONSUME(Semi);
   });
 
   propertyDefinition = this.RULE("propertyDefinition", () => {
@@ -162,7 +215,50 @@ export class ProgramParser extends CstParser {
   });
 
   expression = this.RULE("expression", () => {
+    this.SUBRULE(this.logicalOr);
+  });
+
+  logicalOr = this.RULE("logicalOr", () => {
+    this.SUBRULE(this.logicalAnd);
+    this.MANY(() => {
+      this.CONSUME(Or);
+      this.SUBRULE2(this.logicalAnd);
+    });
+  });
+
+  logicalAnd = this.RULE("logicalAnd", () => {
+    this.SUBRULE(this.logicalNot);
+    this.MANY(() => {
+      this.CONSUME(And);
+      this.SUBRULE2(this.logicalNot);
+    });
+  });
+
+  logicalNot = this.RULE("logicalNot", () => {
+    this.OPTION(() => this.CONSUME(Not));
+    this.SUBRULE(this.equality);
+  });
+
+  equality = this.RULE("equality", () => {
+    this.SUBRULE(this.comparison);
+    this.MANY(() => {
+      this.OR([
+        { ALT: () => { this.CONSUME(EqualsEquals); this.SUBRULE2(this.comparison); } },
+        { ALT: () => { this.CONSUME(NotEquals); this.SUBRULE3(this.comparison); } }
+      ]);
+    });
+  });
+
+  comparison = this.RULE("comparison", () => {
     this.SUBRULE(this.additiveExpression);
+    this.MANY(() => {
+      this.OR([
+        { ALT: () => { this.CONSUME(LessThan); this.SUBRULE2(this.additiveExpression); } },
+        { ALT: () => { this.CONSUME(LessThanOrEqual); this.SUBRULE3(this.additiveExpression); } },
+        { ALT: () => { this.CONSUME(GreaterThan); this.SUBRULE4(this.additiveExpression); } },
+        { ALT: () => { this.CONSUME(GreaterThanOrEqual); this.SUBRULE5(this.additiveExpression); } },
+      ]);
+    });
   });
 
   additiveExpression = this.RULE("additiveExpression", () => {

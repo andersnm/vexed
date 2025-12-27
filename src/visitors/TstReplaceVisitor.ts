@@ -1,4 +1,4 @@
-import { isBinaryExpression, isDecimalLiteral, isFunctionCall, isIdentifier, isIndexExpression, isInstanceExpression, isMemberExpression, isNewExpression, isParameter, isScopedExpression, isThisExpression, TstBinaryExpression, TstDecimalLiteralExpression, TstExpression, TstFunctionCallExpression, TstIdentifierExpression, TstIndexExpression, TstInstanceExpression, TstMemberExpression, TstNewExpression, TstParameterExpression, TstScopedExpression, TstThisExpression } from "../TstExpression.js";
+import { isBinaryExpression, isDecimalLiteral, isFunctionCall, isIdentifier, isIfStatement, isIndexExpression, isInstanceExpression, isLocalVarDeclaration, isMemberExpression, isNewExpression, isParameter, isReturnStatement, isScopedExpression, isStatementExpression, isThisExpression, TstBinaryExpression, TstDecimalLiteralExpression, TstExpression, TstFunctionCallExpression, TstIdentifierExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression } from "../TstExpression.js";
 
 export class TstReplaceVisitor {
 
@@ -35,6 +35,9 @@ export class TstReplaceVisitor {
         }
         if (isBinaryExpression(expr)) {
             return this.visitBinaryExpression(expr);
+        }
+        if (isStatementExpression(expr)) {
+            return this.visitStatementExpression(expr);
         }
 
         // keep a clear error for unexpected node kinds
@@ -128,5 +131,66 @@ export class TstReplaceVisitor {
             right: this.visit(expr.right),
             operator: expr.operator,
         } as TstBinaryExpression;
+    }
+
+    visitStatementExpression(expr: TstStatementExpression): TstExpression {
+        return {
+            exprType: expr.exprType,
+            statements: this.visitStatementList(expr.statements),
+            returnType: expr.returnType,
+        } as TstStatementExpression;
+    }
+
+    visitStatementList(stmtList: TstStatement[]): TstStatement[] {
+        // if a statement is an if, it reduces to a statementlist that takes its place
+
+        const result: TstStatement[] = [];
+        for (let stmt of stmtList) {
+            const reducedStmtList = this.visitStatement(stmt);
+            result.push(...reducedStmtList);
+        }
+
+        return result; // stmtList.map(stmt => this.visitStatement(stmt));
+    }
+
+    visitStatement(stmt: TstStatement): TstStatement[] {
+        if (isIfStatement(stmt)) {
+            return this.visitIfStatement(stmt);
+        }
+
+        if (isReturnStatement(stmt)) {
+            return this.visitReturnStatement(stmt);
+        }
+
+        if (isLocalVarDeclaration(stmt)) {
+            return this.visitLocalVarDeclaration(stmt);
+        }
+
+        throw new Error("Unhandled statement type: " + stmt.stmtType);
+    }
+
+    visitIfStatement(stmt: TstIfStatement): TstStatement[] {
+        return [{
+            stmtType: "if",
+            condition: this.visit(stmt.condition),
+            then: this.visitStatementList(stmt.then),
+            else: this.visitStatementList(stmt.else),
+        } as TstIfStatement];
+    }
+
+    visitReturnStatement(stmt: TstReturnStatement): TstStatement[] {
+        return [{
+            stmtType: "return",
+            returnValue: this.visit(stmt.returnValue),
+        } as TstReturnStatement];
+    }
+
+    visitLocalVarDeclaration(stmt: TstLocalVarDeclaration): TstStatement[] {
+        return [{
+            stmtType: "localVarDeclaration",
+            varType: stmt.varType,
+            name: stmt.name,
+            initializer: this.visit(stmt.initializer),
+        } as TstLocalVarDeclaration];
     }
 }
