@@ -14,7 +14,6 @@ export class TstExpressionTypeVisitor extends TstReplaceVisitor {
     }
 
     visitMemberExpression(expr: TstMemberExpression): TstExpression {
-        console.log("VISITING MEMBER TYPE!")
         this.visit(expr.object);
 
         const objectType = this.visitType;
@@ -23,6 +22,9 @@ export class TstExpressionTypeVisitor extends TstReplaceVisitor {
         }
 
         this.visitType = objectType.getProperty(expr.property)?.type || null;
+        if (!this.visitType) {
+            throw new Error(expr.property + " is not a member of " + objectType.name);
+        }
 
         return expr;
     }

@@ -1,4 +1,4 @@
-import { isBinaryExpression, isDecimalLiteral, isFunctionCall, isIdentifier, isIfStatement, isIndexExpression, isInstanceExpression, isLocalVarDeclaration, isMemberExpression, isNewExpression, isParameter, isReturnStatement, isScopedExpression, isStatementExpression, isThisExpression, TstBinaryExpression, TstDecimalLiteralExpression, TstExpression, TstFunctionCallExpression, TstIdentifierExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression } from "../TstExpression.js";
+import { isBinaryExpression, isDecimalLiteral, isFunctionCall, isIdentifier, isIfStatement, isIndexExpression, isInstanceExpression, isLocalVarDeclaration, isMemberExpression, isNewExpression, isParameter, isReturnStatement, isScopedExpression, isStatementExpression, isThisExpression, isVariableExpression, TstBinaryExpression, TstDecimalLiteralExpression, TstExpression, TstFunctionCallExpression, TstIdentifierExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstVariableExpression } from "../TstExpression.js";
 
 export class TstReplaceVisitor {
 
@@ -27,6 +27,9 @@ export class TstReplaceVisitor {
         if (isParameter(expr)) {
             return this.visitParameterExpression(expr);
         }
+        if (isVariableExpression(expr)) {
+            return this.visitVariableExpression(expr);
+        }
         if (isScopedExpression(expr)) {
             return this.visitScopedExpression(expr);
         }
@@ -38,6 +41,9 @@ export class TstReplaceVisitor {
         }
         if (isStatementExpression(expr)) {
             return this.visitStatementExpression(expr);
+        }
+        if (isVariableExpression(expr)) {
+            return this.visitVariableExpression(expr);
         }
 
         // keep a clear error for unexpected node kinds
@@ -77,6 +83,14 @@ export class TstReplaceVisitor {
             name: expr.name,
             type: expr.type,
         } as TstParameterExpression;
+    }
+
+    visitVariableExpression(expr: TstVariableExpression): TstExpression {
+        return {
+            exprType: expr.exprType,
+            name: expr.name,
+            type: expr.type,
+        } as TstVariableExpression;
     }
 
     visitFunctionCallExpression(expr: TstFunctionCallExpression): TstExpression {

@@ -15,6 +15,10 @@ export function isParameter(expr: TstExpression): expr is TstParameterExpression
     return expr.exprType === "parameter";
 }
 
+export function isVariableExpression(expr: TstExpression): expr is TstVariableExpression {
+    return expr.exprType === "variable";
+}
+
 export function isNewExpression(expr: TstExpression): expr is TstNewExpression {
     return expr.exprType === "new";
 }
@@ -101,6 +105,12 @@ export interface TstParameterExpression extends TstExpression {
     exprType: "parameter";
     name: string;
     type: TypeDefinition
+}
+
+export interface TstVariableExpression extends TstExpression {
+    exprType: "variable";
+    name: string;
+    type: TypeDefinition;
 }
 
 export interface TstNewExpression extends TstExpression {

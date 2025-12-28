@@ -166,6 +166,7 @@ export class TstRuntime {
                 exprType: "scoped",
                 parameters: chainNamedArguments,
                 expr: arg,
+                thisObject: obj,
             } as TstScopedExpression)) || [];
 
             this.setupInstanceScope(obj, scopeType.extends, extendsArguments);

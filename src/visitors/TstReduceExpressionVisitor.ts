@@ -1,4 +1,4 @@
-import { InstanceMeta, isIfStatement, isInstanceExpression, isReturnStatement, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIdentifierExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstVariable, TypeMeta } from "../TstExpression.js";
+import { InstanceMeta, isIfStatement, isInstanceExpression, isReturnStatement, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIdentifierExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
 import { TstRuntime } from "../TstRuntime.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
 
@@ -208,11 +208,17 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
     scope: TstVariable[] = [];
 
     visitLocalVarDeclaration(stmt: TstLocalVarDeclaration): TstStatement[] {
-        // TODO: should create local variable in scope and return no-op
-        // scope = statementexpression? 
+        // Create local variable in scope and return no-op
         const initializer = this.visit(stmt.initializer);
         this.scope.push({ name: stmt.name, value: initializer });
         return []; //{ stmtType: "localVarDeclaration", name: stmt.name, varType: stmt.varType, initializer } as TstLocalVarDeclaration];
     }
 
+    visitVariableExpression(expr: TstVariableExpression): TstExpression {
+        const variable = this.scope.find(v => v.name === expr.name);
+        if (variable) {
+            return variable.value;
+        }
+        throw new Error("Variable not found: " + expr.name);
+    }
 }

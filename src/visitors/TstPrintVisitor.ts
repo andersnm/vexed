@@ -1,4 +1,4 @@
-import { InstanceMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIdentifierExpression, TstIfStatement, TstInstanceExpression, TstInstanceObject, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TypeMeta } from "../TstExpression.js";
+import { InstanceMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIdentifierExpression, TstIfStatement, TstInstanceExpression, TstInstanceObject, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstVariableExpression, TypeMeta } from "../TstExpression.js";
 // import { TstPrintStatementVisitor } from "./TstPrintStatementVisitor.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
 
@@ -167,6 +167,11 @@ export class TstPrintVisitor extends TstReplaceVisitor {
 
     visitParameterExpression(expr: TstParameterExpression): TstExpression {
         this.output.push("$" + expr.name);
+        return expr;
+    }
+
+    visitVariableExpression(expr: TstVariableExpression): TstExpression {
+        this.output.push("%" + expr.name);
         return expr;
     }
 
