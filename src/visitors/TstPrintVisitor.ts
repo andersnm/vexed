@@ -1,13 +1,5 @@
-import { InstanceMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIdentifierExpression, TstIfStatement, TstInstanceExpression, TstInstanceObject, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstVariableExpression, TypeMeta } from "../TstExpression.js";
-// import { TstPrintStatementVisitor } from "./TstPrintStatementVisitor.js";
+import { InstanceMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstInstanceExpression, TstInstanceObject, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstVariableExpression, TypeMeta } from "../TstExpression.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
-
-// export const printStatementList = (stmts: TstStatement[]): string => {
-//     const printer = new TstPrintVisitor();
-//     const stmtPrinter = new TstPrintStatementVisitor(printer);
-//     stmts.forEach(stmt => stmtPrinter.visit(stmt));
-//     return printer.output.join("");
-// }
 
 export const printExpression = (expr: TstExpression|TstExpression[]|undefined): string => {
     if (!expr) return "<undefined";
@@ -97,11 +89,6 @@ export class TstPrintVisitor extends TstReplaceVisitor {
     visitMemberExpression(expr: TstMemberExpression): TstExpression {
         this.visit(expr.object);
         this.output.push("." + expr.property);
-        return expr;
-    }
-
-    visitIdentifierExpression(expr: TstIdentifierExpression): TstExpression {
-        this.output.push(expr.value);
         return expr;
     }
 

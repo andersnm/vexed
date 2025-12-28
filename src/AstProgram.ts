@@ -27,6 +27,10 @@ export function isAstDecimalLiteral(expr: AstExpression): expr is AstDecimalLite
     return expr.exprType === "decimalLiteral";
 }
 
+export function isAstBooleanLiteral(expr: AstExpression): expr is AstBooleanLiteralExpression {
+    return expr.exprType === "booleanLiteral";
+}
+
 export function isAstFunctionCall(expr: AstExpression): expr is AstFunctionCallExpression {
     return expr.exprType === "functionCall";
 }
@@ -65,7 +69,6 @@ export function isAstLocalVarDeclaration(expr: AstStatement): expr is AstLocalVa
 
 export interface AstExpression {
     exprType: string;
-    // type: string;
 }
 
 export interface AstIdentifierExpression {
@@ -86,6 +89,11 @@ export interface AstIntegerLiteralExpression {
 export interface AstDecimalLiteralExpression {
     exprType: "decimalLiteral";
     value: string;
+}
+
+export interface AstBooleanLiteralExpression {
+    exprType: "booleanLiteral";
+    value: boolean;
 }
 
 export interface AstArrayLiteralExpression {

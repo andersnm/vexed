@@ -1,5 +1,5 @@
 import { ProgramParser } from "./Parser.js"; // your token definitions
-import { AstClass, AstClassUnit, AstPropertyStatement, AstParameter, AstProgram, AstPropertyDefinition, AstExpression, AstIdentifierExpression, AstStringLiteralExpression, AstFunctionCallExpression, AstMemberExpression, AstIndexExpression, AstIntegerLiteralExpression, AstDecimalLiteralExpression, AstArrayLiteralExpression, isAstIdentifier, AstBinaryExpression, AstLocation, AstMethodDeclaration, AstIfStatement, AstStatement, AstReturnStatement, AstUnaryExpression, AstLocalVarDeclaration } from "./AstProgram.js";
+import { AstClass, AstClassUnit, AstPropertyStatement, AstParameter, AstProgram, AstPropertyDefinition, AstExpression, AstIdentifierExpression, AstStringLiteralExpression, AstFunctionCallExpression, AstMemberExpression, AstIndexExpression, AstIntegerLiteralExpression, AstDecimalLiteralExpression, AstArrayLiteralExpression, isAstIdentifier, AstBinaryExpression, AstLocation, AstMethodDeclaration, AstIfStatement, AstStatement, AstReturnStatement, AstUnaryExpression, AstLocalVarDeclaration, AstBooleanLiteralExpression } from "./AstProgram.js";
 import { IToken } from "chevrotain";
 
 function createTokenLocation(tok: IToken): AstLocation {
@@ -412,6 +412,9 @@ export function createVisitor(parser: ProgramParser) {
             }
             if (ctx.DecimalLiteral) {
                 return { exprType: "decimalLiteral", value: ctx.DecimalLiteral[0].image } as AstDecimalLiteralExpression;
+            }
+            if (ctx.BooleanLiteral) {
+                return { exprType: "booleanLiteral", value: ctx.BooleanLiteral[0].image === "true" } as AstBooleanLiteralExpression;
             }
             if (ctx.arrayLiteral) {
                 return this.visit(ctx.arrayLiteral);

@@ -7,10 +7,6 @@ export function isDecimalLiteral(expr: TstExpression): expr is TstDecimalLiteral
     return expr.exprType === "decimalLiteral";
 }
 
-export function isIdentifier(expr: TstExpression): expr is TstIdentifierExpression {
-    return expr.exprType === "identifier";
-}
-
 export function isParameter(expr: TstExpression): expr is TstParameterExpression {
     return expr.exprType === "parameter";
 }
@@ -94,11 +90,6 @@ export interface TstExpression {
 export interface TstDecimalLiteralExpression extends TstExpression {
     exprType: "decimalLiteral";
     value: number;
-}
-
-export interface TstIdentifierExpression extends TstExpression {
-    exprType: "identifier";
-    value: string;
 }
 
 export interface TstParameterExpression extends TstExpression {

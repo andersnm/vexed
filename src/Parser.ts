@@ -49,7 +49,8 @@ export const allTokens = [
   LBracket, RBracket, LCurly, RCurly, LParen, RParen, Dot, Comma, Semi, 
   Or, And, EqualsEquals, NotEquals, LessThanOrEqual, LessThan, GreaterThanOrEqual, GreaterThan,
   Not, Equal, Plus, Minus, Star, Slash, 
-  Identifier, StringLiteral, BooleanLiteral, IntegerLiteral, DecimalLiteral,
+  StringLiteral, BooleanLiteral, IntegerLiteral, DecimalLiteral,
+  Identifier,
 ];
 
 export class ProgramParser extends CstParser {
@@ -309,6 +310,7 @@ export class ProgramParser extends CstParser {
   primaryExpression = this.RULE("primaryExpression", () => {
     this.OR([
       { ALT: () => this.SUBRULE(this.arrayLiteral) },
+      { ALT: () => this.CONSUME(BooleanLiteral) },
       { ALT: () => this.CONSUME(Identifier) },
       { ALT: () => this.CONSUME(StringLiteral) },
       { ALT: () => this.CONSUME(IntegerLiteral) },

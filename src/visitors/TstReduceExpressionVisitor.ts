@@ -1,4 +1,4 @@
-import { InstanceMeta, isIfStatement, isInstanceExpression, isReturnStatement, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIdentifierExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
+import { InstanceMeta, isInstanceExpression, isReturnStatement, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
 import { TstRuntime } from "../TstRuntime.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
 
@@ -42,10 +42,6 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         }
 
         throw new Error("Parameter not found: " + expr.name);
-    }
-
-    visitIdentifierExpression(expr: TstIdentifierExpression): TstExpression {
-        throw new Error("Identifier not found: " + expr.value);
     }
 
     visitThisExpression(expr: TstThisExpression): TstExpression {

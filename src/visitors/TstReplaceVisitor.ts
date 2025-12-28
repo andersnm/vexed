@@ -1,13 +1,10 @@
-import { isBinaryExpression, isDecimalLiteral, isFunctionCall, isIdentifier, isIfStatement, isIndexExpression, isInstanceExpression, isLocalVarDeclaration, isMemberExpression, isNewExpression, isParameter, isReturnStatement, isScopedExpression, isStatementExpression, isThisExpression, isVariableExpression, TstBinaryExpression, TstDecimalLiteralExpression, TstExpression, TstFunctionCallExpression, TstIdentifierExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstVariableExpression } from "../TstExpression.js";
+import { isBinaryExpression, isDecimalLiteral, isFunctionCall, isIfStatement, isIndexExpression, isInstanceExpression, isLocalVarDeclaration, isMemberExpression, isNewExpression, isParameter, isReturnStatement, isScopedExpression, isStatementExpression, isThisExpression, isVariableExpression, TstBinaryExpression, TstDecimalLiteralExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstVariableExpression } from "../TstExpression.js";
 
 export class TstReplaceVisitor {
 
     visit(expr: TstExpression): TstExpression {
         if (isNewExpression(expr)) {
             return this.visitNewExpression(expr);
-        }
-        if (isIdentifier(expr)) {
-            return this.visitIdentifierExpression(expr);
         }
         if (isDecimalLiteral(expr)) {
             return this.visitDecimalLiteral(expr);
@@ -48,13 +45,6 @@ export class TstReplaceVisitor {
 
         // keep a clear error for unexpected node kinds
         throw new Error(`TstReplaceVisitor: Unhandled expression type: ${expr.exprType}`);
-    }
-
-    visitIdentifierExpression(expr: TstIdentifierExpression): TstExpression {
-        return {
-            exprType: expr.exprType,
-            value: expr.value,
-        } as TstIdentifierExpression;
     }
 
     visitDecimalLiteral(expr: TstDecimalLiteralExpression): TstExpression {

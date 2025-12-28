@@ -1,5 +1,5 @@
-import { AstExpression, AstIdentifierExpression, AstIntegerLiteralExpression, AstMemberExpression, AstProgram, AstStatement, AstStringLiteralExpression, isAstArrayLiteral, isAstBinaryExpression, isAstDecimalLiteral, isAstFunctionCall, isAstIdentifier, isAstIfStatement, isAstIndexExpression, isAstIntegerLiteral, isAstLocalVarDeclaration, isAstMember, isAstReturnStatement, isAstStringLiteral, isClass, isMethodDeclaration, isPropertyDefinition, isPropertyStatement } from "./AstProgram.js";
-import { InstanceMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIdentifierExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstReturnStatement, TstStatement, TstThisExpression, TstVariable, TstVariableExpression } from "./TstExpression.js";
+import { AstExpression, AstProgram, AstStatement, isAstArrayLiteral, isAstBinaryExpression, isAstBooleanLiteral, isAstDecimalLiteral, isAstFunctionCall, isAstIdentifier, isAstIfStatement, isAstIndexExpression, isAstIntegerLiteral, isAstLocalVarDeclaration, isAstMember, isAstReturnStatement, isAstStringLiteral, isClass, isMethodDeclaration, isPropertyDefinition, isPropertyStatement } from "./AstProgram.js";
+import { InstanceMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstReturnStatement, TstStatement, TstThisExpression, TstVariable, TstVariableExpression } from "./TstExpression.js";
 import { TypeDefinition, TypeParameter } from "./TstType.js";
 import { TstRuntime } from "./TstRuntime.js";
 import { TstExpressionTypeVisitor } from "./visitors/TstExpressionTypeVisitor.js";
@@ -46,6 +46,13 @@ class AstVisitor {
             return {
                 exprType: "instance",
                 instance: decimalObject
+            } as TstInstanceExpression;
+        }
+
+        if (isAstBooleanLiteral(expr)) {
+            return {
+                exprType: "instance",
+                instance: this.runtime.createBool(expr.value)
             } as TstInstanceExpression;
         }
 
