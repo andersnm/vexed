@@ -115,6 +115,6 @@ test('Parse basic-function', async () => {
     runtime.reduceInstance(instance);
     runtime.reduceInstance(instance);
 
-    checkInstanceProperty(instance, "value1", runtime.getType("int"), 2);
-    checkInstanceProperty(instance, "value2", runtime.getType("int"), 3);
+    checkInstanceProperty(instance, "value1", runtime.getType("int"), 11);
+    checkInstanceProperty(instance, "value2", runtime.getType("int"), 21);
 });

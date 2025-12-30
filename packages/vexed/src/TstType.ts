@@ -124,4 +124,17 @@ export class TypeDefinition {
 
         return null;
     }
+
+    getMethod(methodName: string): TypeMethod | null {
+        const typeMethod = this.methods.find(p => p.name == methodName);
+        if (typeMethod) {
+            return typeMethod;
+        }
+
+        if (this.extends) {
+            return this.extends.getMethod(methodName);
+        }
+
+        return null;
+    }
 }

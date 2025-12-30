@@ -88,6 +88,8 @@ async function main() {
     helpCommand([]);
 }
 
+Error.stackTraceLimit = Infinity;
+
 main().catch(err => {
     console.error("Fatal error:", err);
     process.exit(1);

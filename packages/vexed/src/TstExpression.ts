@@ -1,4 +1,5 @@
 import { TypeDefinition, TypeMethod } from "./TstType.js";
+import { TstScope } from "./visitors/TstReduceExpressionVisitor.js";
 
 export const TypeMeta: unique symbol = Symbol("TypeMeta");
 export const InstanceMeta: unique symbol = Symbol("InstanceMeta");
@@ -49,6 +50,10 @@ export function isIndexExpression(expr: TstExpression): expr is TstIndexExpressi
 
 export function isBinaryExpression(expr: TstExpression): expr is TstBinaryExpression {
     return expr.exprType === "binary";
+}
+
+export function isMethodExpression(expr: TstExpression): expr is TstMethodExpression {
+    return expr.exprType === "method";
 }
 
 export function isIfStatement(stmt: TstStatement): stmt is TstIfStatement {
@@ -131,9 +136,8 @@ export interface TstStatementExpression extends TstExpression {
 
 export interface TstScopedExpression extends TstExpression {
     exprType: "scoped";
-    thisObject: TstInstanceObject;
-    parameters: TstVariable[];
     expr: TstExpression;
+    scope: TstScope;
 }
 
 export interface TstInstanceExpression extends TstExpression {
@@ -166,6 +170,13 @@ export interface TstBinaryExpression extends TstExpression {
     operator: string;
     left: TstExpression;
     right: TstExpression;
+}
+
+export interface TstMethodExpression extends TstExpression {
+    exprType: "method";
+    method: TypeMethod;
+    thisObject: TstInstanceObject;
+    scope: TstScope;
 }
 
 export interface TstStatement {

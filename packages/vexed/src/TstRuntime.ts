@@ -1,7 +1,7 @@
-import { InstanceMeta, TstExpression, TstInstanceExpression, TstInstanceObject, TstScopedExpression, TstVariable, TypeMeta } from "./TstExpression.js";
+import { InstanceMeta, TstExpression, TstInstanceExpression, TstInstanceObject, TstMethodExpression, TstScopedExpression, TstVariable, TypeMeta } from "./TstExpression.js";
 import { TypeDefinition } from "./TstType.js";
 import { TstExpressionTypeVisitor } from "./visitors/TstExpressionTypeVisitor.js";
-import { TstReduceExpressionVisitor } from "./visitors/TstReduceExpressionVisitor.js";
+import { TstReduceExpressionVisitor, TstScope } from "./visitors/TstReduceExpressionVisitor.js";
 
 class AnyTypeDefinition extends TypeDefinition {
     constructor(runtime: TstRuntime) {
@@ -158,15 +158,20 @@ export class TstRuntime {
             value: args[index],
         }));
 
+        const scope: TstScope = {
+            parent: null,
+            thisObject: obj,
+            variables: chainNamedArguments,
+        };
+
         // console.log("Named arguments now", scopeType.name, chainNamedArguments, args, "props", scopeType.properties.map(p => p.name).join(","));
 
         if (scopeType.extends) {
             // Each base class constructor argument is wrapped in a scoped expression.
             const extendsArguments = scopeType.extendsArguments?.map(arg => ({
                 exprType: "scoped",
-                parameters: chainNamedArguments,
                 expr: arg,
-                thisObject: obj,
+                scope,
             } as TstScopedExpression)) || [];
 
             this.setupInstanceScope(obj, scopeType.extends, extendsArguments);
@@ -177,11 +182,15 @@ export class TstRuntime {
             // Doing it here works for most cases, but probably not for some cases when "this.XX" is used in a argument
             // to a base class constructor and resolves to the default instead of an overridden initializer.
 
-            obj[prop.name] = { exprType: "scoped", thisObject: obj, parameters: chainNamedArguments, expr: prop.initializer! } as TstScopedExpression;
+            obj[prop.name] = { exprType: "scoped", scope, expr: prop.initializer! } as TstScopedExpression;
         }
 
         for (let stmt of scopeType.initializers) {
-            obj[stmt.name] = { exprType: "scoped", thisObject: obj, parameters: chainNamedArguments, expr: stmt.argument } as TstScopedExpression;
+            obj[stmt.name] = { exprType: "scoped", scope, expr: stmt.argument } as TstScopedExpression;
+        }
+
+        for (let method of scopeType.methods) {
+            obj[method.name] = { exprType: "method", method, scope } as TstMethodExpression;
         }
     }
 
@@ -244,11 +253,18 @@ export class TstRuntime {
             this.reduceInstanceByType(obj, scopeType.extends, visitedInstances);
         }
 
+        const scope: TstScope = {
+            parent: null,
+            thisObject: obj,
+            variables: [],
+        };
+
         for (let propertyDeclaration of scopeType.properties) {
             const propertyScopedExpression = obj[propertyDeclaration.name];
 
             // NOTE: Parameters should've been converted to scoped expressions so don't have to pass them again here
-            const reducer = new TstReduceExpressionVisitor(this, obj, [], visitedInstances);
+            // TODO: parameters should be in a chained symbol table, statementlist-scope -> function-scope -> constructor-scope
+            const reducer = new TstReduceExpressionVisitor(this, scope, visitedInstances);
             const reduced = reducer.visit(propertyScopedExpression);
 
             // Check if types match using the TstExpressionTypeVisitor

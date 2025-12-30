@@ -4,7 +4,7 @@
   "private": false,
   "type": "module",
   "bin": {
-    "vexed": "./dist/cli.js"
+    "vexed-cli": "./dist/main.js"
   },
   "scripts": {
     "start": "tsc && node --enable-source-maps ./dist/main",

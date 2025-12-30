@@ -1,10 +1,10 @@
 class Main() {
   int adder(int a, int b) {
-    int n = 2;
-    return n + a + b + this.offset;
+    int localInt = 2;
+    return a + b + localInt + this.memberInt;
   }
-  
-  public int offset = 7;
+
+  public int memberInt = 7;
   public int value1 = this.adder(1, 1);
   public int value2 = this.adder(1, this.value1);
 }

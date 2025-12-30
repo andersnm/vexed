@@ -75,8 +75,7 @@ class AstVisitor {
                     throw new Error(`Could not find type for member ${functionName}`);
                 }
 
-                // TODO: search base classes too
-                const method = calleeType.methods.find(m => m.name === functionName);
+                const method = calleeType.getMethod(functionName);
                 if (!method) {
                     throw new Error(`Method ${functionName} not found on type ${calleeType.name}`);
                 }
@@ -102,6 +101,10 @@ class AstVisitor {
                 const vi = this.scope.find(v => v.name === expr.value);
                 if (vi) {
                     return { exprType: "variable", name: expr.value, type: vi.type } as TstVariableExpression;
+                }
+
+                if (this.parent) {
+                    return this.parent.resolveExpression(expr);
                 }
 
                 throw new Error("Unknown identifier " + expr.value)

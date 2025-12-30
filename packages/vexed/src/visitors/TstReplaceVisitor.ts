@@ -115,7 +115,7 @@ export class TstReplaceVisitor {
     visitScopedExpression(expr: TstScopedExpression): TstExpression {
         return {
             exprType: expr.exprType,
-            parameters: expr.parameters,
+            scope: expr.scope,
             expr: this.visit(expr.expr),
         } as TstScopedExpression;
     }

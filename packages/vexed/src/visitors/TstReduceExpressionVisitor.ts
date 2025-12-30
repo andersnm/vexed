@@ -1,10 +1,16 @@
-import { InstanceMeta, isInstanceExpression, isReturnStatement, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
+import { InstanceMeta, isInstanceExpression, isMethodExpression, isReturnStatement, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
 import { TstRuntime } from "../TstRuntime.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
 
+export interface TstScope {
+    parent: TstScope | null;
+    thisObject: TstInstanceObject;
+    variables: TstVariable[];
+}
+
 export class TstReduceExpressionVisitor extends TstReplaceVisitor {
 
-    constructor(private runtime: TstRuntime, private thisObject: TstInstanceObject, private currentParameters: TstVariable[] = [], private visitedInstances: Set<TstInstanceObject> = new Set()) {
+    constructor(private runtime: TstRuntime, private scope: TstScope, private visitedInstances: Set<TstInstanceObject> = new Set()) {
         super();
     }
 
@@ -36,7 +42,22 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
 
     visitParameterExpression(expr: TstParameterExpression): TstExpression {
         // console.log("Visiting parameter expression", expr.name);
-        const parameter = this.currentParameters.find(p => p.name === expr.name);
+
+        const getParameter = (scope: TstScope, name: string): TstVariable | null => {
+            const param = scope.variables.find(v => v.name === name);
+            if (param) {
+                return param;
+            }
+
+            if (scope.parent) {
+                return getParameter(scope.parent, name);
+            }
+
+            return null;
+        }
+
+        const parameter = getParameter(this.scope, expr.name);
+
         if (parameter) {
             return this.visit(parameter.value);
         }
@@ -47,7 +68,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
     visitThisExpression(expr: TstThisExpression): TstExpression {
         return {
             exprType: "instance",
-            instance: this.thisObject,
+            instance: this.scope.thisObject,
         } as TstInstanceExpression;
     }
 
@@ -62,7 +83,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
 
     visitScopedExpression(expr: TstScopedExpression): TstExpression {
         // TODO: can only reduce this if all parameters are reduced!
-        const scopeVisitor = new TstReduceExpressionVisitor(this.runtime, expr.thisObject, expr.parameters, this.visitedInstances);
+        const scopeVisitor = new TstReduceExpressionVisitor(this.runtime, expr.scope, this.visitedInstances);
         // const scopeVisitor = new TstReduceExpressionVisitor(this.runtime, this.thisObject, expr.parameters, this.visitedInstances);
         const visited = scopeVisitor.visit(expr.expr);
         return visited;
@@ -151,10 +172,24 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         }));
 
         if (isInstanceExpression(objectExpr)) {
+            const methodExpression = objectExpr.instance[expr.method.name];
+            if (!methodExpression) {
+                throw new Error("Method " + expr.method.name + " not found on instance of type " + objectExpr.instance[TypeMeta].name);
+            }
+
+            if (!isMethodExpression(methodExpression)) {
+                throw new Error("Property " + expr.method.name + " is not a method on instance of type " + objectExpr.instance[TypeMeta].name);
+            }
+
+            const scope: TstScope = {
+                parent: methodExpression.scope, // the scope of the constructor
+                thisObject: objectExpr.instance,
+                variables: chainNamedArguments,
+            };
+
             return {
                 exprType: "scoped",
-                thisObject: objectExpr.instance,
-                parameters: chainNamedArguments,
+                scope: scope,
                 expr: {
                     exprType: "statement",
                     statements: expr.method.body,
@@ -201,17 +236,15 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         }
     }
 
-    scope: TstVariable[] = [];
-
     visitLocalVarDeclaration(stmt: TstLocalVarDeclaration): TstStatement[] {
         // Create local variable in scope and return no-op
         const initializer = this.visit(stmt.initializer);
-        this.scope.push({ name: stmt.name, value: initializer });
+        this.scope.variables.push({ name: stmt.name, value: initializer });
         return []; //{ stmtType: "localVarDeclaration", name: stmt.name, varType: stmt.varType, initializer } as TstLocalVarDeclaration];
     }
 
     visitVariableExpression(expr: TstVariableExpression): TstExpression {
-        const variable = this.scope.find(v => v.name === expr.name);
+        const variable = this.scope.variables.find(v => v.name === expr.name);
         if (variable) {
             return variable.value;
         }

@@ -1,0 +1,18 @@
+class Base(int constructorInt) {
+  public int abstractInt;
+
+  int baseAdder(int a, int b) {
+    int localInt = 22;
+    return a + b + localInt + constructorInt + this.abstractInt;
+  }
+}
+
+class Main() extends Base(77) {
+  int adder(int a, int b) {
+    return this.baseAdder(a, b);
+  }
+
+  public int abstractInt = 7;
+  public int value1 = this.adder(1, 1);
+  public int value2 = this.baseAdder(2, this.value1);
+}

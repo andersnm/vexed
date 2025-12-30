@@ -1,4 +1,5 @@
 import { InstanceMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstInstanceExpression, TstInstanceObject, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstVariableExpression, TypeMeta } from "../TstExpression.js";
+import { TstScope } from "./TstReduceExpressionVisitor.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
 
 export const printExpression = (expr: TstExpression|TstExpression[]|undefined): string => {
@@ -63,7 +64,8 @@ export class TstPrintVisitor extends TstReplaceVisitor {
         this.output.push("{\n");
         this.indent();
 
-        for (let propertyName of propertyNames) {
+        for (let property of instanceType.properties) {
+            const propertyName = property.name;
             this.printIndent();
 
             const propExpr = instanceType.resolveProperty(obj, propertyName);
@@ -71,7 +73,10 @@ export class TstPrintVisitor extends TstReplaceVisitor {
                 throw new Error("Property expression not found: " + instanceType.name + "." + propertyName);
             }
 
-            const propertyMember = instanceType.getProperty(propertyName)!;
+            const propertyMember = instanceType.getProperty(propertyName);
+            if (!propertyMember) {
+                throw new Error("Property member not found: " + instanceType.name + "." + propertyName);
+            }
 
             this.output.push(propertyName + ": " + propertyMember.type.name + " = ");
             this.visit(propExpr);
@@ -162,17 +167,25 @@ export class TstPrintVisitor extends TstReplaceVisitor {
         return expr;
     }
 
+    printScope(scope: TstScope) {
+        this.output.push("(scope: ");
+        scope.variables.forEach((param, index) => {
+            this.output.push(param.name + "=");
+            this.visit(param.value);
+            if (index < scope.variables.length - 1) {
+                this.output.push(", ");
+            }
+        });
+        if (scope.parent) {
+            this.output.push("; parent=");
+            this.printScope(scope.parent);
+        }
+        this.output.push(")");
+    }
+
     visitScopedExpression(expr: TstScopedExpression): TstExpression {
         this.visit(expr.expr);
-        this.output.push("(scope: ");
-            expr.parameters.forEach((param, index) => {
-                this.output.push(param.name + "=");
-                this.visit(param.value);
-                if (index < expr.parameters.length - 1) {
-                    this.output.push(", ");
-                }
-            });
-        this.output.push(")");
+        this.printScope(expr.scope);
         return expr;
     }
 
