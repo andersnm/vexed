@@ -1,0 +1,44 @@
+class Helper() {
+  int mipikus() {
+    # return "string";
+  }
+}
+
+class Yolo(int tall) {
+  public int kake = tall;
+
+  # Should this be permitted??? yes it should
+  #int doYoContructor(int ly) {
+  #  return tall + ly;
+  #}
+}
+
+class Main() extends Yolo(77) {
+  private Helper helper = Helper();
+
+  public string testStringAdd = "string1" + "string2";
+  public string testStringAdd2 = "stringX" + this.testStringAdd;
+
+  public int testIntAdd = 1 + 2;
+  public int testIntAdd2 = 1 + this.testIntAdd;
+  public int testIntMultiply = 4 * 6;
+  public int testIntDivide = 8 / 2;
+  public bool joll = 3 > 2;
+
+  int pes(int kake) {
+    int www = 9;
+    # www = www + 1;
+    return kake + www + 2;
+  }
+
+  int hei(int sjekk) {
+    if (sjekk > 10) {
+      return 42;
+    } else {
+      return this.pes(sjekk);
+    }
+  }
+
+  public int hallo = this.hei(this.testIntAdd);
+  # public string sjupp = this.helper.mikipus();
+}

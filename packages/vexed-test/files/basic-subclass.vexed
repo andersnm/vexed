@@ -1,0 +1,14 @@
+class Base() {
+  public string baseStr = "String, it is";
+  public int baseNum = 321;
+  public bool baseBool = true;
+  public int abstractInt;
+}
+
+class Main() extends Base() {
+  public string mainStr = "It's a string";
+  public int mainNum = 123;
+  public bool mainBool = true;
+
+  abstractInt = 777;
+}

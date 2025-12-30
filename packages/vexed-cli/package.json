@@ -1,0 +1,20 @@
+{
+  "name": "vexed-cli",
+  "version": "0.0.1",
+  "private": false,
+  "type": "module",
+  "bin": {
+    "vexed": "./dist/cli.js"
+  },
+  "scripts": {
+    "start": "tsc && node --enable-source-maps ./dist/main",
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "@types/node": "^18.11.18"
+  },
+  "dependencies": {
+    "vexed": "file:../vexed",
+    "tslib": "^2.4.1"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "name": "vexed-test",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "test": "node --enable-source-maps --test"
+  },
+  "devDependencies": {
+    "@types/node": "^18.11.18",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "vexed": "file:../vexed",
+    "tslib": "^2.4.1"
+  }
+}

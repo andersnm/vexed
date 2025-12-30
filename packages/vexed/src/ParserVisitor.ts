@@ -1,4 +1,4 @@
-import { ProgramParser } from "./Parser.js"; // your token definitions
+import { ProgramParser } from "./ProgramParser.js"; // your token definitions
 import { AstClass, AstClassUnit, AstPropertyStatement, AstParameter, AstProgram, AstPropertyDefinition, AstExpression, AstIdentifierExpression, AstStringLiteralExpression, AstFunctionCallExpression, AstMemberExpression, AstIndexExpression, AstIntegerLiteralExpression, AstDecimalLiteralExpression, AstArrayLiteralExpression, isAstIdentifier, AstBinaryExpression, AstLocation, AstMethodDeclaration, AstIfStatement, AstStatement, AstReturnStatement, AstUnaryExpression, AstLocalVarDeclaration, AstBooleanLiteralExpression } from "./AstProgram.js";
 import { IToken } from "chevrotain";
 

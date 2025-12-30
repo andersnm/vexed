@@ -1,0 +1,11 @@
+class Base(string strValue, int intValue, bool boolValue) {
+  public string baseStr = strValue;
+  public int baseNum = intValue;
+  public bool baseBool = boolValue;
+}
+
+class Main() extends Base("String, it is", 321, true) {
+  public string mainStr = "It's a string";
+  public int mainNum = 123;
+  public bool mainBool = true;
+}
