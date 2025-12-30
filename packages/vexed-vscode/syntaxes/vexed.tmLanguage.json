@@ -1,0 +1,92 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Vexed",
+  "scopeName": "source.vexed",
+  "fileTypes": ["vexed"],
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#class-declaration" },
+    { "include": "#keywords" },
+    { "include": "#booleans" },
+    { "include": "#strings" },
+    { "include": "#numbers" },
+    { "include": "#function-call" },
+    { "include": "#member-access" },
+    { "include": "#operators" }
+  ],
+  "repository": {
+    "comments": {
+      "name": "comment.line.number-sign.vexed",
+      "match": "#.*$"
+    },
+    "class-declaration": {
+      "name": "meta.class.vexed",
+      "begin": "^(\\s*)(class)(\\s+)([A-Za-z_][\\w:]*)",
+      "beginCaptures": {
+        "2": { "name": "keyword.declaration.class.vexed" },
+        "4": { "name": "entity.name.type.class.vexed" }
+      },
+      "end": "(?=\\{)",
+      "patterns": [
+        {
+          "name": "keyword.declaration.extends.vexed",
+          "match": "(extends)(\\s+)([A-Za-z_][\\w:]*)",
+          "captures": {
+            "1": { "name": "keyword.control.inheritance.vexed" },
+            "3": { "name": "entity.other.inherited-class.vexed" }
+          }
+        }
+      ]
+    },
+    "keywords": {
+      "name": "keyword.control.vexed",
+      "match": "\\b(?:class|extends|public|private|if|else|return)\\b"
+    },
+    "booleans": {
+      "name": "constant.language.boolean.vexed",
+      "match": "\\b(?:true|false)\\b"
+    },
+    "strings": {
+      "name": "string.quoted.double.vexed",
+      "begin": "\"",
+      "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.vexed" } },
+      "end": "\"",
+      "endCaptures": { "0": { "name": "punctuation.definition.string.end.vexed" } },
+      "patterns": [
+        { "name": "constant.character.escape.vexed", "match": "\\\\." }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.float.vexed",
+          "match": "(?<![A-Za-z_])(?!0[0-9])(?:[0-9]+\\.[0-9]+|\\.[0-9]+)(?![A-Za-z_])"
+        },
+        {
+          "name": "constant.numeric.integer.vexed",
+          "match": "(?<![A-Za-z_])(?:0|[1-9][0-9]*)(?![A-Za-z_])"
+        }
+      ]
+    },
+    "function-call": {
+      "name": "meta.function-call.vexed",
+      "match": "([A-Za-z_][\\w:]*)(?=\\s*\\()",
+      "captures": {
+        "1": { "name": "entity.name.function.vexed" }
+      }
+    },
+    "member-access": {
+      "name": "meta.member.access.vexed",
+      "match": "\\.([A-Za-z_][\\w:]*)",
+      "captures": {
+        "1": { "name": "variable.other.member.vexed" }
+      }
+    },
+    "operators": {
+      "name": "keyword.operator.vexed",
+      "match": "==|!=|<=|>=|<|>|\\|\\||&&|!|=|\\+|-|\\*|/"
+    }
+  },
+  "foldingStartMarker": "\\{",
+  "foldingStopMarker": "\\}"
+}

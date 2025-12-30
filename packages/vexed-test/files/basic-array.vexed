@@ -1,0 +1,8 @@
+class Main() {
+  public string[] strArray = [ "It's a string", "String, it is" ];
+  public string[][] strStrArray = [ [ "It's a string", "String, it is" ], [ "One", "Two", "Three" ] ];
+  public int[] intArray = [ 1, 2, 3 ];
+  public int[][] intIntArray = [ [ 1, 2, 3, 4, 5 ], [ 6, 7 ] ];
+  public bool[] boolArray = [ true, false, true, false ];
+  public bool[][] boolArray = [ [ true, false, true, false ], [ false, false, false ] ];
+}

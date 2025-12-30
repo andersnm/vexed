@@ -1,0 +1,19 @@
+{
+  "name": "vexed-syntax",
+  "displayName": "Vexed DSL Syntax",
+  "version": "0.0.1",
+  "publisher": "local",
+  "engines": { "vscode": "*" },
+  "contributes": {
+    "languages": [
+      { "id": "vexed", "aliases": ["Vexed DSL"], "extensions": [".vexed"] }
+    ],
+    "grammars": [
+      {
+        "language": "vexed",
+        "scopeName": "source.vexed",
+        "path": "./syntaxes/vexed.tmLanguage.json"
+      }
+    ]
+  }
+}

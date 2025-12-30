@@ -90,3 +90,31 @@ test('Parse basic-subclass-parameters', async () => {
     checkInstanceProperty(instance, "mainNum", runtime.getType("int"), 123);
     checkInstanceProperty(instance, "mainBool", runtime.getType("bool"), true);
 });
+
+test('Parse basic-array', async () => {
+    const runtime = new TstRuntime();
+    const instance = await compileInstance(runtime, "./files/basic-array.vexed");
+
+});
+
+test('Parse member-access', async () => {
+    const runtime = new TstRuntime();
+    const instance = await compileInstance(runtime, "./files/basic-member-access.vexed");
+
+    runtime.reduceInstance(instance);
+
+    checkInstanceProperty(instance, "mainStrArrayLength", runtime.getType("int"), 2);
+    checkInstanceProperty(instance, "mainInt", runtime.getType("int"), 321);
+    checkInstanceProperty(instance, "mainStringLength", runtime.getType("int"), 15);
+});
+
+test('Parse basic-function', async () => {
+    const runtime = new TstRuntime();
+    const instance = await compileInstance(runtime, "./files/basic-function.vexed");
+
+    runtime.reduceInstance(instance);
+    runtime.reduceInstance(instance);
+
+    checkInstanceProperty(instance, "value1", runtime.getType("int"), 2);
+    checkInstanceProperty(instance, "value2", runtime.getType("int"), 3);
+});
