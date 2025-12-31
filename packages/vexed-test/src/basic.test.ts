@@ -117,6 +117,7 @@ test('Parse basic-function', async () => {
 
     checkInstanceProperty(instance, "value1", runtime.getType("int"), 11);
     checkInstanceProperty(instance, "value2", runtime.getType("int"), 21);
+    checkInstanceProperty(instance, "fac5", runtime.getType("int"), 120);
 });
 
 test('Parse basic-function-subclass', async () => {

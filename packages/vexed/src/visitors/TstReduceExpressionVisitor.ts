@@ -219,6 +219,22 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         } as TstStatementExpression;
     }
 
+    visitStatementList(stmtList: TstStatement[]): TstStatement[] {
+        const result: TstStatement[] = [];
+
+        for (const stmt of stmtList) {
+            const reducedList = this.visitStatement(stmt);
+
+            result.push(...reducedList);
+
+            if (reducedList.some(isReturnStatement)) {
+                break;
+            }
+        }
+
+        return result;
+    }
+
     visitIfStatement(stmt: TstIfStatement): TstStatement[] {
         const condition = this.visit(stmt.condition);
         const thenStmts = this.visitStatementList(stmt.then);
