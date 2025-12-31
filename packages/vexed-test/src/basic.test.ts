@@ -118,3 +118,31 @@ test('Parse basic-function', async () => {
     checkInstanceProperty(instance, "value1", runtime.getType("int"), 11);
     checkInstanceProperty(instance, "value2", runtime.getType("int"), 21);
 });
+
+test('Parse basic-function-subclass', async () => {
+    const runtime = new TstRuntime();
+    const instance = await compileInstance(runtime, "./files/basic-function-subclass.vexed");
+
+    runtime.reduceInstance(instance);
+    runtime.reduceInstance(instance);
+    runtime.reduceInstance(instance);
+
+    checkInstanceProperty(instance, "abstractInt", runtime.getType("int"), 7);
+    checkInstanceProperty(instance, "value1", runtime.getType("int"), 108);
+    checkInstanceProperty(instance, "value2", runtime.getType("int"), 216);
+});
+
+
+test('Parse basic-conditional', async () => {
+    const runtime = new TstRuntime();
+    const instance = await compileInstance(runtime, "./files/basic-conditional.vexed");
+
+    runtime.reduceInstance(instance);
+    runtime.reduceInstance(instance);
+    runtime.reduceInstance(instance);
+
+    checkInstanceProperty(instance, "isGreater", runtime.getType("bool"), false);
+    checkInstanceProperty(instance, "isLess", runtime.getType("bool"), true);
+    checkInstanceProperty(instance, "num1", runtime.getType("int"), 1);
+    checkInstanceProperty(instance, "num2", runtime.getType("int"), 10);
+});

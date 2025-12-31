@@ -1,4 +1,5 @@
 import { InstanceMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstInstanceExpression, TstInstanceObject, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstVariableExpression, TypeMeta } from "../TstExpression.js";
+import { TypeDefinition } from "../TstType.js";
 import { TstScope } from "./TstReduceExpressionVisitor.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
 
@@ -36,6 +37,7 @@ export class TstPrintVisitor extends TstReplaceVisitor {
 
     indentDepth: number = 0;
     output: string[] = [];
+    printedInstances: Set<TstInstanceObject> = new Set();
 
     indent() {
         this.indentDepth++;
@@ -64,6 +66,21 @@ export class TstPrintVisitor extends TstReplaceVisitor {
         this.output.push("{\n");
         this.indent();
 
+        this.printProperties(obj, instanceType);
+
+        // TODO: print method implementations
+
+        this.dedent();
+
+        this.printIndent();
+        this.output.push("} ");
+    }
+
+    printProperties(obj: TstInstanceObject, instanceType: TypeDefinition) {
+        if (instanceType.extends) {
+            this.printProperties(obj, instanceType.extends);
+        }
+
         for (let property of instanceType.properties) {
             const propertyName = property.name;
             this.printIndent();
@@ -82,13 +99,31 @@ export class TstPrintVisitor extends TstReplaceVisitor {
             this.visit(propExpr);
             this.output.push("\n");
         }
+    }
 
-        // TODO: enumerate methods on class and base classes, print implementations
+    printExpressionList(exprs: TstExpression[]) {
+        exprs.forEach((arg, index) => {
+            this.visit(arg);
+            if (index < exprs.length - 1) {
+                this.output.push(", ");
+            }
+        });
+    }
 
-        this.dedent();
-
-        this.printIndent();
-        this.output.push("} ");
+    printScope(scope: TstScope) {
+        this.output.push("(scope: ");
+        scope.variables.forEach((param, index) => {
+            this.output.push(param.name + "=");
+            this.visit(param.value);
+            if (index < scope.variables.length - 1) {
+                this.output.push(", ");
+            }
+        });
+        if (scope.parent) {
+            this.output.push("; parent=");
+            this.printScope(scope.parent);
+        }
+        this.output.push(")");
     }
 
     visitMemberExpression(expr: TstMemberExpression): TstExpression {
@@ -102,15 +137,6 @@ export class TstPrintVisitor extends TstReplaceVisitor {
         return expr;
     }
 
-    printExpressionList(exprs: TstExpression[]) {
-        exprs.forEach((arg, index) => {
-            this.visit(arg);
-            if (index < exprs.length - 1) {
-                this.output.push(", ");
-            }
-        });
-    }
-
     visitFunctionCallExpression(expr: TstFunctionCallExpression): TstExpression {
         this.visit(expr.object);
         this.output.push(".");
@@ -119,8 +145,6 @@ export class TstPrintVisitor extends TstReplaceVisitor {
         this.output.push(")");
         return expr;
     }
-
-    printedInstances: Set<TstInstanceObject> = new Set();
 
     visitInstanceExpression(expr: TstInstanceExpression): TstExpression {
         const instanceType = expr.instance[TypeMeta];
@@ -165,22 +189,6 @@ export class TstPrintVisitor extends TstReplaceVisitor {
     visitVariableExpression(expr: TstVariableExpression): TstExpression {
         this.output.push("%" + expr.name);
         return expr;
-    }
-
-    printScope(scope: TstScope) {
-        this.output.push("(scope: ");
-        scope.variables.forEach((param, index) => {
-            this.output.push(param.name + "=");
-            this.visit(param.value);
-            if (index < scope.variables.length - 1) {
-                this.output.push(", ");
-            }
-        });
-        if (scope.parent) {
-            this.output.push("; parent=");
-            this.printScope(scope.parent);
-        }
-        this.output.push(")");
     }
 
     visitScopedExpression(expr: TstScopedExpression): TstExpression {

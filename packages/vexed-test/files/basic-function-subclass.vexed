@@ -12,7 +12,7 @@ class Main() extends Base(77) {
     return this.baseAdder(a, b);
   }
 
-  public int abstractInt = 7;
+  abstractInt = 7;
   public int value1 = this.adder(1, 1);
   public int value2 = this.baseAdder(2, this.value1);
 }

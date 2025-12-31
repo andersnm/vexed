@@ -219,7 +219,7 @@ export class TstBuilder {
             }
         }
 
-        // Pass 2: Resolve extends, parameters and property types
+        // Pass 2: Resolve extends, parameters, property types and method signatures
         for (let programUnit of visited.programUnits) {
             if (isClass(programUnit)) {
                 const type = this.runtime.getType(programUnit.name);
@@ -240,10 +240,29 @@ export class TstBuilder {
                     });
                 }
 
+                for (let unit of programUnit.units) {
+                    if (isMethodDeclaration(unit)) {
+                        const methodType = this.runtime.getType(unit.returnType);
+                        if (!methodType) {
+                            throw new Error(`Could not find type ${unit.returnType} for method ${unit.name} of type ${programUnit.name}`);
+                        }
+
+                        type.methods.push({
+                            name: unit.name,
+                            returnType: methodType,
+                            parameters: unit.parameters.map(param => ({
+                                name: param.name,
+                                type: this.runtime.getType(param.type)
+                            })),
+                            body: [], // assigned later
+                        });
+                    }
+                }
+
             }
         }
 
-        // Pass 3: Resolve symbols in initializers and extends-arguments, AstExpression -> TstExpression
+        // Pass 3: Resolve symbols in initializers, extends-arguments and method bodies, AstExpression -> TstExpression
         for (let programUnit of visited.programUnits) {
                 // the properties in the class - derives from extends - only add explicit public/private, and we have their types now. but its not parsed yet
             if (isClass(programUnit)) {
@@ -275,36 +294,17 @@ export class TstBuilder {
                             initializer: unit.argument ? visitor.resolveExpression(unit.argument) : undefined,
                         });
                     } else if (isMethodDeclaration(unit)) {
-                        const methodType = this.runtime.getType(unit.returnType);
-                        if (!methodType) {
-                            throw new Error(`Could not find type ${unit.returnType} for method ${unit.name} of type ${programUnit.name}`);
+                        const typeMethod = type.methods.find(m => m.name === unit.name);
+                        if (!typeMethod) {
+                            throw new Error(`Method ${unit.name} not found on type ${type.name}`);
                         }
 
-                        // TODO: type.parameters are still in scope! method visitor must know constructor arguments, method arguments, but also local variables in nested scopes
-                        // actually want visitor to inherit parent visitor, so can look up parent scopes. should not have flat symbol table for scopes, otherwise will be problem
-                        // "copying back" when leaving scope
-                        const params: TypeParameter[] = unit.parameters.map(param => ({
-                                name: param.name,
-                                type: this.runtime.getType(param.type)
-                            }));
+                        const methodVisitor = new AstVisitor(visitor, this.runtime, type, typeMethod.parameters);
 
-                        const methodVisitor = new AstVisitor(visitor, this.runtime, type, params);
-
-                        const stmts: TstStatement[] = [];
                         for (let astStmt of unit.statementList) {
                             const stmt = methodVisitor.resolveStatement(astStmt);
-                            stmts.push(stmt);
+                            typeMethod.body.push(stmt);
                         }
-
-                        type.methods.push({
-                            name: unit.name,
-                            returnType: methodType,
-                            parameters: unit.parameters.map(param => ({
-                                name: param.name,
-                                type: this.runtime.getType(param.type)
-                            })),
-                            body: stmts,
-                        });
                     }
                 }
             }
