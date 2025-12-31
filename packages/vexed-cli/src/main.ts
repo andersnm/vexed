@@ -54,9 +54,9 @@ export async function jsonCommand(args: string[]) {
     runtime.reduceInstance(instance);
     runtime.reduceInstance(instance);
     runtime.reduceInstance(instance);
-    // runtime.reduceInstance(instance);
-    // runtime.reduceInstance(instance);
-    // runtime.reduceInstance(instance);
+    runtime.reduceInstance(instance);
+    runtime.reduceInstance(instance);
+    runtime.reduceInstance(instance);
     // runtime.reduceInstance(instance);
     // runtime.reduceInstance(instance);
     // runtime.reduceInstance(instance);

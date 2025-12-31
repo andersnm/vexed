@@ -9,7 +9,8 @@ class Main() {
       return 1;
     }
 
-    int next = n - 1;
+    int next = n;
+    next = next - 1;
     return n * this.factorial(next);
   }
 

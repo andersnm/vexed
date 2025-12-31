@@ -1,4 +1,4 @@
-import { InstanceMeta, isInstanceExpression, isMethodExpression, isReturnStatement, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
+import { InstanceMeta, isInstanceExpression, isMethodExpression, isReturnStatement, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
 import { TstRuntime } from "../TstRuntime.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
 
@@ -257,6 +257,17 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         const initializer = this.visit(stmt.initializer);
         this.scope.variables.push({ name: stmt.name, value: initializer });
         return []; //{ stmtType: "localVarDeclaration", name: stmt.name, varType: stmt.varType, initializer } as TstLocalVarDeclaration];
+    }
+
+    visitLocalVarAssignment(stmt: TstLocalVarAssignment): TstStatement[] {
+        const expr = this.visit(stmt.expr);
+        const variable = this.scope.variables.find(v => v.name === stmt.name);
+        if (!variable) {
+            throw new Error("Variable not found: " + stmt.name);
+        }
+
+        variable.value = expr;
+        return [];
     }
 
     visitVariableExpression(expr: TstVariableExpression): TstExpression {

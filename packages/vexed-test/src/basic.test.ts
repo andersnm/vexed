@@ -112,6 +112,11 @@ test('Parse basic-function', async () => {
     const runtime = new TstRuntime();
     const instance = await compileInstance(runtime, "./files/basic-function.vexed");
 
+    // Need 5 reduces for the recursive factorial (TODO: automate)
+    runtime.reduceInstance(instance);
+    runtime.reduceInstance(instance);
+    runtime.reduceInstance(instance);
+    runtime.reduceInstance(instance);
     runtime.reduceInstance(instance);
     runtime.reduceInstance(instance);
 

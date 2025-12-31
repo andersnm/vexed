@@ -67,6 +67,10 @@ export function isAstLocalVarDeclaration(expr: AstStatement): expr is AstLocalVa
     return expr.stmtType === "localVarDeclaration";
 }
 
+export function isAstLocalVarAssignment(expr: AstStatement): expr is AstLocalVarAssignment {
+    return expr.stmtType === "localVarAssignment";
+}
+
 export interface AstExpression {
     exprType: string;
 }
@@ -154,7 +158,7 @@ export interface AstMethodDeclaration extends AstClassUnit {
 }
 
 export interface AstStatement {
-    stmtType: "if" | "return" | "localVarDeclaration";
+    stmtType: "if" | "return" | "localVarDeclaration" | "localVarAssignment";
 }
 
 export interface AstLocalVarDeclaration extends AstStatement {
@@ -162,6 +166,13 @@ export interface AstLocalVarDeclaration extends AstStatement {
     varType: string;
     name: string;
     initializer: AstExpression | null;
+}
+
+export interface AstLocalVarAssignment extends AstStatement {
+    stmtType: "localVarAssignment";
+    name: string;
+    // operator: "=" | "+=" | "-=" | "*=" | "/=";
+    expr: AstExpression;
 }
 
 export interface AstIfStatement extends AstStatement {

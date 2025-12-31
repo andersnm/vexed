@@ -1,4 +1,4 @@
-import { InstanceMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstInstanceExpression, TstInstanceObject, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstVariableExpression, TypeMeta } from "../TstExpression.js";
+import { InstanceMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstVariableExpression, TypeMeta } from "../TstExpression.js";
 import { TypeDefinition } from "../TstType.js";
 import { TstScope } from "./TstReduceExpressionVisitor.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
@@ -259,12 +259,10 @@ export class TstPrintVisitor extends TstReplaceVisitor {
         return [ stmt ];
     }
 
-    // visitStatement(stmt: TstStatement): TstStatement {
-    //     this.output.push("{");
-    //     this.indent();
-    //     this.visit(stmt);
-    //     this.dedent();
-    //     this.output.push("}");
-    //     return stmt;
-    // }
+    visitLocalVarAssignment(stmt: TstLocalVarAssignment): TstStatement[] {
+        this.output.push(stmt.name + " = ");
+        this.visit(stmt.expr);
+        this.output.push(";\n");
+        return [ stmt ];
+    }
 }

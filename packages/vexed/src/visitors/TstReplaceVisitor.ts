@@ -1,4 +1,4 @@
-import { isBinaryExpression, isDecimalLiteral, isFunctionCall, isIfStatement, isIndexExpression, isInstanceExpression, isLocalVarDeclaration, isMemberExpression, isNewExpression, isParameter, isReturnStatement, isScopedExpression, isStatementExpression, isThisExpression, isVariableExpression, TstBinaryExpression, TstDecimalLiteralExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstVariableExpression } from "../TstExpression.js";
+import { isBinaryExpression, isDecimalLiteral, isFunctionCall, isIfStatement, isIndexExpression, isInstanceExpression, isLocalVarAssignment, isLocalVarDeclaration, isMemberExpression, isNewExpression, isParameter, isReturnStatement, isScopedExpression, isStatementExpression, isThisExpression, isVariableExpression, TstBinaryExpression, TstDecimalLiteralExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstVariableExpression } from "../TstExpression.js";
 
 export class TstReplaceVisitor {
 
@@ -170,6 +170,10 @@ export class TstReplaceVisitor {
             return this.visitLocalVarDeclaration(stmt);
         }
 
+        if (isLocalVarAssignment(stmt)) {
+            return this.visitLocalVarAssignment(stmt);
+        }
+
         throw new Error("Unhandled statement type: " + stmt.stmtType);
     }
 
@@ -196,5 +200,13 @@ export class TstReplaceVisitor {
             name: stmt.name,
             initializer: this.visit(stmt.initializer),
         } as TstLocalVarDeclaration];
+    }
+
+    visitLocalVarAssignment(stmt: TstLocalVarAssignment): TstStatement[] {
+        return [{
+            stmtType: "localVarAssignment",
+            name: stmt.name,
+            expr: this.visit(stmt.expr),
+        } as TstLocalVarAssignment];
     }
 }

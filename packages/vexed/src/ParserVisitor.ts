@@ -1,5 +1,5 @@
 import { ProgramParser } from "./ProgramParser.js"; // your token definitions
-import { AstClass, AstClassUnit, AstPropertyStatement, AstParameter, AstProgram, AstPropertyDefinition, AstExpression, AstIdentifierExpression, AstStringLiteralExpression, AstFunctionCallExpression, AstMemberExpression, AstIndexExpression, AstIntegerLiteralExpression, AstDecimalLiteralExpression, AstArrayLiteralExpression, isAstIdentifier, AstBinaryExpression, AstLocation, AstMethodDeclaration, AstIfStatement, AstStatement, AstReturnStatement, AstUnaryExpression, AstLocalVarDeclaration, AstBooleanLiteralExpression } from "./AstProgram.js";
+import { AstClass, AstClassUnit, AstPropertyStatement, AstParameter, AstProgram, AstPropertyDefinition, AstExpression, AstIdentifierExpression, AstStringLiteralExpression, AstFunctionCallExpression, AstMemberExpression, AstIndexExpression, AstIntegerLiteralExpression, AstDecimalLiteralExpression, AstArrayLiteralExpression, isAstIdentifier, AstBinaryExpression, AstLocation, AstMethodDeclaration, AstIfStatement, AstStatement, AstReturnStatement, AstUnaryExpression, AstLocalVarDeclaration, AstBooleanLiteralExpression, AstLocalVarAssignment } from "./AstProgram.js";
 import { IToken } from "chevrotain";
 
 function createTokenLocation(tok: IToken): AstLocation {
@@ -112,6 +112,7 @@ export function createVisitor(parser: ProgramParser) {
             if (ctx.ifStatement) return this.visit(ctx.ifStatement);
             if (ctx.returnStatement) return this.visit(ctx.returnStatement);
             if (ctx.localVarDeclaration) return this.visit(ctx.localVarDeclaration);
+            if (ctx.localVarAssignment) return this.visit(ctx.localVarAssignment);
             throw new Error("Unsupported statement kind");
         }
 
@@ -121,6 +122,14 @@ export function createVisitor(parser: ProgramParser) {
                 varType: this.visit(ctx.type),
                 name: ctx.Identifier[0].image,
                 initializer: ctx.expression ? this.visit(ctx.expression) : null,
+            };
+        }
+
+        localVarAssignment(ctx: any): AstLocalVarAssignment {
+            return {
+                stmtType: "localVarAssignment",
+                name: ctx.Identifier[0].image,
+                expr: this.visit(ctx.expression),
             };
         }
 

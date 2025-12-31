@@ -148,13 +148,20 @@ export class ProgramParser extends CstParser {
       { ALT: () => this.SUBRULE(this.ifStatement) },
       { ALT: () => this.SUBRULE(this.returnStatement) },
       { ALT: () => this.SUBRULE(this.localVarDeclaration) },
-      // { ALT: () => this.SUBRULE(this.localVarAssignment) },
+      { ALT: () => this.SUBRULE(this.localVarAssignment) },
       // { ALT: () => this.SUBRULE(this.expressionStatement) }
     ]);
   });
 
   localVarDeclaration = this.RULE("localVarDeclaration", () => {
     this.SUBRULE(this.type);
+    this.CONSUME(Identifier);
+    this.CONSUME(Equal);
+    this.SUBRULE(this.expression);
+    this.CONSUME(Semi);
+  });
+
+  localVarAssignment = this.RULE("localVarAssignment", () => {
     this.CONSUME(Identifier);
     this.CONSUME(Equal);
     this.SUBRULE(this.expression);

@@ -72,6 +72,10 @@ export function isLocalVarDeclaration(stmt: TstStatement): stmt is TstLocalVarDe
     return stmt.stmtType === "localVarDeclaration";
 }
 
+export function isLocalVarAssignment(stmt: TstStatement): stmt is TstLocalVarAssignment {
+    return stmt.stmtType === "localVarAssignment";
+}
+
 export interface TstVariable {
     name: string;
     value: TstExpression;
@@ -180,7 +184,7 @@ export interface TstMethodExpression extends TstExpression {
 }
 
 export interface TstStatement {
-    stmtType: "if" | "return" | "localVarDeclaration";
+    stmtType: "if" | "return" | "localVarDeclaration" | "localVarAssignment";
 }
 
 export interface TstIfStatement extends TstStatement {
@@ -200,4 +204,10 @@ export interface TstLocalVarDeclaration extends TstStatement {
     varType: TypeDefinition;
     name: string;
     initializer: TstExpression;
+}
+
+export interface TstLocalVarAssignment extends TstStatement {
+    stmtType: "localVarAssignment";
+    name: string;
+    expr: TstExpression;
 }
