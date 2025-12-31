@@ -10,6 +10,8 @@ export interface TstScope {
 
 export class TstReduceExpressionVisitor extends TstReplaceVisitor {
 
+    reduceCount: number = 0;
+
     constructor(private runtime: TstRuntime, private scope: TstScope, private visitedInstances: Set<TstInstanceObject> = new Set()) {
         super();
     }
@@ -26,6 +28,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
             if (propertyExpression) {
                 const reduced = this.visit(propertyExpression);
                 if (isInstanceExpression(reduced) || reduced.exprType === "decimalLiteral") {
+                    this.reduceCount++;
                     return reduced;
                 }
 
@@ -46,6 +49,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         const getParameter = (scope: TstScope, name: string): TstVariable | null => {
             const param = scope.variables.find(v => v.name === name);
             if (param) {
+                this.reduceCount++;
                 return param;
             }
 
@@ -66,6 +70,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
     }
 
     visitThisExpression(expr: TstThisExpression): TstExpression {
+        this.reduceCount++;
         return {
             exprType: "instance",
             instance: this.scope.thisObject,
@@ -73,8 +78,9 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
     }
 
     visitNewExpression(expr: TstNewExpression): TstExpression {
-        const instance = expr.type.createInstance(expr.args);
+        this.reduceCount++;
 
+        const instance = expr.type.createInstance(expr.args);
         return {
             exprType: "instance",
             instance: instance,
@@ -83,6 +89,8 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
 
     visitScopedExpression(expr: TstScopedExpression): TstExpression {
         // TODO: can only reduce this if all parameters are reduced!
+        this.reduceCount++;
+
         const scopeVisitor = new TstReduceExpressionVisitor(this.runtime, expr.scope, this.visitedInstances);
         // const scopeVisitor = new TstReduceExpressionVisitor(this.runtime, this.thisObject, expr.parameters, this.visitedInstances);
         const visited = scopeVisitor.visit(expr.expr);
@@ -128,6 +136,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
             // If both the object and index are instances, we can try to resolve the index
             const resolved = instanceType.resolveIndex(objectExpr.instance, indexValue);
             if (resolved) {
+                this.reduceCount++;
                 return resolved;
             }
         }
@@ -152,6 +161,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
                 throw new Error("Binary expression must have same types on both sides");
             }
 
+            this.reduceCount++;
             return leftType.resolveOperator(leftExpr.instance, rightExpr.instance, expr.operator);
         }
 
@@ -187,6 +197,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
                 variables: chainNamedArguments,
             };
 
+            this.reduceCount++;
             return {
                 exprType: "scoped",
                 scope: scope,
@@ -209,6 +220,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
     visitStatementExpression(expr: TstStatementExpression): TstExpression {
         const stmts = this.visitStatementList(expr.statements);
         if (stmts.length === 1 && isReturnStatement(stmts[0])) {
+            this.reduceCount++;
             return stmts[0].returnValue;
         }
 
@@ -241,6 +253,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         const elseStmts = this.visitStatementList(stmt.else);
 
         if (isInstanceExpression(condition)) {
+            this.reduceCount++;
             const value = condition.instance[InstanceMeta];
             if (!!value) {
                 return thenStmts;
@@ -256,6 +269,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         // Create local variable in scope and return no-op
         const initializer = this.visit(stmt.initializer);
         this.scope.variables.push({ name: stmt.name, value: initializer });
+        this.reduceCount++;
         return []; //{ stmtType: "localVarDeclaration", name: stmt.name, varType: stmt.varType, initializer } as TstLocalVarDeclaration];
     }
 
@@ -267,12 +281,14 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         }
 
         variable.value = expr;
+        this.reduceCount++;
         return [];
     }
 
     visitVariableExpression(expr: TstVariableExpression): TstExpression {
         const variable = this.scope.variables.find(v => v.name === expr.name);
         if (variable) {
+            this.reduceCount++;
             return variable.value;
         }
         throw new Error("Variable not found: " + expr.name);

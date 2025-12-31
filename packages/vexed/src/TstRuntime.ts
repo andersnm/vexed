@@ -248,9 +248,12 @@ export class TstRuntime {
         return obj;
     }
 
-    private reduceInstanceByType(obj: TstInstanceObject, scopeType: TypeDefinition, visitedInstances: Set<TstInstanceObject>) {
+    private reduceInstanceByType(obj: TstInstanceObject, scopeType: TypeDefinition, visitedInstances: Set<TstInstanceObject>): number {
+
+        let reduceCount = 0;
+
         if (scopeType.extends) {
-            this.reduceInstanceByType(obj, scopeType.extends, visitedInstances);
+            reduceCount += this.reduceInstanceByType(obj, scopeType.extends, visitedInstances);
         }
 
         const scope: TstScope = {
@@ -263,9 +266,10 @@ export class TstRuntime {
             const propertyScopedExpression = obj[propertyDeclaration.name];
 
             // NOTE: Parameters should've been converted to scoped expressions so don't have to pass them again here
-            // TODO: parameters should be in a chained symbol table, statementlist-scope -> function-scope -> constructor-scope
             const reducer = new TstReduceExpressionVisitor(this, scope, visitedInstances);
             const reduced = reducer.visit(propertyScopedExpression);
+
+            reduceCount += reducer.reduceCount;
 
             // Check if types match using the TstExpressionTypeVisitor
             const reducedType = this.getExpressionType(reduced, obj[TypeMeta]);
@@ -276,12 +280,25 @@ export class TstRuntime {
 
             obj[propertyDeclaration.name] = reduced;
         }
+
+        return reduceCount;
     }
 
     reduceInstance(obj: TstInstanceObject) {
         const type = obj[TypeMeta];
         const visitedInstances = new Set<TstInstanceObject>();
-        this.reduceInstanceByType(obj, type, visitedInstances);
+        
+        let counter = 0;
+        while (true) {
+            if (!this.reduceInstanceByType(obj, type, visitedInstances)) {
+                break;
+            }
+
+            counter++;
+            if (counter > 1000) {
+                throw new Error("Too many reduction iterations, possible infinite loop");
+            }
+        }
     }
 
     createInt(value: number): TstInstanceObject {

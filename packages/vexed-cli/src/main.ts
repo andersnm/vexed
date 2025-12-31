@@ -52,14 +52,6 @@ export async function jsonCommand(args: string[]) {
     console.log("Created main instance: ", printObject(instance));
 
     runtime.reduceInstance(instance);
-    runtime.reduceInstance(instance);
-    runtime.reduceInstance(instance);
-    runtime.reduceInstance(instance);
-    runtime.reduceInstance(instance);
-    runtime.reduceInstance(instance);
-    // runtime.reduceInstance(instance);
-    // runtime.reduceInstance(instance);
-    // runtime.reduceInstance(instance);
 
     console.log("Print main instance:", printObject(instance));
 }

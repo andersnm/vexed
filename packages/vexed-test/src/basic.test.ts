@@ -112,12 +112,6 @@ test('Parse basic-function', async () => {
     const runtime = new TstRuntime();
     const instance = await compileInstance(runtime, "./files/basic-function.vexed");
 
-    // Need 5 reduces for the recursive factorial (TODO: automate)
-    runtime.reduceInstance(instance);
-    runtime.reduceInstance(instance);
-    runtime.reduceInstance(instance);
-    runtime.reduceInstance(instance);
-    runtime.reduceInstance(instance);
     runtime.reduceInstance(instance);
 
     checkInstanceProperty(instance, "value1", runtime.getType("int"), 11);
@@ -130,21 +124,16 @@ test('Parse basic-function-subclass', async () => {
     const instance = await compileInstance(runtime, "./files/basic-function-subclass.vexed");
 
     runtime.reduceInstance(instance);
-    runtime.reduceInstance(instance);
-    runtime.reduceInstance(instance);
 
     checkInstanceProperty(instance, "abstractInt", runtime.getType("int"), 7);
     checkInstanceProperty(instance, "value1", runtime.getType("int"), 108);
     checkInstanceProperty(instance, "value2", runtime.getType("int"), 216);
 });
 
-
 test('Parse basic-conditional', async () => {
     const runtime = new TstRuntime();
     const instance = await compileInstance(runtime, "./files/basic-conditional.vexed");
 
-    runtime.reduceInstance(instance);
-    runtime.reduceInstance(instance);
     runtime.reduceInstance(instance);
 
     checkInstanceProperty(instance, "isGreater", runtime.getType("bool"), false);
