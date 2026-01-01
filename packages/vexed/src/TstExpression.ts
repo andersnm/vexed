@@ -56,6 +56,10 @@ export function isMethodExpression(expr: TstExpression): expr is TstMethodExpres
     return expr.exprType === "method";
 }
 
+export function isPromiseExpression(expr: TstExpression): expr is TstPromiseExpression {
+    return expr.exprType === "promise";
+}
+
 export function isIfStatement(stmt: TstStatement): stmt is TstIfStatement {
     return stmt.stmtType === "if";
 }
@@ -181,6 +185,14 @@ export interface TstMethodExpression extends TstExpression {
     method: TypeMethod;
     thisObject: TstInstanceObject;
     scope: TstScope;
+}
+
+export interface TstPromiseExpression extends TstExpression {
+    exprType: "promise";
+    promiseType: TypeDefinition;
+    promise: Promise<TstExpression>;
+    promiseError?: Error;
+    promiseValue?: TstExpression;
 }
 
 export interface TstStatement {

@@ -1,5 +1,6 @@
-import { InstanceMeta, TstExpression, TstInitializer, TstInstanceExpression, TstInstanceObject, TstStatement } from "./TstExpression.js";
+import { InstanceMeta, TstExpression, TstInitializer, TstInstanceExpression, TstInstanceObject, TstScopedExpression, TstStatement, TstStatementExpression } from "./TstExpression.js";
 import { TstRuntime } from "./TstRuntime.js";
+import { TstScope } from "./visitors/TstReduceExpressionVisitor.js";
 
 export interface TypeMember {
     modifier: string;
@@ -108,9 +109,18 @@ export class TypeDefinition {
         throw new Error("Operator " + operator + " not supported for type " + this.name);
     }
 
-    // callFunction(instance: TstInstanceObject, functionName: string, args: TstExpression[]): TstExpression | null {
-    //     return null;
-    // }
+    callFunction(method: TypeMethod, scope: TstScope): TstExpression | null {
+        // Native objects can override
+        return {
+            exprType: "scoped",
+            scope: scope,
+            expr: {
+                exprType: "statement",
+                statements: method.body,
+                returnType: method.returnType,
+            } as TstStatementExpression
+        } as TstScopedExpression;
+    }
 
     getProperty(propertyName: string): TypeMember | null {
         const typeProperty = this.properties.find(p => p.name == propertyName);

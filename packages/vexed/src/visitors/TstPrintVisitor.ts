@@ -1,4 +1,4 @@
-import { InstanceMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstVariableExpression, TypeMeta } from "../TstExpression.js";
+import { InstanceMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstVariableExpression, TypeMeta } from "../TstExpression.js";
 import { TypeDefinition } from "../TstType.js";
 import { TstScope } from "./TstReduceExpressionVisitor.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
@@ -216,6 +216,11 @@ export class TstPrintVisitor extends TstReplaceVisitor {
         this.dedent();
         this.printIndent();
         this.output.push("}");
+        return expr;
+    }
+
+    visitPromiseExpression(expr: TstPromiseExpression): TstExpression {
+        this.output.push("Promise<" + expr.promiseType.name + ">");
         return expr;
     }
 

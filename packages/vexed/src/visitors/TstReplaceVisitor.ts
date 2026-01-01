@@ -1,4 +1,4 @@
-import { isBinaryExpression, isDecimalLiteral, isFunctionCall, isIfStatement, isIndexExpression, isInstanceExpression, isLocalVarAssignment, isLocalVarDeclaration, isMemberExpression, isNewExpression, isParameter, isReturnStatement, isScopedExpression, isStatementExpression, isThisExpression, isVariableExpression, TstBinaryExpression, TstDecimalLiteralExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstVariableExpression } from "../TstExpression.js";
+import { isBinaryExpression, isDecimalLiteral, isFunctionCall, isIfStatement, isIndexExpression, isInstanceExpression, isLocalVarAssignment, isLocalVarDeclaration, isMemberExpression, isMethodExpression, isNewExpression, isParameter, isPromiseExpression, isReturnStatement, isScopedExpression, isStatementExpression, isThisExpression, isVariableExpression, TstBinaryExpression, TstDecimalLiteralExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstMethodExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstVariableExpression } from "../TstExpression.js";
 
 export class TstReplaceVisitor {
 
@@ -42,6 +42,12 @@ export class TstReplaceVisitor {
         if (isVariableExpression(expr)) {
             return this.visitVariableExpression(expr);
         }
+        if (isMethodExpression(expr)) {
+            return this.visitMethodExpression(expr);
+        }
+        if (isPromiseExpression(expr)) {
+            return this.visitPromiseExpression(expr);
+        }
 
         // keep a clear error for unexpected node kinds
         throw new Error(`TstReplaceVisitor: Unhandled expression type: ${expr.exprType}`);
@@ -81,6 +87,23 @@ export class TstReplaceVisitor {
             name: expr.name,
             type: expr.type,
         } as TstVariableExpression;
+    }
+
+    visitMethodExpression(expr: TstMethodExpression): TstExpression {
+        return {
+            exprType: expr.exprType,
+            method: expr.method,
+        } as TstMethodExpression;
+    }
+
+    visitPromiseExpression(expr: TstPromiseExpression): TstExpression {
+        return {
+            exprType: expr.exprType,
+            promiseType: expr.promiseType,
+            promise: expr.promise,
+            promiseError: expr.promiseError,
+            promiseValue: expr.promiseValue,
+        } as TstPromiseExpression;
     }
 
     visitFunctionCallExpression(expr: TstFunctionCallExpression): TstExpression {

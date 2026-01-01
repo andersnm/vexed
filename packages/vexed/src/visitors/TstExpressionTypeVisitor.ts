@@ -1,4 +1,4 @@
-import { TstBinaryExpression, TstDecimalLiteralExpression, TstExpression, TstFunctionCallExpression, TstInstanceExpression, TstMemberExpression, TstNewExpression, TstParameterExpression, TstStatementExpression, TstThisExpression, TstVariable, TypeMeta } from "../TstExpression.js";
+import { TstBinaryExpression, TstDecimalLiteralExpression, TstExpression, TstFunctionCallExpression, TstInstanceExpression, TstMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstStatementExpression, TstThisExpression, TstVariable, TypeMeta } from "../TstExpression.js";
 import { TstRuntime } from "../TstRuntime.js";
 import { TypeDefinition } from "../TstType.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
@@ -80,6 +80,11 @@ export class TstExpressionTypeVisitor extends TstReplaceVisitor {
 
     visitStatementExpression(expr: TstStatementExpression): TstExpression {
         this.visitType = expr.returnType;
+        return expr;
+    }
+
+    visitPromiseExpression(expr: TstPromiseExpression): TstExpression {
+        this.visitType = expr.promiseType;
         return expr;
     }
 }

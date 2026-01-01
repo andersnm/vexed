@@ -1,6 +1,8 @@
-import { InstanceMeta, TstExpression, TstInstanceExpression, TstInstanceObject, TstMethodExpression, TstScopedExpression, TstVariable, TypeMeta } from "./TstExpression.js";
-import { TypeDefinition } from "./TstType.js";
+import { readFile } from "fs/promises";
+import { InstanceMeta, isInstanceExpression, TstExpression, TstInstanceExpression, TstInstanceObject, TstMethodExpression, TstPromiseExpression, TstScopedExpression, TstVariable, TypeMeta } from "./TstExpression.js";
+import { TypeDefinition, TypeMethod } from "./TstType.js";
 import { TstExpressionTypeVisitor } from "./visitors/TstExpressionTypeVisitor.js";
+import { printExpression } from "./visitors/TstPrintVisitor.js";
 import { TstReduceExpressionVisitor, TstScope } from "./visitors/TstReduceExpressionVisitor.js";
 
 class AnyTypeDefinition extends TypeDefinition {
@@ -112,6 +114,81 @@ class ArrayTypeDefinition extends ArrayBaseTypeDefinition {
     }
 }
 
+class IoTypeDefinition extends TypeDefinition {
+    constructor(runtime: TstRuntime) {
+        super(runtime, "Io");
+    }
+
+    initializeType(): void {
+        this.methods.push({
+            name: "print",
+            parameters: [
+                { name: "message", type: this.runtime.getType("any") },
+            ],
+            returnType: this.runtime.getType("any"),
+            body: [],
+        });
+
+        this.methods.push({
+            name: "readTextFile",
+            parameters: [
+                { name: "path", type: this.runtime.getType("string") },
+            ],
+            returnType: this.runtime.getType("string"),
+            body: [],
+        });
+    }
+
+    callFunction(method: TypeMethod, scope: TstScope): TstExpression | null {
+        if (method.name === "print") {
+            const messageVar = scope.variables.find(v => v.name === "message");
+            if (!messageVar) {
+                throw new Error("Io.print: message parameter not found");
+            }
+
+            const messageExpr = messageVar.value;
+            const message = printExpression(messageExpr);
+            console.log("Io.print: " + message);
+
+            return {
+                exprType: "null",
+            } as TstExpression;
+        }
+
+        if (method.name === "readTextFile") {
+            const pathVar = scope.variables.find(v => v.name === "path");
+            if (!pathVar) {
+                throw new Error("Io.readTextFile: path parameter not found");
+            }
+
+            const pathExpr = pathVar.value;
+            if (!isInstanceExpression(pathExpr)) {
+                return null; // Signals to caller that we cannot proceed yet
+            }
+
+            const path = pathExpr.instance[InstanceMeta];
+
+            return {
+                exprType: "promise",
+                promiseType: this.runtime.getType("string"),
+                promise: new Promise(async (resolve, reject) => {
+                    try {
+                        const str = await readFile(path, "utf-8");
+                        resolve({
+                            exprType: "instance",
+                            instance: this.runtime.createString(str)
+                        } as TstInstanceExpression);
+                    } catch (err) {
+                        reject(err);
+                    }
+                })
+            } as TstPromiseExpression;
+        }
+
+        throw new Error("Method not implemented: " + method.name);
+    }
+}
+
 export class TstRuntime {
     types: TypeDefinition[] = [];
 
@@ -122,6 +199,7 @@ export class TstRuntime {
         this.types.push(new ArrayBaseTypeDefinition(this, "any[]"));
         this.types.push(new StringTypeDefinition(this));
         // this.types.push(new ArrayTypeDefinition(this, "string[]"));
+        this.types.push(new IoTypeDefinition(this));
 
         for (let type of this.types) {
             type.initializeType();
@@ -248,25 +326,18 @@ export class TstRuntime {
         return obj;
     }
 
-    private reduceInstanceByType(obj: TstInstanceObject, scopeType: TypeDefinition, visitedInstances: Set<TstInstanceObject>): number {
+    private reduceInstanceByType(reducer: TstReduceExpressionVisitor, obj: TstInstanceObject, scopeType: TypeDefinition, visitedInstances: Set<TstInstanceObject>): number {
 
         let reduceCount = 0;
 
         if (scopeType.extends) {
-            reduceCount += this.reduceInstanceByType(obj, scopeType.extends, visitedInstances);
+            reduceCount += this.reduceInstanceByType(reducer, obj, scopeType.extends, visitedInstances);
         }
-
-        const scope: TstScope = {
-            parent: null,
-            thisObject: obj,
-            variables: [],
-        };
 
         for (let propertyDeclaration of scopeType.properties) {
             const propertyScopedExpression = obj[propertyDeclaration.name];
 
             // NOTE: Parameters should've been converted to scoped expressions so don't have to pass them again here
-            const reducer = new TstReduceExpressionVisitor(this, scope, visitedInstances);
             const reduced = reducer.visit(propertyScopedExpression);
 
             reduceCount += reducer.reduceCount;
@@ -281,16 +352,27 @@ export class TstRuntime {
             obj[propertyDeclaration.name] = reduced;
         }
 
+        // console.log("Promises: ", reducer.promiseExpressions);
+
         return reduceCount;
     }
 
-    reduceInstance(obj: TstInstanceObject) {
+    async reduceInstance(obj: TstInstanceObject) {
         const type = obj[TypeMeta];
         const visitedInstances = new Set<TstInstanceObject>();
         
+        const scope: TstScope = {
+            parent: null,
+            thisObject: obj,
+            variables: [],
+        };
+
         let counter = 0;
+        let promiseExpressions: TstPromiseExpression[] = [];
         while (true) {
-            if (!this.reduceInstanceByType(obj, type, visitedInstances)) {
+            const reducer = new TstReduceExpressionVisitor(this, scope, visitedInstances);
+            if (!this.reduceInstanceByType(reducer, obj, type, visitedInstances)) {
+                promiseExpressions = reducer.promiseExpressions;
                 break;
             }
 
@@ -299,6 +381,25 @@ export class TstRuntime {
                 throw new Error("Too many reduction iterations, possible infinite loop");
             }
         }
+
+        if (promiseExpressions.length === 0) {
+            return;
+        }
+
+        const promises = promiseExpressions.map(pe => new Promise(async (resolve) => {
+            try {
+                pe.promiseValue = await pe.promise;
+            } catch (err) {
+                pe.promiseError = err as Error;
+            }
+
+            resolve(null);
+        }));
+
+        await Promise.all(promises);
+
+        // reduce again with resolved promises
+        await this.reduceInstance(obj);
     }
 
     createInt(value: number): TstInstanceObject {

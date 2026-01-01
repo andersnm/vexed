@@ -1,0 +1,15 @@
+class Main() {
+  public Io io = Io();
+  public string fileName = "hello.txt";
+  public string content = this.io.readTextFile(this.getFileName());
+  public string warped = this.testAsyncParam(this.content);
+
+  string testAsyncParam(string asynced) {
+    any tmp = this.io.print(asynced); # Prints "Promise<string>"
+    return asynced;
+  }
+
+  string getFileName() {
+    return this.fileName;
+  }
+}

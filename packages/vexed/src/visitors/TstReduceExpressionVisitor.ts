@@ -1,4 +1,4 @@
-import { InstanceMeta, isInstanceExpression, isMethodExpression, isReturnStatement, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
+import { InstanceMeta, isInstanceExpression, isMethodExpression, isReturnStatement, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
 import { TstRuntime } from "../TstRuntime.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
 
@@ -11,6 +11,7 @@ export interface TstScope {
 export class TstReduceExpressionVisitor extends TstReplaceVisitor {
 
     reduceCount: number = 0;
+    promiseExpressions: TstPromiseExpression[] = [];
 
     constructor(private runtime: TstRuntime, private scope: TstScope, private visitedInstances: Set<TstInstanceObject> = new Set()) {
         super();
@@ -92,8 +93,8 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         this.reduceCount++;
 
         const scopeVisitor = new TstReduceExpressionVisitor(this.runtime, expr.scope, this.visitedInstances);
-        // const scopeVisitor = new TstReduceExpressionVisitor(this.runtime, this.thisObject, expr.parameters, this.visitedInstances);
         const visited = scopeVisitor.visit(expr.expr);
+        this.promiseExpressions.push(...scopeVisitor.promiseExpressions);
         return visited;
     }
 
@@ -117,6 +118,19 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
             const reduced = this.visit(propertyExpr);
             expr.instance[propertyName] = reduced;
         }
+        return expr;
+    }
+
+    visitPromiseExpression(expr: TstPromiseExpression): TstExpression {
+        if (expr.promiseError) {
+            throw expr.promiseError;
+        }
+        if (expr.promiseValue) {
+            this.reduceCount++;
+            return expr.promiseValue;
+        }
+
+        this.promiseExpressions.push(expr);
         return expr;
     }
 
@@ -197,16 +211,14 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
                 variables: chainNamedArguments,
             };
 
-            this.reduceCount++;
-            return {
-                exprType: "scoped",
-                scope: scope,
-                expr: {
-                    exprType: "statement",
-                    statements: expr.method.body,
-                    returnType: expr.method.returnType,
-                } as TstStatementExpression
-            } as TstScopedExpression;
+            const objectType = objectExpr.instance[TypeMeta];
+
+            // Functions may "refuse" to invoke, f.ex if expecting a resolved parameter - which is implementation-specific.
+            const returnExpr = objectType.callFunction(expr.method, scope);
+            if (returnExpr) {
+                this.reduceCount++;
+                return returnExpr;
+            }
         }
 
         return {
