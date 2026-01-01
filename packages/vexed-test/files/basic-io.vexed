@@ -1,7 +1,6 @@
 class Main() {
   public Io io = Io();
-  public Type mainType = typeof this;
-  public string fileName = this.mainType.scriptPath + "/" + "textfile.txt";
+  public string fileName = (typeof this).scriptPath + "/" + "textfile.txt";
   public string content = this.io.readTextFile(this.getFileName());
   public string warped = this.testAsyncParam(this.content);
 

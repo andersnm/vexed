@@ -435,6 +435,9 @@ export function createVisitor(parser: ProgramParser, fileName: string) {
             if (ctx.arrayLiteral) {
                 return this.visit(ctx.arrayLiteral);
             }
+            if (ctx.parenthesizedExpression) {
+                return this.visit(ctx.parenthesizedExpression);
+            }
 
             throw new Error("Unexpected primary expression");
         }
@@ -451,6 +454,10 @@ export function createVisitor(parser: ProgramParser, fileName: string) {
         arrayLiteral(ctx: any): AstExpression {
             const elements = ctx.expression ? ctx.expression.map((exprCtx: any) => this.visit(exprCtx)) : [];
             return { exprType: "arrayLiteral", elements } as AstArrayLiteralExpression;
+        }
+
+        parenthesizedExpression(ctx: any): AstExpression {
+            return this.visit(ctx.expression[0]);
         }
     }
 }

@@ -331,6 +331,12 @@ export class ProgramParser extends CstParser {
     this.MANY(() => this.SUBRULE(this.suffix));
   });
 
+  parenthesizedExpression = this.RULE("parenthesizedExpression", () => {
+    this.CONSUME(LParen);
+    this.SUBRULE(this.expression);
+    this.CONSUME(RParen);
+  });
+  
   primaryExpression = this.RULE("primaryExpression", () => {
     this.OR([
       { ALT: () => this.SUBRULE(this.arrayLiteral) },
@@ -339,6 +345,7 @@ export class ProgramParser extends CstParser {
       { ALT: () => this.CONSUME(StringLiteral) },
       { ALT: () => this.CONSUME(IntegerLiteral) },
       { ALT: () => this.CONSUME(DecimalLiteral) },
+      { ALT: () => this.SUBRULE(this.parenthesizedExpression) }
     ]);
   });
 
