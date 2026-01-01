@@ -55,6 +55,10 @@ export function isAstBinaryExpression(expr: AstExpression): expr is AstBinaryExp
     return expr.exprType === "binary";
 }
 
+export function isAstUnaryExpression(expr: AstExpression): expr is AstUnaryExpression {
+    return expr.exprType === "unary";
+}
+
 export function isAstIfStatement(expr: AstStatement): expr is AstIfStatement {
     return expr.stmtType === "if";
 }
@@ -211,6 +215,7 @@ export interface AstClass extends AstProgramUnit {
 }
 
 export interface AstProgram {
+    fileName: string;
     programUnits: AstProgramUnit[];
 }
 

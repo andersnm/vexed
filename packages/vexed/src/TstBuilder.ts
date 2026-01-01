@@ -1,5 +1,5 @@
-import { AstExpression, AstProgram, AstStatement, isAstArrayLiteral, isAstBinaryExpression, isAstBooleanLiteral, isAstDecimalLiteral, isAstFunctionCall, isAstIdentifier, isAstIfStatement, isAstIndexExpression, isAstIntegerLiteral, isAstLocalVarAssignment, isAstLocalVarDeclaration, isAstMember, isAstReturnStatement, isAstStringLiteral, isClass, isMethodDeclaration, isPropertyDefinition, isPropertyStatement } from "./AstProgram.js";
-import { InstanceMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstReturnStatement, TstStatement, TstThisExpression, TstVariable, TstVariableExpression } from "./TstExpression.js";
+import { AstExpression, AstProgram, AstStatement, isAstArrayLiteral, isAstBinaryExpression, isAstBooleanLiteral, isAstDecimalLiteral, isAstFunctionCall, isAstIdentifier, isAstIfStatement, isAstIndexExpression, isAstIntegerLiteral, isAstLocalVarAssignment, isAstLocalVarDeclaration, isAstMember, isAstReturnStatement, isAstStringLiteral, isAstUnaryExpression, isClass, isMethodDeclaration, isPropertyDefinition, isPropertyStatement } from "./AstProgram.js";
+import { InstanceMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstReturnStatement, TstStatement, TstThisExpression, TstUnaryExpression, TstVariable, TstVariableExpression } from "./TstExpression.js";
 import { TypeDefinition, TypeParameter } from "./TstType.js";
 import { TstRuntime } from "./TstRuntime.js";
 import { TstExpressionTypeVisitor } from "./visitors/TstExpressionTypeVisitor.js";
@@ -152,6 +152,15 @@ class AstVisitor {
             } as TstBinaryExpression;
         }
 
+        if (isAstUnaryExpression(expr)) {
+            // can resolve typeof with type instance directly
+            return {
+                exprType: "unary",
+                operator: expr.operator,
+                operand: this.resolveExpression(expr.operand),
+            } as TstUnaryExpression;
+        }
+
         throw new Error(`Unsupported expression type ${expr.exprType} in TstBuilder`);
     }
 
@@ -205,7 +214,7 @@ export class TstBuilder {
             if (isClass(programUnit)) {
                 let type = this.runtime.tryGetType(programUnit.name);
                 if (!type) {
-                    type = new TypeDefinition(this.runtime, programUnit.name);
+                    type = new TypeDefinition(this.runtime, programUnit.name, visited.fileName);
                     this.runtime.types.push(type);
                 }
             }

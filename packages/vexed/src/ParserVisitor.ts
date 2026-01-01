@@ -12,7 +12,7 @@ function createTokenLocation(tok: IToken): AstLocation {
     };
 }
 
-export function createVisitor(parser: ProgramParser) {
+export function createVisitor(parser: ProgramParser, fileName: string) {
     const BaseCstVisitor = parser.getBaseCstVisitorConstructor();
     return new class extends BaseCstVisitor {
         constructor() {
@@ -23,7 +23,7 @@ export function createVisitor(parser: ProgramParser) {
 
         program(ctx: any): AstProgram {
             const programUnits = ctx.programUnit.map((p: any) => this.visit(p))
-            return { programUnits };
+            return { fileName, programUnits };
         }
 
         programUnit(ctx: any) {
@@ -224,16 +224,16 @@ export function createVisitor(parser: ProgramParser) {
         }
 
         logicalAnd(ctx: any): AstExpression {
-            let node = this.visit(ctx.logicalNot[0]);
+            let node = this.visit(ctx.equality[0]);
 
-            const opsCount = (ctx.logicalNot?.length ?? 1) - 1;
+            const opsCount = (ctx.equality?.length ?? 1) - 1;
             for (let i = 0; i < opsCount; i++) {
                 let operatorToken = ctx.And[i];
                 if (!operatorToken) {
                     throw new Error("Missing logical AND operator token");
                 }
 
-                const right = this.visit(ctx.logicalNot[i + 1]);
+                const right = this.visit(ctx.equality[i + 1]);
                 node = {
                     exprType: "binary",
                     operator: operatorToken.image,
@@ -243,20 +243,6 @@ export function createVisitor(parser: ProgramParser) {
             }
 
             return node;
-        }
-
-        logicalNot(ctx: any): AstExpression {
-            let expr = this.visit(ctx.equality[0]);
-
-            if (ctx.Not && ctx.Not[0]) {
-                return {
-                    exprType: "unary",
-                    operator: "!",
-                    operand: expr,
-                } as AstUnaryExpression;
-            }
-
-            return expr;
         }
 
         equality(ctx: any): AstExpression {
@@ -337,9 +323,9 @@ export function createVisitor(parser: ProgramParser) {
         }
 
         multiplicativeExpression(ctx: any): AstExpression {
-            let node = this.visit(ctx.memberExpression[0]);
+            let node = this.visit(ctx.unaryExpression[0]);
 
-            const opsCount = ctx.memberExpression ? ctx.memberExpression.length - 1 : 0;
+            const opsCount = ctx.unaryExpression ? ctx.unaryExpression.length - 1 : 0;
             for (let i = 0; i < opsCount; i++) {
                 let operatorToken = undefined;
                 if (ctx.Star && ctx.Star[i]) operatorToken = ctx.Star[i];
@@ -349,7 +335,7 @@ export function createVisitor(parser: ProgramParser) {
                     throw new Error("Missing multiplicative operator token");
                 }
 
-                const right = this.visit(ctx.memberExpression[i + 1]);
+                const right = this.visit(ctx.unaryExpression[i + 1]);
                 node = {
                     exprType: "binary",
                     operator: operatorToken.image,
@@ -359,6 +345,26 @@ export function createVisitor(parser: ProgramParser) {
             }
 
             return node;
+        }
+
+        unaryExpression(ctx: any): AstExpression {
+            if (ctx.Typeof && ctx.Typeof[0]) {
+                return {
+                    exprType: "unary",
+                    operator: "typeof",
+                    operand: this.visit(ctx.unaryExpression[0]),
+                } as AstUnaryExpression;
+            }
+
+            if (ctx.Not && ctx.Not[0]) {
+                return {
+                    exprType: "unary",
+                    operator: "!",
+                    operand: this.visit(ctx.unaryExpression[0]),
+                } as AstUnaryExpression;
+            }
+
+            return this.visit(ctx.memberExpression[0]);
         }
 
         memberExpression(ctx: any, baseArg?: AstExpression): AstExpression {
@@ -414,7 +420,8 @@ export function createVisitor(parser: ProgramParser) {
                 return { exprType: "identifier", value: ctx.Identifier[0].image } as AstIdentifierExpression;
             }
             if (ctx.StringLiteral) {
-                return { exprType: "stringLiteral", value: ctx.StringLiteral[0].image } as AstStringLiteralExpression;
+                const str = JSON.parse(ctx.StringLiteral[0].image);
+                return { exprType: "stringLiteral", value: str } as AstStringLiteralExpression;
             }
             if (ctx.IntegerLiteral) {
                 return { exprType: "integerLiteral", value: ctx.IntegerLiteral[0].image } as AstIntegerLiteralExpression;

@@ -1,0 +1,8 @@
+class Main() {
+  public Type stringType = typeof "";
+  public Type mainType = typeof this;
+  public string stringTypeName = this.stringType.name;
+  public string stringTypePath = this.stringType.scriptPath;
+  public string mainTypeName = this.mainType.name;
+  public string mainTypePath = this.mainType.scriptPath;
+}

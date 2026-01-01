@@ -10,6 +10,7 @@ const PrivateKeyword = createToken({ name: "Private", pattern: /private/ });
 const IfKeyword = createToken({ name: "If", pattern: /if/ });
 const ElseKeyword = createToken({ name: "Else", pattern: /else/ });
 const ReturnKeyword = createToken({ name: "Return", pattern: /return/ });
+const TypeofKeyword = createToken({ name: "Typeof", pattern: /typeof/ });
 
 const LCurly = createToken({ name: "LCurly", pattern: /{/ });
 const RCurly = createToken({ name: "RCurly", pattern: /}/ });
@@ -38,14 +39,14 @@ const GreaterThan = createToken({ name: "GreaterThan", pattern: />/ });
 const GreaterThanOrEqual = createToken({ name: "GreaterThanOrEqual", pattern: />=/ });
 
 const Identifier = createToken({ name: "Identifier", pattern: /[a-zA-Z_][a-zA-Z0-9_:]*/ });
-const StringLiteral = createToken({ name: "StringLiteral", pattern: /"[^"]*"/ });
+const StringLiteral = createToken({ name: "StringLiteral", pattern: /"(?:[^"\\\0-\x1F\x7F]|\\(?:["\\\/bfnrt]|u[0-9a-fA-F]{4}))*"/ });
 const BooleanLiteral = createToken({ name: "BooleanLiteral", pattern: /true|false/ });
 const IntegerLiteral = createToken({ name: "IntegerLiteral", pattern: /[0-9]+/ });
 const DecimalLiteral = createToken({ name: "DecimalLiteral", pattern: /(?:[0-9]+\.[0-9]+|\.[0-9]+)/ });
 
 export const allTokens = [
   Comment, WhiteSpace,
-  ClassKeyword, ExtendsKeyword, PublicKeyword, PrivateKeyword, IfKeyword, ElseKeyword, ReturnKeyword,
+  ClassKeyword, ExtendsKeyword, PublicKeyword, PrivateKeyword, IfKeyword, ElseKeyword, ReturnKeyword, TypeofKeyword,
   LBracket, RBracket, LCurly, RCurly, LParen, RParen, Dot, Comma, Semi, 
   Or, And, EqualsEquals, NotEquals, LessThanOrEqual, LessThan, GreaterThanOrEqual, GreaterThan,
   Not, Equal, Plus, Minus, Star, Slash, 
@@ -235,16 +236,11 @@ export class ProgramParser extends CstParser {
   });
 
   logicalAnd = this.RULE("logicalAnd", () => {
-    this.SUBRULE(this.logicalNot);
+    this.SUBRULE(this.equality);
     this.MANY(() => {
       this.CONSUME(And);
-      this.SUBRULE2(this.logicalNot);
+      this.SUBRULE2(this.equality);
     });
-  });
-
-  logicalNot = this.RULE("logicalNot", () => {
-    this.OPTION(() => this.CONSUME(Not));
-    this.SUBRULE(this.equality);
   });
 
   equality = this.RULE("equality", () => {
@@ -290,23 +286,44 @@ export class ProgramParser extends CstParser {
   });
 
   multiplicativeExpression = this.RULE("multiplicativeExpression", () => {
-    this.SUBRULE(this.memberExpression);
+    this.SUBRULE(this.unaryExpression);
     this.MANY(() => {
       this.OR([
         {
           ALT: () => {
             this.CONSUME(Star);
-            this.SUBRULE2(this.memberExpression);
+            this.SUBRULE2(this.unaryExpression);
           }
         },
         {
           ALT: () => {
             this.CONSUME(Slash);
-            this.SUBRULE3(this.memberExpression);
+            this.SUBRULE3(this.unaryExpression);
           }
         },
       ]);
     });
+  });
+
+  unaryExpression = this.RULE("unaryExpression", () => {
+    // NOTE: Only right‑recursive rule in the operator chain
+    this.OR([
+      {
+        ALT: () => {
+          this.CONSUME(TypeofKeyword);
+          this.SUBRULE(this.unaryExpression);
+        }
+      },
+      {
+        ALT: () => {
+          this.CONSUME(Not);
+          this.SUBRULE2(this.unaryExpression);
+        }
+      },
+      {
+        ALT: () => this.SUBRULE(this.memberExpression)
+      }
+    ]);
   });
 
   memberExpression = this.RULE("memberExpression", () => {

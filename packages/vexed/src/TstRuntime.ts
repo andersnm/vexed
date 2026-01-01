@@ -4,16 +4,17 @@ import { TypeDefinition, TypeMethod } from "./TstType.js";
 import { TstExpressionTypeVisitor } from "./visitors/TstExpressionTypeVisitor.js";
 import { printExpression } from "./visitors/TstPrintVisitor.js";
 import { TstReduceExpressionVisitor, TstScope } from "./visitors/TstReduceExpressionVisitor.js";
+import path from "path";
 
 class AnyTypeDefinition extends TypeDefinition {
     constructor(runtime: TstRuntime) {
-        super(runtime, "any");
+        super(runtime, "any", "<native>");
     }
 }
 
 class BoolTypeDefinition extends TypeDefinition {
     constructor(runtime: TstRuntime) {
-        super(runtime, "bool");
+        super(runtime, "bool", "<native>");
     }
 
     createInstance(args: TstExpression[]): TstInstanceObject {
@@ -24,7 +25,7 @@ class BoolTypeDefinition extends TypeDefinition {
 
 class StringTypeDefinition extends TypeDefinition {
     constructor(runtime: TstRuntime) {
-        super(runtime, "string");
+        super(runtime, "string", "<native>");
     }
 
     initializeType() {
@@ -53,7 +54,7 @@ class StringTypeDefinition extends TypeDefinition {
 
 class IntTypeDefinition extends TypeDefinition {
     constructor(runtime: TstRuntime) {
-        super(runtime, "int");
+        super(runtime, "int", "<native>");
     }
 
     initializeType() {}
@@ -71,7 +72,7 @@ class IntTypeDefinition extends TypeDefinition {
  */
 class ArrayBaseTypeDefinition extends TypeDefinition {
     constructor(runtime: TstRuntime, name: string) {
-        super(runtime, name);
+        super(runtime, name, "<native>");
     }
 
     initializeType() {
@@ -114,9 +115,45 @@ class ArrayTypeDefinition extends ArrayBaseTypeDefinition {
     }
 }
 
+class TypeTypeDefinition extends TypeDefinition {
+    constructor(runtime: TstRuntime) {
+        super(runtime, "Type", "<native>");
+    }
+
+    initializeType(): void {
+        this.properties.push({
+            modifier: "public",
+            name: "name",
+            type: this.runtime.getType("string"),
+        });
+
+        this.properties.push({
+            modifier: "public",
+            name: "scriptPath",
+            type: this.runtime.getType("string"),
+        });
+    }
+
+    resolveProperty(instance: TstInstanceObject, propertyName: string): TstExpression | null {
+        if (propertyName === "name") {
+            const type = instance[InstanceMeta] as TypeDefinition;
+            return { exprType: "instance", instance: this.runtime.createString(type.name) } as TstInstanceExpression;
+        }
+
+        if (propertyName === "scriptPath") {
+            const type = instance[InstanceMeta] as TypeDefinition;
+
+            const scriptPath = path.dirname(type.fileName);
+            return { exprType: "instance", instance: this.runtime.createString(scriptPath) } as TstInstanceExpression;
+        }
+
+        throw new Error("Property not implemented: " + propertyName);
+    }
+}
+
 class IoTypeDefinition extends TypeDefinition {
     constructor(runtime: TstRuntime) {
-        super(runtime, "Io");
+        super(runtime, "Io", "<native>");
     }
 
     initializeType(): void {
@@ -200,6 +237,7 @@ export class TstRuntime {
         this.types.push(new StringTypeDefinition(this));
         // this.types.push(new ArrayTypeDefinition(this, "string[]"));
         this.types.push(new IoTypeDefinition(this));
+        this.types.push(new TypeTypeDefinition(this));
 
         for (let type of this.types) {
             type.initializeType();

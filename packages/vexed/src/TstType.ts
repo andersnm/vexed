@@ -25,6 +25,7 @@ export interface TypeMethod {
 export class TypeDefinition {
     runtime: TstRuntime;
     name: string;
+    fileName: string;
     extends?: TypeDefinition;
     extendsArguments?: TstExpression[];
     parameters: TypeParameter[];
@@ -32,9 +33,10 @@ export class TypeDefinition {
     methods: TypeMethod[];
     initializers: TstInitializer[];  // TstVariable?? name+expr
 
-    constructor(runtime: TstRuntime, name: string) {
+    constructor(runtime: TstRuntime, name: string, fileName: string) {
         this.runtime = runtime;
         this.name = name;
+        this.fileName = fileName;
         this.parameters = [];
         this.properties = [];
         this.methods = [];

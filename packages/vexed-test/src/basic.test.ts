@@ -53,7 +53,7 @@ function checkInstanceProperty(instance: TstInstanceObject, propName: string, ex
 test('Parse basic-class', async () => {
     const runtime = new TstRuntime();
     const instance = await compileInstance(runtime, "./files/basic-class.vexed");
-    checkScopedInstanceProperty(instance, "mainStr", runtime.getType("string"), "\"It's a string\"");
+    checkScopedInstanceProperty(instance, "mainStr", runtime.getType("string"), "It's a string");
     checkScopedInstanceProperty(instance, "mainNum", runtime.getType("int"), 123);
     checkScopedInstanceProperty(instance, "mainBool", runtime.getType("bool"), true);
 });
@@ -61,10 +61,10 @@ test('Parse basic-class', async () => {
 test('Parse basic-subclass', async () => {
     const runtime = new TstRuntime();
     const instance = await compileInstance(runtime, "./files/basic-subclass.vexed");
-    checkScopedInstanceProperty(instance, "baseStr", runtime.getType("string"), "\"String, it is\"");
+    checkScopedInstanceProperty(instance, "baseStr", runtime.getType("string"), "String, it is");
     checkScopedInstanceProperty(instance, "baseNum", runtime.getType("int"), 321);
     checkScopedInstanceProperty(instance, "baseBool", runtime.getType("bool"), true);
-    checkScopedInstanceProperty(instance, "mainStr", runtime.getType("string"), "\"It's a string\"");
+    checkScopedInstanceProperty(instance, "mainStr", runtime.getType("string"), "It's a string");
     checkScopedInstanceProperty(instance, "mainNum", runtime.getType("int"), 123);
     checkScopedInstanceProperty(instance, "mainBool", runtime.getType("bool"), true);
 
@@ -77,16 +77,16 @@ test('Parse basic-subclass-parameters', async () => {
     checkScopedParameterProperty(instance, "baseStr", runtime.getType("string"), "strValue");
     checkScopedParameterProperty(instance, "baseNum", runtime.getType("int"), "intValue");
     checkScopedParameterProperty(instance, "baseBool", runtime.getType("bool"), "boolValue");
-    checkScopedInstanceProperty(instance, "mainStr", runtime.getType("string"), "\"It's a string\"");
+    checkScopedInstanceProperty(instance, "mainStr", runtime.getType("string"), "It's a string");
     checkScopedInstanceProperty(instance, "mainNum", runtime.getType("int"), 123);
     checkScopedInstanceProperty(instance, "mainBool", runtime.getType("bool"), true);
 
     runtime.reduceInstance(instance);
 
-    checkInstanceProperty(instance, "baseStr", runtime.getType("string"), "\"String, it is\"");
+    checkInstanceProperty(instance, "baseStr", runtime.getType("string"), "String, it is");
     checkInstanceProperty(instance, "baseNum", runtime.getType("int"), 321);
     checkInstanceProperty(instance, "baseBool", runtime.getType("bool"), true);
-    checkInstanceProperty(instance, "mainStr", runtime.getType("string"), "\"It's a string\"");
+    checkInstanceProperty(instance, "mainStr", runtime.getType("string"), "It's a string");
     checkInstanceProperty(instance, "mainNum", runtime.getType("int"), 123);
     checkInstanceProperty(instance, "mainBool", runtime.getType("bool"), true);
 });
@@ -105,7 +105,7 @@ test('Parse member-access', async () => {
 
     checkInstanceProperty(instance, "mainStrArrayLength", runtime.getType("int"), 2);
     checkInstanceProperty(instance, "mainInt", runtime.getType("int"), 321);
-    checkInstanceProperty(instance, "mainStringLength", runtime.getType("int"), 15);
+    checkInstanceProperty(instance, "mainStringLength", runtime.getType("int"), 13);
 });
 
 test('Parse basic-function', async () => {
@@ -140,4 +140,26 @@ test('Parse basic-conditional', async () => {
     checkInstanceProperty(instance, "isLess", runtime.getType("bool"), true);
     checkInstanceProperty(instance, "num1", runtime.getType("int"), 1);
     checkInstanceProperty(instance, "num2", runtime.getType("int"), 10);
+});
+
+test('Parse basic-type', async () => {
+    const runtime = new TstRuntime();
+    const instance = await compileInstance(runtime, "./files/basic-type.vexed");
+
+    runtime.reduceInstance(instance);
+
+    checkInstanceProperty(instance, "stringTypeName", runtime.getType("string"), "string");
+    checkInstanceProperty(instance, "stringTypePath", runtime.getType("string"), ".");
+    checkInstanceProperty(instance, "mainTypeName", runtime.getType("string"), "Main");
+    checkInstanceProperty(instance, "mainTypePath", runtime.getType("string"), "./files");
+});
+
+test('Parse basic-io', async () => {
+    const runtime = new TstRuntime();
+    const instance = await compileInstance(runtime, "./files/basic-io.vexed");
+
+    await runtime.reduceInstance(instance);
+
+    checkInstanceProperty(instance, "content", runtime.getType("string"), "Lorem ipsum");
+    checkInstanceProperty(instance, "warped", runtime.getType("string"), "Lorem ipsum");
 });

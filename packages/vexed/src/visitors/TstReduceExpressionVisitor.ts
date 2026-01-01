@@ -1,4 +1,4 @@
-import { InstanceMeta, isInstanceExpression, isMethodExpression, isReturnStatement, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
+import { InstanceMeta, isInstanceExpression, isMethodExpression, isReturnStatement, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
 import { TstRuntime } from "../TstRuntime.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
 
@@ -185,6 +185,27 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
             right: rightExpr,
             operator: expr.operator
         } as TstBinaryExpression;
+    }
+
+    visitUnaryExpression(expr: TstUnaryExpression): TstExpression {
+        if (expr.operator === "typeof") {
+            const operandType = this.runtime.getExpressionType(expr.operand, this.scope.thisObject[TypeMeta]);
+            if (!operandType) {
+                throw new Error("Cannot resolve type of operand in typeof expression");
+            }
+
+            this.reduceCount++;
+
+            const typeType = this.runtime.getType("Type");
+            const typeInstance = this.runtime.createInstance(typeType, [], operandType);
+
+            return {
+                exprType: "instance",
+                instance: typeInstance,
+            } as TstInstanceExpression;
+        }
+
+        throw new Error("Unsupported unary operator: " + expr.operator);
     }
 
     visitFunctionCallExpression(expr: TstFunctionCallExpression): TstExpression {

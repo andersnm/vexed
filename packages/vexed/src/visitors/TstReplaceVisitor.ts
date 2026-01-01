@@ -1,4 +1,4 @@
-import { isBinaryExpression, isDecimalLiteral, isFunctionCall, isIfStatement, isIndexExpression, isInstanceExpression, isLocalVarAssignment, isLocalVarDeclaration, isMemberExpression, isMethodExpression, isNewExpression, isParameter, isPromiseExpression, isReturnStatement, isScopedExpression, isStatementExpression, isThisExpression, isVariableExpression, TstBinaryExpression, TstDecimalLiteralExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstMethodExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstVariableExpression } from "../TstExpression.js";
+import { isBinaryExpression, isDecimalLiteral, isFunctionCall, isIfStatement, isIndexExpression, isInstanceExpression, isLocalVarAssignment, isLocalVarDeclaration, isMemberExpression, isMethodExpression, isNewExpression, isParameter, isPromiseExpression, isReturnStatement, isScopedExpression, isStatementExpression, isThisExpression, isUnaryExpression, isVariableExpression, TstBinaryExpression, TstDecimalLiteralExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstMethodExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstVariableExpression } from "../TstExpression.js";
 
 export class TstReplaceVisitor {
 
@@ -35,6 +35,9 @@ export class TstReplaceVisitor {
         }
         if (isBinaryExpression(expr)) {
             return this.visitBinaryExpression(expr);
+        }
+        if (isUnaryExpression(expr)) {
+            return this.visitUnaryExpression(expr);
         }
         if (isStatementExpression(expr)) {
             return this.visitStatementExpression(expr);
@@ -158,6 +161,14 @@ export class TstReplaceVisitor {
             right: this.visit(expr.right),
             operator: expr.operator,
         } as TstBinaryExpression;
+    }
+
+    visitUnaryExpression(expr: TstUnaryExpression): TstExpression {
+        return {
+            exprType: expr.exprType,
+            operator: expr.operator,
+            operand: this.visit(expr.operand),
+        } as TstUnaryExpression;
     }
 
     visitStatementExpression(expr: TstStatementExpression): TstExpression {

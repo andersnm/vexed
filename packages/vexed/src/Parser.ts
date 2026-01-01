@@ -43,7 +43,7 @@ export class Parser {
             throw new ParserError("Parsing errors detected", errors);
         }
 
-        const visitor = createVisitor(parser);
+        const visitor = createVisitor(parser, fileName);
         return visitor.visit(cstProgram);
     }
 }

@@ -52,6 +52,10 @@ export function isBinaryExpression(expr: TstExpression): expr is TstBinaryExpres
     return expr.exprType === "binary";
 }
 
+export function isUnaryExpression(expr: TstExpression): expr is TstUnaryExpression {
+    return expr.exprType === "unary";
+}
+
 export function isMethodExpression(expr: TstExpression): expr is TstMethodExpression {
     return expr.exprType === "method";
 }
@@ -178,6 +182,12 @@ export interface TstBinaryExpression extends TstExpression {
     operator: string;
     left: TstExpression;
     right: TstExpression;
+}
+
+export interface TstUnaryExpression extends TstExpression {
+    exprType: "unary";
+    operator: string;
+    operand: TstExpression;
 }
 
 export interface TstMethodExpression extends TstExpression {
