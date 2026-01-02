@@ -5,6 +5,8 @@ import { TstExpressionTypeVisitor } from "./visitors/TstExpressionTypeVisitor.js
 import { printExpression } from "./visitors/TstPrintVisitor.js";
 import { TstReduceExpressionVisitor, TstScope } from "./visitors/TstReduceExpressionVisitor.js";
 import path from "path";
+import { TstBuilder } from "./TstBuilder.js";
+import { Parser } from "./Parser.js";
 
 class AnyTypeDefinition extends TypeDefinition {
     constructor(runtime: TstRuntime) {
@@ -228,6 +230,11 @@ class IoTypeDefinition extends TypeDefinition {
 
 export class TstRuntime {
     types: TypeDefinition[] = [];
+    globalScope: TstScope = {
+        parent: null,
+        thisObject: null as any,
+        variables: [],
+    };
 
     constructor() {
         this.types.push(new AnyTypeDefinition(this));
@@ -242,6 +249,14 @@ export class TstRuntime {
         for (let type of this.types) {
             type.initializeType();
         }
+
+        this.globalScope.variables.push({
+            name: "io",
+            value: {
+                exprType: "instance",
+                instance: this.getType("Io").createInstance([]),
+            } as TstInstanceExpression,
+        });
     }
 
     getType(name: string): TypeDefinition {
@@ -275,7 +290,7 @@ export class TstRuntime {
         }));
 
         const scope: TstScope = {
-            parent: null,
+            parent: this.globalScope,
             thisObject: obj,
             variables: chainNamedArguments,
         };
@@ -400,7 +415,7 @@ export class TstRuntime {
         const visitedInstances = new Set<TstInstanceObject>();
         
         const scope: TstScope = {
-            parent: null,
+            parent: this.globalScope,
             thisObject: obj,
             variables: [],
         };
@@ -459,5 +474,12 @@ export class TstRuntime {
         const boolObject = boolType.createInstance([]);
         boolObject[InstanceMeta] = value;
         return boolObject;
+    }
+
+    loadScript(script: string, fileName: string) {
+        const parser = new Parser();
+        const program = parser.parse(script, fileName);
+        const resolver = new TstBuilder(this);
+        resolver.resolveProgram(program);
     }
 }

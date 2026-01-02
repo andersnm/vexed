@@ -1,15 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { promises as fs } from "fs";
-import { InstanceMeta, isInstanceExpression, isParameter, isScopedExpression, Parser, TstBuilder, TstInstanceObject, TstRuntime, TypeDefinition, TypeMeta } from 'vexed';
+import { InstanceMeta, isInstanceExpression, isParameter, isScopedExpression, TstInstanceObject, TstRuntime, TypeDefinition, TypeMeta } from 'vexed';
 
 async function compileInstance(runtime: TstRuntime, fileName: string): Promise<TstInstanceObject> {
-    const script = await fs.readFile(fileName, "utf-8");
-    const parser = new Parser();
-    const program = parser.parse(script, fileName);
 
-    const resolver = new TstBuilder(runtime);
-    resolver.resolveProgram(program);
+    const script = await fs.readFile(fileName, "utf-8");
+    runtime.loadScript(script, fileName);
 
     const main = runtime.getType("Main");
     if (!main) {

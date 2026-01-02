@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { Parser, TstBuilder, printObject, TstRuntime } from "vexed";
+import { printObject, TstRuntime } from "vexed";
 import { promises as fs } from "fs";
 import { parseArgs } from "node:util";
 
@@ -33,15 +33,8 @@ export async function jsonCommand(args: string[]) {
     const fileName = positionals[0];
     const script = await fs.readFile(fileName, "utf-8");
 
-    const parser = new Parser();
-    const program = parser.parse(script, fileName);
-    if (!program) {
-        return;
-    }
-
     const runtime = new TstRuntime();
-    const resolver = new TstBuilder(runtime);
-    resolver.resolveProgram(program);
+    runtime.loadScript(script, fileName);
 
     const main = runtime.getType("Main");
     if (!main) {

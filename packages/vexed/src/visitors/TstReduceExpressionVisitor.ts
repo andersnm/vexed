@@ -8,6 +8,19 @@ export interface TstScope {
     variables: TstVariable[];
 }
 
+export function getScopeParameter(scope: TstScope, name: string): TstVariable | null {
+    const param = scope.variables.find(v => v.name === name);
+    if (param) {
+        return param;
+    }
+
+    if (scope.parent) {
+        return getScopeParameter(scope.parent, name);
+    }
+
+    return null;
+}
+
 export class TstReduceExpressionVisitor extends TstReplaceVisitor {
 
     reduceCount: number = 0;
@@ -46,24 +59,9 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
 
     visitParameterExpression(expr: TstParameterExpression): TstExpression {
         // console.log("Visiting parameter expression", expr.name);
-
-        const getParameter = (scope: TstScope, name: string): TstVariable | null => {
-            const param = scope.variables.find(v => v.name === name);
-            if (param) {
-                this.reduceCount++;
-                return param;
-            }
-
-            if (scope.parent) {
-                return getParameter(scope.parent, name);
-            }
-
-            return null;
-        }
-
-        const parameter = getParameter(this.scope, expr.name);
-
+        const parameter = getScopeParameter(this.scope, expr.name);
         if (parameter) {
+            this.reduceCount++;
             return this.visit(parameter.value);
         }
 
@@ -319,7 +317,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
     }
 
     visitVariableExpression(expr: TstVariableExpression): TstExpression {
-        const variable = this.scope.variables.find(v => v.name === expr.name);
+        const variable = getScopeParameter(this.scope, expr.name);
         if (variable) {
             this.reduceCount++;
             return variable.value;

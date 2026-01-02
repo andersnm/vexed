@@ -103,6 +103,12 @@ class AstVisitor {
                     return { exprType: "variable", name: expr.value, type: vi.type } as TstVariableExpression;
                 }
 
+                const gi = this.runtime.globalScope.variables.find(v => v.name === expr.value);
+                if (gi) {
+                    const giType = this.runtime.getExpressionType(gi.value, this.thisType);
+                    return { exprType: "variable", name: expr.value, type: giType } as TstVariableExpression;
+                }
+
                 if (this.parent) {
                     return this.parent.resolveExpression(expr);
                 }
