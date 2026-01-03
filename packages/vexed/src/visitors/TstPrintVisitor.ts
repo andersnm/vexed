@@ -33,6 +33,13 @@ function isTstArrayInstance(obj: TstInstanceObject): boolean {
     return typeDef.name.endsWith("[]");
 }
 
+function getPropertyNames(scopeType: TypeDefinition, propertyNames: string[]) {
+    if (scopeType.extends) {
+        getPropertyNames(scopeType.extends, propertyNames);
+    }
+    propertyNames.push(...scopeType.properties.map(p => p.name));
+};
+
 export class TstPrintVisitor extends TstReplaceVisitor {
 
     indentDepth: number = 0;
@@ -164,15 +171,15 @@ export class TstPrintVisitor extends TstReplaceVisitor {
             return expr;
         }
 
-        this.output.push("(#" + instanceType.name + ")");
-        // TODO: printobject can recurse infinitely
-        if (this.printedInstances.has(expr.instance)) {
-            this.output.push(" { ... } ");
-            return expr;
-        }
+        const propertyNames: string[] = [];
+        getPropertyNames(instanceType, propertyNames);
+        this.output.push("(#" + instanceType.name + ": " + propertyNames.join(", ") + ")");
+
+        // Full printObject can recurse infinitely, is also too verbose for most cases
+        // this.printObject(expr.instance);
 
         this.printedInstances.add(expr.instance);
-        this.printObject(expr.instance);
+
         return expr;
     }
 

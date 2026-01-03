@@ -1,10 +1,11 @@
 import { readFile } from "fs/promises";
+import path from "path";
 import { InstanceMeta, isInstanceExpression, TstExpression, TstInstanceExpression, TstInstanceObject, TstMethodExpression, TstPromiseExpression, TstScopedExpression, TstVariable, TypeMeta } from "./TstExpression.js";
 import { TypeDefinition, TypeMethod } from "./TstType.js";
 import { TstExpressionTypeVisitor } from "./visitors/TstExpressionTypeVisitor.js";
 import { printExpression } from "./visitors/TstPrintVisitor.js";
 import { TstReduceExpressionVisitor, TstScope } from "./visitors/TstReduceExpressionVisitor.js";
-import path from "path";
+import { TstReduceScopeVisitor } from "./visitors/TstReduceScopeVisitor.js";
 import { TstBuilder } from "./TstBuilder.js";
 import { Parser } from "./Parser.js";
 
@@ -190,7 +191,8 @@ class IoTypeDefinition extends TypeDefinition {
             console.log("Io.print: " + message);
 
             return {
-                exprType: "null",
+                exprType: "instance",
+                instance: this.runtime.createInt(0)
             } as TstExpression;
         }
 
@@ -256,6 +258,7 @@ export class TstRuntime {
                 exprType: "instance",
                 instance: this.getType("Io").createInstance([]),
             } as TstInstanceExpression,
+            type: this.getType("Io"),
         });
     }
 
@@ -287,6 +290,7 @@ export class TstRuntime {
         const chainNamedArguments: TstVariable[] = scopeType.parameters.map((p, index) => ({
             name: p.name,
             value: args[index],
+            type: p.type,
         }));
 
         const scope: TstScope = {
@@ -317,6 +321,11 @@ export class TstRuntime {
         }
 
         for (let stmt of scopeType.initializers) {
+            const typeProperty = scopeType.getProperty(stmt.name);
+            if (!typeProperty) {
+                throw new Error(`Initializer refers to unknown property ${stmt.name} on type ${scopeType.name}`);
+            }
+
             obj[stmt.name] = { exprType: "scoped", scope, expr: stmt.argument } as TstScopedExpression;
         }
 
@@ -410,6 +419,16 @@ export class TstRuntime {
         return reduceCount;
     }
 
+    reduceScopesInInstance(scopeReducer: TstReduceScopeVisitor, obj: TstInstanceObject, scopeType: TypeDefinition) {
+        if (scopeType.extends) {
+            this.reduceScopesInInstance(scopeReducer, obj, scopeType.extends);
+        }
+
+        for (let propertyDeclaration of scopeType.properties) {
+            scopeReducer.visit(obj[propertyDeclaration.name]);
+        }
+    }
+
     async reduceInstance(obj: TstInstanceObject) {
         const type = obj[TypeMeta];
         const visitedInstances = new Set<TstInstanceObject>();
@@ -423,6 +442,10 @@ export class TstRuntime {
         let counter = 0;
         let promiseExpressions: TstPromiseExpression[] = [];
         while (true) {
+            // console.log("[TstRuntime] Reduction iteration", counter);
+            const scopeReducer = new TstReduceScopeVisitor(this);
+            this.reduceScopesInInstance(scopeReducer, obj, type);
+
             const reducer = new TstReduceExpressionVisitor(this, scope, visitedInstances);
             if (!this.reduceInstanceByType(reducer, obj, type, visitedInstances)) {
                 promiseExpressions = reducer.promiseExpressions;

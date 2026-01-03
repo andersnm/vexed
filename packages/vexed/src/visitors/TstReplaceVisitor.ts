@@ -52,6 +52,10 @@ export class TstReplaceVisitor {
             return this.visitPromiseExpression(expr);
         }
 
+        if (expr.exprType === "null") {
+            return this.visitNullExpression(expr);
+        }
+
         // keep a clear error for unexpected node kinds
         throw new Error(`TstReplaceVisitor: Unhandled expression type: ${expr.exprType}`);
     }
@@ -96,6 +100,7 @@ export class TstReplaceVisitor {
         return {
             exprType: expr.exprType,
             method: expr.method,
+            scope: expr.scope,
         } as TstMethodExpression;
     }
 
@@ -242,5 +247,11 @@ export class TstReplaceVisitor {
             name: stmt.name,
             expr: this.visit(stmt.expr),
         } as TstLocalVarAssignment];
+    }
+
+    visitNullExpression(expr: TstExpression): TstExpression {
+        return {
+            exprType: "null",
+        } as TstExpression;
     }
 }

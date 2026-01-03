@@ -1,5 +1,6 @@
-import { InstanceMeta, isInstanceExpression, isMethodExpression, isReturnStatement, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
+import { InstanceMeta, isInstanceExpression, isMethodExpression, isReturnStatement, isScopedExpression, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
 import { TstRuntime } from "../TstRuntime.js";
+import { printExpression } from "./TstPrintVisitor.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
 
 export interface TstScope {
@@ -37,16 +38,9 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
             const instanceType = objectExpression.instance[TypeMeta];
             const propertyExpression = instanceType.resolveProperty(objectExpression.instance, expr.property);
 
-            // If the property is legit, but the property doesnt exist, it's not resolved yet, so dont reduce
-            // TODO: Beware, if the property is an overriden default, this could resolve to the original default
-            if (propertyExpression) {
-                const reduced = this.visit(propertyExpression);
-                if (isInstanceExpression(reduced) || reduced.exprType === "decimalLiteral") {
-                    this.reduceCount++;
-                    return reduced;
-                }
-
-                return reduced;
+            if (propertyExpression && isInstanceExpression(propertyExpression)) {
+                this.reduceCount++;
+                return propertyExpression;
             }
         }
 
@@ -58,14 +52,31 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
     }
 
     visitParameterExpression(expr: TstParameterExpression): TstExpression {
-        // console.log("Visiting parameter expression", expr.name);
         const parameter = getScopeParameter(this.scope, expr.name);
         if (parameter) {
-            this.reduceCount++;
-            return this.visit(parameter.value);
+            if (isInstanceExpression(parameter.value)) {
+                this.reduceCount++;
+                return parameter.value;
+            }
+
+            return expr;
         }
 
         throw new Error("Parameter not found: " + expr.name);
+    }
+
+    visitVariableExpression(expr: TstVariableExpression): TstExpression {
+        const variable = getScopeParameter(this.scope, expr.name);
+        if (variable) {
+            if (isInstanceExpression(variable.value)) {
+                this.reduceCount++;
+                return variable.value;
+            }
+
+            return expr;
+        }
+
+        throw new Error("Variable not found: " + expr.name);
     }
 
     visitThisExpression(expr: TstThisExpression): TstExpression {
@@ -87,13 +98,35 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
     }
 
     visitScopedExpression(expr: TstScopedExpression): TstExpression {
-        // TODO: can only reduce this if all parameters are reduced!
-        this.reduceCount++;
+        // Multiple expressions can reference the same scope, so this is not the place
+        // to reduce the scope itself. This is done separately with the TstReduceScopeVisitor.
+
+        let canReduce = true;
+        for (let variable of expr.scope.variables) {
+            if (!isInstanceExpression(variable.value)) {
+                canReduce = false;
+                continue;
+            }
+        }
 
         const scopeVisitor = new TstReduceExpressionVisitor(this.runtime, expr.scope, this.visitedInstances);
         const visited = scopeVisitor.visit(expr.expr);
         this.promiseExpressions.push(...scopeVisitor.promiseExpressions);
-        return visited;
+
+        // Reduce scope only when:
+        //  - the scope expression cannot be reduced no more
+        //  - all parameters in the scope are reduced to instances
+        if (canReduce && scopeVisitor.reduceCount === 0) {
+            this.reduceCount++;
+            return visited;
+        }
+        this.reduceCount += scopeVisitor.reduceCount;
+
+        return {
+            exprType: "scoped",
+            expr: visited,
+            scope: expr.scope,
+        } as TstScopedExpression;
     }
 
     visitInstanceExpression(expr: TstInstanceExpression): TstExpression {
@@ -212,6 +245,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         const chainNamedArguments: TstVariable[] = expr.method.parameters.map((p, index) => ({
             name: p.name,
             value: argsExpr[index],
+            type: p.type,
         }));
 
         if (isInstanceExpression(objectExpr)) {
@@ -299,7 +333,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
     visitLocalVarDeclaration(stmt: TstLocalVarDeclaration): TstStatement[] {
         // Create local variable in scope and return no-op
         const initializer = this.visit(stmt.initializer);
-        this.scope.variables.push({ name: stmt.name, value: initializer });
+        this.scope.variables.push({ name: stmt.name, value: initializer, type: stmt.varType });
         this.reduceCount++;
         return []; //{ stmtType: "localVarDeclaration", name: stmt.name, varType: stmt.varType, initializer } as TstLocalVarDeclaration];
     }
@@ -314,14 +348,5 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         variable.value = expr;
         this.reduceCount++;
         return [];
-    }
-
-    visitVariableExpression(expr: TstVariableExpression): TstExpression {
-        const variable = getScopeParameter(this.scope, expr.name);
-        if (variable) {
-            this.reduceCount++;
-            return variable.value;
-        }
-        throw new Error("Variable not found: " + expr.name);
     }
 }

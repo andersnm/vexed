@@ -1,4 +1,4 @@
-import test from 'node:test';
+import test, { mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { promises as fs } from "fs";
 import { InstanceMeta, isInstanceExpression, isParameter, isScopedExpression, TstInstanceObject, TstRuntime, TypeDefinition, TypeMeta } from 'vexed';
@@ -78,7 +78,7 @@ test('Parse basic-subclass-parameters', async () => {
     checkScopedInstanceProperty(instance, "mainNum", runtime.getType("int"), 123);
     checkScopedInstanceProperty(instance, "mainBool", runtime.getType("bool"), true);
 
-    runtime.reduceInstance(instance);
+    await runtime.reduceInstance(instance);
 
     checkInstanceProperty(instance, "baseStr", runtime.getType("string"), "String, it is");
     checkInstanceProperty(instance, "baseNum", runtime.getType("int"), 321);
@@ -98,7 +98,7 @@ test('Parse member-access', async () => {
     const runtime = new TstRuntime();
     const instance = await compileInstance(runtime, "./files/basic-member-access.vexed");
 
-    runtime.reduceInstance(instance);
+    await runtime.reduceInstance(instance);
 
     checkInstanceProperty(instance, "mainStrArrayLength", runtime.getType("int"), 2);
     checkInstanceProperty(instance, "mainInt", runtime.getType("int"), 321);
@@ -109,7 +109,7 @@ test('Parse basic-function', async () => {
     const runtime = new TstRuntime();
     const instance = await compileInstance(runtime, "./files/basic-function.vexed");
 
-    runtime.reduceInstance(instance);
+    await runtime.reduceInstance(instance);
 
     checkInstanceProperty(instance, "value1", runtime.getType("int"), 11);
     checkInstanceProperty(instance, "value2", runtime.getType("int"), 21);
@@ -120,7 +120,7 @@ test('Parse basic-function-subclass', async () => {
     const runtime = new TstRuntime();
     const instance = await compileInstance(runtime, "./files/basic-function-subclass.vexed");
 
-    runtime.reduceInstance(instance);
+    await runtime.reduceInstance(instance);
 
     checkInstanceProperty(instance, "abstractInt", runtime.getType("int"), 7);
     checkInstanceProperty(instance, "value1", runtime.getType("int"), 108);
@@ -131,7 +131,7 @@ test('Parse basic-conditional', async () => {
     const runtime = new TstRuntime();
     const instance = await compileInstance(runtime, "./files/basic-conditional.vexed");
 
-    runtime.reduceInstance(instance);
+    await runtime.reduceInstance(instance);
 
     checkInstanceProperty(instance, "isGreater", runtime.getType("bool"), false);
     checkInstanceProperty(instance, "isLess", runtime.getType("bool"), true);
@@ -143,7 +143,7 @@ test('Parse basic-type', async () => {
     const runtime = new TstRuntime();
     const instance = await compileInstance(runtime, "./files/basic-type.vexed");
 
-    runtime.reduceInstance(instance);
+    await runtime.reduceInstance(instance);
 
     checkInstanceProperty(instance, "stringTypeName", runtime.getType("string"), "string");
     checkInstanceProperty(instance, "stringTypePath", runtime.getType("string"), ".");
@@ -159,4 +159,25 @@ test('Parse basic-io', async () => {
 
     checkInstanceProperty(instance, "content", runtime.getType("string"), "Lorem ipsum");
     checkInstanceProperty(instance, "warped", runtime.getType("string"), "Lorem ipsum");
+});
+
+test('Parse call-once', async () => {
+    const logs: string[] = [];
+    const consoleLog = console.log.bind(console);
+    const logImpl = (...args: any[]) => {
+        logs.push(args.join(' '));
+        consoleLog(...args);
+    };
+    mock.method(console, 'log', logImpl);
+
+    const runtime = new TstRuntime();
+    const instance = await compileInstance(runtime, "./files/call-once.vexed");
+
+    await runtime.reduceInstance(instance);
+
+    const count = logs.filter(l => l.includes("Hello from expensive")).length;
+    assert.equal(count, 1);
+
+    checkInstanceProperty(instance, "x", runtime.getType("int"), 2);
+    checkInstanceProperty(instance, "value", runtime.getType("int"), 4);
 });

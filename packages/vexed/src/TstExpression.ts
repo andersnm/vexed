@@ -87,6 +87,7 @@ export function isLocalVarAssignment(stmt: TstStatement): stmt is TstLocalVarAss
 export interface TstVariable {
     name: string;
     value: TstExpression;
+    type: TypeDefinition;
 };
 
 export interface TstInitializer {
@@ -193,7 +194,6 @@ export interface TstUnaryExpression extends TstExpression {
 export interface TstMethodExpression extends TstExpression {
     exprType: "method";
     method: TypeMethod;
-    thisObject: TstInstanceObject;
     scope: TstScope;
 }
 

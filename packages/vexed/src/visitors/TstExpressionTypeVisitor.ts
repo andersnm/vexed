@@ -1,4 +1,4 @@
-import { TstBinaryExpression, TstDecimalLiteralExpression, TstExpression, TstFunctionCallExpression, TstInstanceExpression, TstMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
+import { TstBinaryExpression, TstDecimalLiteralExpression, TstExpression, TstFunctionCallExpression, TstInstanceExpression, TstMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstScopedExpression, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
 import { TstRuntime } from "../TstRuntime.js";
 import { TypeDefinition } from "../TstType.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
@@ -30,13 +30,8 @@ export class TstExpressionTypeVisitor extends TstReplaceVisitor {
     }
 
     visitParameterExpression(expr: TstParameterExpression): TstExpression {
-        const parameter = this.thisType.parameters.find(p => p.name === expr.name);
-        if (parameter) {
-            this.visitType = parameter.type;
-            return expr;
-        }
-
-        throw new Error("Parameter not found: " + expr.name);
+        this.visitType = expr.type;
+        return expr;
     }
 
     visitVariableExpression(expr: TstVariableExpression): TstExpression {
