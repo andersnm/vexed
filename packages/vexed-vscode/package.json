@@ -2,11 +2,24 @@
   "name": "vexed-syntax",
   "displayName": "Vexed DSL Syntax",
   "version": "0.0.1",
-  "publisher": "local",
-  "engines": { "vscode": "*" },
+  "publisher": "andersnm",
+  "engines": {
+    "vscode": "*"
+  },
+  "scripts": { 
+    "build": "vsce package"
+  },
   "contributes": {
     "languages": [
-      { "id": "vexed", "aliases": ["Vexed DSL"], "extensions": [".vexed"] }
+      {
+        "id": "vexed",
+        "aliases": [
+          "Vexed DSL"
+        ],
+        "extensions": [
+          ".vexed"
+        ]
+      }
     ],
     "grammars": [
       {
@@ -15,5 +28,8 @@
         "path": "./syntaxes/vexed.tmLanguage.json"
       }
     ]
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^3.7.1"
   }
 }
