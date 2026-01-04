@@ -3,6 +3,12 @@ import { TypeDefinition } from "../TstType.js";
 import { TstScope } from "./TstReduceExpressionVisitor.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
 
+export const printScope = (scope: TstScope): string => {
+    const printer = new TstPrintVisitor();
+    printer.printScope(scope);
+    return printer.output.join("");
+}
+
 export const printExpression = (expr: TstExpression|TstExpression[]|undefined): string => {
     if (!expr) return "<undefined";
     const printer = new TstPrintVisitor();
@@ -92,18 +98,19 @@ export class TstPrintVisitor extends TstReplaceVisitor {
             const propertyName = property.name;
             this.printIndent();
 
-            const propExpr = instanceType.resolveProperty(obj, propertyName);
-            if (!propExpr) {
-                throw new Error("Property expression not found: " + instanceType.name + "." + propertyName);
-            }
-
             const propertyMember = instanceType.getProperty(propertyName);
             if (!propertyMember) {
                 throw new Error("Property member not found: " + instanceType.name + "." + propertyName);
             }
 
             this.output.push(propertyName + ": " + propertyMember.type.name + " = ");
-            this.visit(propExpr);
+
+            const propExpr = instanceType.resolveProperty(obj, propertyName);
+            if (propExpr) {
+                this.visit(propExpr);
+            } else {
+                this.output.push("<unresolved>");
+            }
             this.output.push("\n");
         }
     }
@@ -118,7 +125,8 @@ export class TstPrintVisitor extends TstReplaceVisitor {
     }
 
     printScope(scope: TstScope) {
-        this.output.push("(scope: ");
+        const thisType = scope.thisObject ? scope.thisObject[TypeMeta] : null;
+        this.output.push("(scope: this=" + thisType?.name + ", vars=");
         scope.variables.forEach((param, index) => {
             this.output.push(param.name + "=");
             this.visit(param.value);
@@ -171,14 +179,19 @@ export class TstPrintVisitor extends TstReplaceVisitor {
             return expr;
         }
 
-        const propertyNames: string[] = [];
-        getPropertyNames(instanceType, propertyNames);
-        this.output.push("(#" + instanceType.name + ": " + propertyNames.join(", ") + ")");
+        if (this.printedInstances.has(expr.instance)) {
+            const propertyNames: string[] = [];
+            getPropertyNames(instanceType, propertyNames);
+            this.output.push("(#" + instanceType.name + ": " + propertyNames.join(", ") + " ...)");
+            return expr;
+        }
 
-        // Full printObject can recurse infinitely, is also too verbose for most cases
-        // this.printObject(expr.instance);
+        this.output.push("(#" + instanceType.name + ": ");
 
+        // Full printObject is too verbose for most cases, but should be part of standard printouts
         this.printedInstances.add(expr.instance);
+        this.printObject(expr.instance);
+        this.output.push(")");
 
         return expr;
     }

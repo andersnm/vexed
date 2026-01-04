@@ -6,6 +6,8 @@ import { TstExpressionTypeVisitor } from "./visitors/TstExpressionTypeVisitor.js
 import { printExpression } from "./visitors/TstPrintVisitor.js";
 import { TstReduceExpressionVisitor, TstScope } from "./visitors/TstReduceExpressionVisitor.js";
 import { TstReduceScopeVisitor } from "./visitors/TstReduceScopeVisitor.js";
+import { TstInstanceVisitor } from "./visitors/TstInstanceVisitor.js";
+import { TstReplaceVisitor } from "./visitors/TstReplaceVisitor.js";
 import { TstBuilder } from "./TstBuilder.js";
 import { Parser } from "./Parser.js";
 
@@ -317,7 +319,11 @@ export class TstRuntime {
             // Doing it here works for most cases, but probably not for some cases when "this.XX" is used in a argument
             // to a base class constructor and resolves to the default instead of an overridden initializer.
 
-            obj[prop.name] = { exprType: "scoped", scope, expr: prop.initializer! } as TstScopedExpression;
+            if (prop.initializer) {
+                obj[prop.name] = { exprType: "scoped", scope, expr: prop.initializer } as TstScopedExpression;
+            } else {
+                obj[prop.name] = null as any as TstExpression;
+            }
         }
 
         for (let stmt of scopeType.initializers) {
@@ -388,25 +394,23 @@ export class TstRuntime {
         return obj;
     }
 
-    private reduceInstanceByType(reducer: TstReduceExpressionVisitor, obj: TstInstanceObject, scopeType: TypeDefinition, visitedInstances: Set<TstInstanceObject>): number {
-
-        let reduceCount = 0;
+    reduceInstanceProperties(reducer: TstReduceExpressionVisitor, obj: TstInstanceObject, scopeType: TypeDefinition) {
 
         if (scopeType.extends) {
-            reduceCount += this.reduceInstanceByType(reducer, obj, scopeType.extends, visitedInstances);
+            this.reduceInstanceProperties(reducer, obj, scopeType.extends);
         }
 
         for (let propertyDeclaration of scopeType.properties) {
-            const propertyScopedExpression = obj[propertyDeclaration.name];
+            // TODO/NOTE: resolveProperty also checks nested scopes
+            const propertyExpression = scopeType.resolveProperty(obj, propertyDeclaration.name);
+            if (!propertyExpression) {
+                continue;
+            }
 
-            // NOTE: Parameters should've been converted to scoped expressions so don't have to pass them again here
-            const reduced = reducer.visit(propertyScopedExpression);
+            const reduced = reducer.visit(propertyExpression);
 
-            reduceCount += reducer.reduceCount;
-
-            // Check if types match using the TstExpressionTypeVisitor
+            // Check if types match
             const reducedType = this.getExpressionType(reduced, obj[TypeMeta]);
-
             if (reducedType != propertyDeclaration.type) {
                 throw new Error(`Type mismatch when reducing property ${propertyDeclaration.name} of type ${propertyDeclaration.type.name}, got ${reducedType?.name || "unknown"}`);
             }
@@ -415,24 +419,32 @@ export class TstRuntime {
         }
 
         // console.log("Promises: ", reducer.promiseExpressions);
-
-        return reduceCount;
     }
 
-    reduceScopesInInstance(scopeReducer: TstReduceScopeVisitor, obj: TstInstanceObject, scopeType: TypeDefinition) {
+    visitInstanceProperties(visitor: TstReplaceVisitor, obj: TstInstanceObject, scopeType: TypeDefinition) {
         if (scopeType.extends) {
-            this.reduceScopesInInstance(scopeReducer, obj, scopeType.extends);
+            this.visitInstanceProperties(visitor, obj, scopeType.extends);
         }
 
         for (let propertyDeclaration of scopeType.properties) {
-            scopeReducer.visit(obj[propertyDeclaration.name]);
+            // TODO: why not resolveProperty - visit native results? need resolveProperty deep true/false?
+            if (!obj[propertyDeclaration.name]) {
+                continue;
+            }
+            visitor.visit(obj[propertyDeclaration.name]);
         }
+    }
+
+    getInstancesFromRoot(obj: TstInstanceObject): TstInstanceObject[] {
+        const instanceVisitor = new TstInstanceVisitor(this);
+        instanceVisitor.visited.add(obj);
+        this.visitInstanceProperties(instanceVisitor, obj, obj[TypeMeta]);
+        return [ ... instanceVisitor.visited];
     }
 
     async reduceInstance(obj: TstInstanceObject) {
         const type = obj[TypeMeta];
-        const visitedInstances = new Set<TstInstanceObject>();
-        
+
         const scope: TstScope = {
             parent: this.globalScope,
             thisObject: obj,
@@ -443,11 +455,20 @@ export class TstRuntime {
         let promiseExpressions: TstPromiseExpression[] = [];
         while (true) {
             // console.log("[TstRuntime] Reduction iteration", counter);
-            const scopeReducer = new TstReduceScopeVisitor(this);
-            this.reduceScopesInInstance(scopeReducer, obj, type);
 
-            const reducer = new TstReduceExpressionVisitor(this, scope, visitedInstances);
-            if (!this.reduceInstanceByType(reducer, obj, type, visitedInstances)) {
+            const instances = this.getInstancesFromRoot(obj);
+            const reducer = new TstReduceExpressionVisitor(this, scope);
+            const scopeReducer = new TstReduceScopeVisitor(this);
+
+            for (let instance of instances) {
+                const instanceType = instance[TypeMeta];
+                this.visitInstanceProperties(scopeReducer, instance, instanceType);
+                this.reduceInstanceProperties(reducer, instance, instanceType);
+            }
+
+            reducer.reduceCount += scopeReducer.reduceCount;
+
+            if (reducer.reduceCount === 0) {
                 promiseExpressions = reducer.promiseExpressions;
                 break;
             }

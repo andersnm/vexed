@@ -1,14 +1,15 @@
 // Reduce variables in all distinct scopes, otherwise leave TST unchanged
 
-import { isInstanceExpression, TstExpression, TstScopedExpression } from "../TstExpression.js";
+import { isInstanceExpression, TstExpression, TstPromiseExpression, TstScopedExpression } from "../TstExpression.js";
 import { TstRuntime } from "../TstRuntime.js";
-import { printExpression } from "./TstPrintVisitor.js";
 import { TstReduceExpressionVisitor, TstScope } from "./TstReduceExpressionVisitor.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
 
 export class TstReduceScopeVisitor extends TstReplaceVisitor {
 
     visitedScopes: Set<TstScope> = new Set();
+    reduceCount: number = 0;
+    promiseExpressions: TstPromiseExpression[] = [];
 
     constructor(private runtime: TstRuntime) {
         super();
@@ -43,6 +44,8 @@ export class TstReduceScopeVisitor extends TstReplaceVisitor {
 
             // console.log("Reduced scope variable:", variable.name, "from", printExpression(variable.value), "to", printExpression(reducedValue));
             scope.variables[i].value = reducedValue;
+            this.reduceCount += reducer.reduceCount;
+            this.promiseExpressions.push(...reducer.promiseExpressions);
         }
     }
 }

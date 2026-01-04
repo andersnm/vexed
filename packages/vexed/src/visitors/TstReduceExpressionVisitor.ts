@@ -1,6 +1,5 @@
-import { InstanceMeta, isInstanceExpression, isMethodExpression, isReturnStatement, isScopedExpression, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
+import { InstanceMeta, isInstanceExpression, isMethodExpression, isReturnStatement, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
 import { TstRuntime } from "../TstRuntime.js";
-import { printExpression } from "./TstPrintVisitor.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
 
 export interface TstScope {
@@ -22,12 +21,26 @@ export function getScopeParameter(scope: TstScope, name: string): TstVariable | 
     return null;
 }
 
+function isScopeReduced(scope: TstScope): boolean {
+    for (let variable of scope.variables) {
+        if (!isInstanceExpression(variable.value)) {
+            return false;
+        }
+    }
+
+    if (scope.parent) {
+        return isScopeReduced(scope.parent);
+    }
+
+    return true;
+}
+
 export class TstReduceExpressionVisitor extends TstReplaceVisitor {
 
     reduceCount: number = 0;
     promiseExpressions: TstPromiseExpression[] = [];
 
-    constructor(private runtime: TstRuntime, private scope: TstScope, private visitedInstances: Set<TstInstanceObject> = new Set()) {
+    constructor(private runtime: TstRuntime, private scope: TstScope) {
         super();
     }
 
@@ -90,7 +103,14 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
     visitNewExpression(expr: TstNewExpression): TstExpression {
         this.reduceCount++;
 
-        const instance = expr.type.createInstance(expr.args);
+        const args = expr.args.map(arg => ({
+            exprType: "scoped",
+            expr: arg,
+            scope: this.scope,
+        } as TstScopedExpression));
+
+        const instance = expr.type.createInstance(args);
+
         return {
             exprType: "instance",
             instance: instance,
@@ -101,21 +121,20 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         // Multiple expressions can reference the same scope, so this is not the place
         // to reduce the scope itself. This is done separately with the TstReduceScopeVisitor.
 
-        let canReduce = true;
-        for (let variable of expr.scope.variables) {
-            if (!isInstanceExpression(variable.value)) {
-                canReduce = false;
-                continue;
-            }
+        if (!expr.expr) {
+            // Should not happen
+            throw new Error("Internal error: Empty scoped expression");
         }
 
-        const scopeVisitor = new TstReduceExpressionVisitor(this.runtime, expr.scope, this.visitedInstances);
+        const canReduce = isScopeReduced(expr.scope);
+
+        const scopeVisitor = new TstReduceExpressionVisitor(this.runtime, expr.scope);
         const visited = scopeVisitor.visit(expr.expr);
         this.promiseExpressions.push(...scopeVisitor.promiseExpressions);
 
         // Reduce scope only when:
         //  - the scope expression cannot be reduced no more
-        //  - all parameters in the scope are reduced to instances
+        //  - all parameters in the scope - and its parent scopes - are reduced to instances
         if (canReduce && scopeVisitor.reduceCount === 0) {
             this.reduceCount++;
             return visited;
@@ -130,26 +149,9 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
     }
 
     visitInstanceExpression(expr: TstInstanceExpression): TstExpression {
-        // Should be no-op if instance was already resolved during this visitation
-        if (this.visitedInstances.has(expr.instance)) {
-            return expr;
-        }
 
-        this.visitedInstances.add(expr.instance);
-
-        const instanceType = expr.instance[TypeMeta];
-
-        for (let propertyName in expr.instance) {
-            // TODO: does not have to write reduce native properties back to object, but presumed harmless at the moment
-            const propertyExpr = instanceType.resolveProperty(expr.instance, propertyName);
-            if (!propertyExpr) {
-                throw new Error("Property " + propertyName + " not found on instance of type " + instanceType.name);
-            }
-
-            const reduced = this.visit(propertyExpr);
-            expr.instance[propertyName] = reduced;
-        }
         return expr;
+
     }
 
     visitPromiseExpression(expr: TstPromiseExpression): TstExpression {

@@ -54,8 +54,17 @@ export class TypeDefinition {
 
     resolveProperty(instance: TstInstanceObject, propertyName: string): TstExpression | null {
         // Native objects can override
-        const property = instance[propertyName];
-        return property || null;
+        const typeMember = this.properties.find(p => p.name == propertyName);
+        if (typeMember) {
+            const property = instance[propertyName];
+            return property || null;
+        }
+
+        if (this.extends) {
+            return this.extends.resolveProperty(instance, propertyName);
+        }
+
+        throw new Error("Property not found: " + this.name + "." + propertyName);
     }
 
     resolveIndex(instance: TstInstanceObject, index: number): TstExpression | null {

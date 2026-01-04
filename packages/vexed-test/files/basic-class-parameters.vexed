@@ -4,8 +4,16 @@ class Base(string strValue, int intValue, bool boolValue) {
   public bool baseBool = boolValue;
 }
 
+class Sidecar(Base baseObj) {
+  public string sidecarStr = baseObj.baseStr;
+  public int sidecarNum = baseObj.baseNum;
+  public bool sidecarBool = baseObj.baseBool;
+}
+
 class Main() extends Base("String, it is", 321, true) {
   public string mainStr = "It's a string";
   public int mainNum = 123;
   public bool mainBool = true;
+  public Base mainBase = Base(this.mainStr, this.mainNum, this.mainBool);
+  public Sidecar mainSidecar = Sidecar(this.mainBase);
 }
