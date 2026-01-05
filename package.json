@@ -2,7 +2,12 @@
   "name": "vexed-monorepo",
   "private": true,
   "workspaces": [
-    "packages/*"
+    "packages/vexed",
+    "packages/vexed-test",
+    "packages/vexed-digitalocean",
+    "packages/vexed-cli"
+  ],
+  "_disabledWorkspaces":[
   ],
   "scripts": {
     "build": "npm run build -ws",

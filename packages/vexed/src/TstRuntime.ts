@@ -233,6 +233,9 @@ class IoTypeDefinition extends TypeDefinition {
 }
 
 export class TstRuntime {
+    verbose: boolean = false;
+    maxSteps: number = 1000;
+
     types: TypeDefinition[] = [];
     globalScope: TstScope = {
         parent: null,
@@ -454,7 +457,7 @@ export class TstRuntime {
         let counter = 0;
         let promiseExpressions: TstPromiseExpression[] = [];
         while (true) {
-            // console.log("[TstRuntime] Reduction iteration", counter);
+            if (this.verbose) console.log("[TstRuntime] Reduction iteration", counter);
 
             const instances = this.getInstancesFromRoot(obj);
             const reducer = new TstReduceExpressionVisitor(this, scope);
@@ -474,7 +477,7 @@ export class TstRuntime {
             }
 
             counter++;
-            if (counter > 1000) {
+            if (counter > this.maxSteps) {
                 throw new Error("Too many reduction iterations, possible infinite loop");
             }
         }

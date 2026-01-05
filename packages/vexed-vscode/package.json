@@ -3,6 +3,9 @@
   "displayName": "Vexed DSL Syntax",
   "version": "0.0.1",
   "publisher": "andersnm",
+  "repository": {
+    "url": "https://github.com/andersnm/vexed"
+  },
   "engines": {
     "vscode": "*"
   },

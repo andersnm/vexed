@@ -4,94 +4,62 @@
 
 ## What works
 
-- Parser pipeline: CST -> AST -> TST
-- Type system: Built-in string, int and typed arrays
+- Parser pipeline: CST -> AST -> TST -> JSON
+- Type system: Built-in string, int, bool and typed arrays
 - Classes and inheritance
 - Constructors
-- String, int array literals
+- Pure functions
 - Expressions
+- Async `PromiseExpression`
 - Lazy runtime reduction model
+- Library version suitable for plain JSON
 
 ## What's TODO
 
 - Empty array literal (contextual typing)
-- Functions + SSA
-- `PromiseExpression`
-- Library version suitable for plain JSON
+- Negative numbers, decimal numbers
 - Native cloud provider bindings
 - Iterative, multi-stage infra migrations
 
 # Example
 
 ```ts
-class AbstractClass2(string alltheway) {
-  public string name;
-  public string[] description = [ "Default value", "Myagki snak" ];
-  public string can_we_do_it = this.name;
-  public string alltheway = alltheway;
-  public int lenn = this.description.length;
-  public string arrayElemement = this.description[1];
-  public string[] lele = string[](); # Empty array literal not working yet
-}
+class Main() {
+  int adder(int a, int b) {
+    int localInt = 2;
+    return a + b + localInt + this.memberInt;
+  }
 
-class Concrete(string passor, Main cyclic) extends AbstractClass2(passor) {
-  name = passor;
-  public Main cycle = cyclic;
-}
+  int factorial(int n) {
+    if (n <= 1) {
+      return 1;
+    }
 
-class Temp(string l, int i, Main self) {
-  public int len = l.length;
-  public string copy = l;
-  public string ff = self.description[i];
-}
+    int next = n;
+    next = next - 1;
+    return n * this.factorial(next);
+  }
 
-class Main() extends Concrete(this.test.name, this) {
-  private Concrete test = Concrete("Woop", this);
-  public string t56 = "It's a string";
-  public Temp tmp = Temp("This string has length", 0, this);
-  public Temp tmp2 = Temp("New version", 1, this);
+  public int memberInt = 7;
+  public int value1 = this.adder(1, 1);
+  public int value2 = this.adder(1, this.value1);
+  public int fac5 = this.factorial(5);
 }
+```
 
+Compile to JSON:
+
+```bash
+$ vexed-cli json .\packages\vexed-test\files\basic-function.vexed
 ```
 
 Output:
 
 ```json
 {
-  name: string = ""Woop""
-  description: string[] = (#string[])[""Default value"", ""Myagki snak""]{
-    length: int = 2
-  }
-  can_we_do_it: string = ""Woop""
-  alltheway: string = ""Woop""
-  lenn: int = 2
-  arrayElemement: string = ""Myagki snak""
-  lele: string[] = (#string[])[]{
-    length: int = 0
-  }
-  cycle: Main = (#Main) { ... }
-  test: Concrete = (#Concrete){
-    name: string = ""Woop""
-    description: string[] = (#string[]) { ... }
-    can_we_do_it: string = ""Woop""
-    alltheway: string = ""Woop""
-    lenn: int = 2
-    arrayElemement: string = ""Myagki snak""
-    lele: string[] = (#string[])[]{
-      length: int = 0
-    }
-    cycle: Main = (#Main) { ... }
-  }
-  t56: string = ""It's a string""
-  tmp: Temp = (#Temp){
-    len: int = 24
-    copy: string = ""This string has length""
-    ff: string = ""Default value""
-  }
-  tmp2: Temp = (#Temp){
-    len: int = 13
-    copy: string = ""New version""
-    ff: string = ""Myagki snak""
-  }
+  "memberInt": 7,
+  "value1": 11,
+  "value2": 21,
+  "fac5": 120
 }
 ```

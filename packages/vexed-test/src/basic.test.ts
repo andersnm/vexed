@@ -175,7 +175,7 @@ test('Parse call-once', async () => {
 
     await runtime.reduceInstance(instance);
 
-    const count = logs.filter(l => l.includes("Hello from expensive")).length;
+    const count = logs.filter(l => l === "Io.print: \"Hello from expensive\"").length;
     assert.equal(count, 1);
 
     checkInstanceProperty(instance, "x", runtime.getType("int"), 2);
