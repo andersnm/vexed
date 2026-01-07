@@ -17,7 +17,7 @@ async function compileInstance(runtime: TstRuntime, fileName: string): Promise<T
 }
 
 function checkScopedInstanceProperty(instance: TstInstanceObject, propName: string, expectedType: TypeDefinition, expectedValue: any) {
-    const propExpr = instance[TypeMeta].resolveProperty(instance, propName);
+    const propExpr = instance[TypeMeta].resolvePropertyExpression(instance, propName);
 
     assert.ok(propExpr);
     assert.ok(isScopedExpression(propExpr));
@@ -28,7 +28,7 @@ function checkScopedInstanceProperty(instance: TstInstanceObject, propName: stri
 }
 
 function checkScopedParameterProperty(instance: TstInstanceObject, propName: string, expectedType: TypeDefinition, expectedName: string) {
-    const propExpr = instance[TypeMeta].resolveProperty(instance, propName);
+    const propExpr = instance[TypeMeta].resolvePropertyExpression(instance, propName);
 
     assert.ok(propExpr);
     assert.ok(isScopedExpression(propExpr));
@@ -39,7 +39,7 @@ function checkScopedParameterProperty(instance: TstInstanceObject, propName: str
 }
 
 function checkInstanceProperty(instance: TstInstanceObject, propName: string, expectedType: TypeDefinition, expectedValue: any) {
-    const instanceExpr = instance[TypeMeta].resolveProperty(instance, propName);
+    const instanceExpr = instance[TypeMeta].resolvePropertyExpression(instance, propName);
 
     assert.ok(instanceExpr);
     assert.ok(isInstanceExpression(instanceExpr));

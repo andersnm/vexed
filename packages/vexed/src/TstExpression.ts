@@ -3,6 +3,7 @@ import { TstScope } from "./visitors/TstReduceExpressionVisitor.js";
 
 export const TypeMeta: unique symbol = Symbol("TypeMeta");
 export const InstanceMeta: unique symbol = Symbol("InstanceMeta");
+export const ScopeMeta: unique symbol = Symbol("ScopeMeta");
 
 export function isDecimalLiteral(expr: TstExpression): expr is TstDecimalLiteralExpression {
     return expr.exprType === "decimalLiteral";
@@ -56,10 +57,6 @@ export function isUnaryExpression(expr: TstExpression): expr is TstUnaryExpressi
     return expr.exprType === "unary";
 }
 
-export function isMethodExpression(expr: TstExpression): expr is TstMethodExpression {
-    return expr.exprType === "method";
-}
-
 export function isPromiseExpression(expr: TstExpression): expr is TstPromiseExpression {
     return expr.exprType === "promise";
 }
@@ -98,6 +95,7 @@ export interface TstInitializer {
 export type TstInstanceObject = {
     [TypeMeta]: TypeDefinition;
     [InstanceMeta]: any;
+    [ScopeMeta]: Map<TypeDefinition, TstScope>;
     [key: string]: TstExpression; // TODO: it's really just an expression here when it reduces.
 };
 
@@ -189,12 +187,6 @@ export interface TstUnaryExpression extends TstExpression {
     exprType: "unary";
     operator: string;
     operand: TstExpression;
-}
-
-export interface TstMethodExpression extends TstExpression {
-    exprType: "method";
-    method: TypeMethod;
-    scope: TstScope;
 }
 
 export interface TstPromiseExpression extends TstExpression {

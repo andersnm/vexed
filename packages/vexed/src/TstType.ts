@@ -17,6 +17,7 @@ export interface TypeParameter {
 
 export interface TypeMethod {
     name: string;
+    declaringType: TypeDefinition;
     parameters: TypeParameter[];
     returnType: TypeDefinition;
     body: TstStatement[];
@@ -52,16 +53,38 @@ export class TypeDefinition {
         return this.runtime.createInstance(this, args)
     }
 
-    resolveProperty(instance: TstInstanceObject, propertyName: string): TstExpression | null {
-        // Native objects can override
-        const typeMember = this.properties.find(p => p.name == propertyName);
-        if (typeMember) {
-            const property = instance[propertyName];
-            return property || null;
+    resolvePropertyExpression(instance: TstInstanceObject, propertyName: string): TstExpression | null {
+        const property = this.properties.find(p => p.name == propertyName);
+        if (property) {
+            return instance[propertyName];
         }
 
         if (this.extends) {
-            return this.extends.resolveProperty(instance, propertyName);
+            return this.extends.resolvePropertyExpression(instance, propertyName);
+        }
+
+        throw new Error("Property not found: " + this.name + "." + propertyName);
+    }
+
+    resolveProperty(instance: TstInstanceObject, propertyName: string): TstExpression | null {
+        // Native objects can override
+        const property = this.properties.find(p => p.name == propertyName);
+        if (!property) {
+            throw new Error("Property not found: " + this.name + "." + propertyName);
+        }
+
+        return instance[propertyName];
+    }
+
+    resolvePropertyDeep(instance: TstInstanceObject, propertyName: string): TstExpression | null {
+        // Native objects can override
+        const typeMember = this.properties.find(p => p.name == propertyName);
+        if (typeMember) {
+            return this.resolveProperty(instance, propertyName);
+        }
+
+        if (this.extends) {
+            return this.extends.resolvePropertyDeep(instance, propertyName);
         }
 
         throw new Error("Property not found: " + this.name + "." + propertyName);

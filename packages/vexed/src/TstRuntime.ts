@@ -1,6 +1,6 @@
 import { readFile } from "fs/promises";
 import path from "path";
-import { InstanceMeta, isInstanceExpression, TstExpression, TstInstanceExpression, TstInstanceObject, TstMethodExpression, TstPromiseExpression, TstScopedExpression, TstVariable, TypeMeta } from "./TstExpression.js";
+import { InstanceMeta, isInstanceExpression, ScopeMeta, TstExpression, TstInstanceExpression, TstInstanceObject, TstPromiseExpression, TstScopedExpression, TstVariable, TypeMeta } from "./TstExpression.js";
 import { TypeDefinition, TypeMethod } from "./TstType.js";
 import { TstExpressionTypeVisitor } from "./visitors/TstExpressionTypeVisitor.js";
 import { printExpression } from "./visitors/TstPrintVisitor.js";
@@ -164,6 +164,7 @@ class IoTypeDefinition extends TypeDefinition {
     initializeType(): void {
         this.methods.push({
             name: "print",
+            declaringType: this,
             parameters: [
                 { name: "message", type: this.runtime.getType("any") },
             ],
@@ -173,6 +174,7 @@ class IoTypeDefinition extends TypeDefinition {
 
         this.methods.push({
             name: "readTextFile",
+            declaringType: this,
             parameters: [
                 { name: "path", type: this.runtime.getType("string") },
             ],
@@ -241,6 +243,7 @@ export class TstRuntime {
         parent: null,
         thisObject: null as any,
         variables: [],
+        comment: "global",
     };
 
     constructor() {
@@ -302,7 +305,10 @@ export class TstRuntime {
             parent: this.globalScope,
             thisObject: obj,
             variables: chainNamedArguments,
+            comment: scopeType.name + ".constructor(...)",
         };
+
+        obj[ScopeMeta].set(scopeType, scope);
 
         // console.log("Named arguments now", scopeType.name, chainNamedArguments, args, "props", scopeType.properties.map(p => p.name).join(","));
 
@@ -336,10 +342,6 @@ export class TstRuntime {
             }
 
             obj[stmt.name] = { exprType: "scoped", scope, expr: stmt.argument } as TstScopedExpression;
-        }
-
-        for (let method of scopeType.methods) {
-            obj[method.name] = { exprType: "method", method, scope } as TstMethodExpression;
         }
     }
 
@@ -391,6 +393,7 @@ export class TstRuntime {
         const obj: TstInstanceObject = { 
             [TypeMeta]: type,
             [InstanceMeta]: userData,
+            [ScopeMeta]: new Map<TypeDefinition, TstScope>(),
         };
 
         this.setupInstanceScope(obj, type, args);
@@ -404,7 +407,6 @@ export class TstRuntime {
         }
 
         for (let propertyDeclaration of scopeType.properties) {
-            // TODO/NOTE: resolveProperty also checks nested scopes
             const propertyExpression = scopeType.resolveProperty(obj, propertyDeclaration.name);
             if (!propertyExpression) {
                 continue;
@@ -446,33 +448,30 @@ export class TstRuntime {
     }
 
     async reduceInstance(obj: TstInstanceObject) {
-        const type = obj[TypeMeta];
-
-        const scope: TstScope = {
-            parent: this.globalScope,
-            thisObject: obj,
-            variables: [],
-        };
-
         let counter = 0;
         let promiseExpressions: TstPromiseExpression[] = [];
         while (true) {
             if (this.verbose) console.log("[TstRuntime] Reduction iteration", counter);
 
             const instances = this.getInstancesFromRoot(obj);
-            const reducer = new TstReduceExpressionVisitor(this, scope);
-            const scopeReducer = new TstReduceScopeVisitor(this);
+
+            let reduceCount = 0;
 
             for (let instance of instances) {
                 const instanceType = instance[TypeMeta];
+
+                const reducer = new TstReduceExpressionVisitor(this, this.globalScope);
+                const scopeReducer = new TstReduceScopeVisitor(this);
+
                 this.visitInstanceProperties(scopeReducer, instance, instanceType);
                 this.reduceInstanceProperties(reducer, instance, instanceType);
+                reduceCount += reducer.reduceCount;
+                reduceCount += scopeReducer.reduceCount;
+                promiseExpressions.push(...reducer.promiseExpressions);
+                promiseExpressions.push(...scopeReducer.promiseExpressions);
             }
 
-            reducer.reduceCount += scopeReducer.reduceCount;
-
-            if (reducer.reduceCount === 0) {
-                promiseExpressions = reducer.promiseExpressions;
+            if (reduceCount === 0) {
                 break;
             }
 

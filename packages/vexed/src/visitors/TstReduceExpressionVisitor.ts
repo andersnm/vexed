@@ -1,11 +1,13 @@
-import { InstanceMeta, isInstanceExpression, isMethodExpression, isReturnStatement, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
+import { InstanceMeta, isInstanceExpression, isReturnStatement, ScopeMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
 import { TstRuntime } from "../TstRuntime.js";
+import { printExpression, printScope } from "./TstPrintVisitor.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
 
 export interface TstScope {
     parent: TstScope | null;
     thisObject: TstInstanceObject;
     variables: TstVariable[];
+    comment?: string;
 }
 
 export function getScopeParameter(scope: TstScope, name: string): TstVariable | null {
@@ -49,7 +51,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
 
         if (isInstanceExpression(objectExpression)) {
             const instanceType = objectExpression.instance[TypeMeta];
-            const propertyExpression = instanceType.resolveProperty(objectExpression.instance, expr.property);
+            const propertyExpression = instanceType.resolvePropertyDeep(objectExpression.instance, expr.property);
 
             if (propertyExpression && isInstanceExpression(propertyExpression)) {
                 this.reduceCount++;
@@ -105,8 +107,9 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
 
         const args = expr.args.map(arg => ({
             exprType: "scoped",
-            expr: arg,
+            expr: this.visit(arg),
             scope: this.scope,
+            comment: "new " + expr.type.name + "(...)",
         } as TstScopedExpression));
 
         const instance = expr.type.createInstance(args);
@@ -126,11 +129,12 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
             throw new Error("Internal error: Empty scoped expression");
         }
 
-        const canReduce = isScopeReduced(expr.scope);
-
         const scopeVisitor = new TstReduceExpressionVisitor(this.runtime, expr.scope);
         const visited = scopeVisitor.visit(expr.expr);
         this.promiseExpressions.push(...scopeVisitor.promiseExpressions);
+        this.reduceCount += scopeVisitor.reduceCount;
+
+        const canReduce = isScopeReduced(expr.scope);
 
         // Reduce scope only when:
         //  - the scope expression cannot be reduced no more
@@ -139,7 +143,6 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
             this.reduceCount++;
             return visited;
         }
-        this.reduceCount += scopeVisitor.reduceCount;
 
         return {
             exprType: "scoped",
@@ -251,22 +254,19 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         }));
 
         if (isInstanceExpression(objectExpr)) {
-            const methodExpression = objectExpr.instance[expr.method.name];
-            if (!methodExpression) {
-                throw new Error("Method " + expr.method.name + " not found on instance of type " + objectExpr.instance[TypeMeta].name);
-            }
+            const objectType = expr.method.declaringType;
 
-            if (!isMethodExpression(methodExpression)) {
-                throw new Error("Property " + expr.method.name + " is not a method on instance of type " + objectExpr.instance[TypeMeta].name);
+            const methodScope = objectExpr.instance[ScopeMeta].get(objectType)
+            if (!methodScope) {
+                throw new Error("Method scope not found for method " + expr.method.name + " on type " + objectType.name);
             }
 
             const scope: TstScope = {
-                parent: methodExpression.scope, // the scope of the constructor
+                parent: methodScope, // the scope of the constructor
                 thisObject: objectExpr.instance,
                 variables: chainNamedArguments,
+                comment: expr.method.declaringType.name + "::" + expr.method.name + "(...)"
             };
-
-            const objectType = objectExpr.instance[TypeMeta];
 
             // Functions may "refuse" to invoke, f.ex if expecting a resolved parameter - which is implementation-specific.
             const returnExpr = objectType.callFunction(expr.method, scope);

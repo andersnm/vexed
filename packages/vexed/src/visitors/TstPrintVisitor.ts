@@ -3,9 +3,9 @@ import { TypeDefinition } from "../TstType.js";
 import { TstScope } from "./TstReduceExpressionVisitor.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
 
-export const printScope = (scope: TstScope): string => {
+export const printScope = (scope: TstScope, verbose: boolean = false): string => {
     const printer = new TstPrintVisitor();
-    printer.printScope(scope);
+    printer.printScope(scope, verbose);
     return printer.output.join("");
 }
 
@@ -105,7 +105,7 @@ export class TstPrintVisitor extends TstReplaceVisitor {
 
             this.output.push(propertyName + ": " + propertyMember.type.name + " = ");
 
-            const propExpr = instanceType.resolveProperty(obj, propertyName);
+            const propExpr = instanceType.resolvePropertyExpression(obj, propertyName);
             if (propExpr) {
                 this.visit(propExpr);
             } else {
@@ -124,12 +124,16 @@ export class TstPrintVisitor extends TstReplaceVisitor {
         });
     }
 
-    printScope(scope: TstScope) {
+    printScope(scope: TstScope, verbose: boolean = false) {
         const thisType = scope.thisObject ? scope.thisObject[TypeMeta] : null;
-        this.output.push("(scope: this=" + thisType?.name + ", vars=");
+        this.output.push("(scope " + scope.comment + ": this=" + thisType?.name + "; vars=");
         scope.variables.forEach((param, index) => {
             this.output.push(param.name + "=");
-            this.visit(param.value);
+            if (verbose) {
+                this.visit(param.value);
+            } else {
+                this.output.push("<expr:" + param.value.exprType + ">");
+            }
             if (index < scope.variables.length - 1) {
                 this.output.push(", ");
             }

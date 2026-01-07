@@ -52,7 +52,7 @@ class TstJsonFormatter {
 
         for (let property of instanceType.properties) {
             const propertyName = property.name;
-            const propExpr = instanceType.resolveProperty(obj, propertyName);
+            const propExpr = instanceType.resolvePropertyExpression(obj, propertyName);
             if (propExpr) {
                 outObj[propertyName] = this.printInstanceExpression(propExpr);
             } else {
@@ -75,7 +75,7 @@ class TstJsonFormatter {
         }
 
         if (this.force) {
-            return "<non-instance expression>";
+            return "<expr:" + expr.exprType + ">";
         }
 
         throw new Error("Cannot print non-instance expression: " + expr.exprType);

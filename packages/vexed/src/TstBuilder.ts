@@ -270,6 +270,7 @@ export class TstBuilder {
 
                         type.methods.push({
                             name: unit.name,
+                            declaringType: type,
                             returnType: methodType,
                             parameters: unit.parameters.map(param => ({
                                 name: param.name,
