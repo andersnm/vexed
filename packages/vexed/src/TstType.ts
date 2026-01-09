@@ -1,4 +1,4 @@
-import { InstanceMeta, TstExpression, TstInitializer, TstInstanceExpression, TstInstanceObject, TstScopedExpression, TstStatement, TstStatementExpression } from "./TstExpression.js";
+import { InstanceMeta, RuntimeMeta, TstExpression, TstInitializer, TstInstanceExpression, TstInstanceObject, TstScopedExpression, TstStatement, TstStatementExpression } from "./TstExpression.js";
 import { TstRuntime } from "./TstRuntime.js";
 import { TstScope } from "./visitors/TstReduceExpressionVisitor.js";
 
@@ -51,6 +51,13 @@ export class TypeDefinition {
     createInstance(args: TstExpression[]): TstInstanceObject {
         // Native object can override and call createInstance with userData
         return this.runtime.createInstance(this, args)
+    }
+
+    sealedInstance(instance: TstInstanceObject): void {
+        // Native objects can override to initialize its InstanceMeta when all properties are set.
+        if (this.extends) {
+            this.extends.sealedInstance(instance); // :( TODO: recurse
+        }
     }
 
     resolvePropertyExpression(instance: TstInstanceObject, propertyName: string): TstExpression | null {

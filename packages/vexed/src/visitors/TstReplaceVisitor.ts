@@ -1,4 +1,4 @@
-import { isBinaryExpression, isDecimalLiteral, isFunctionCall, isIfStatement, isIndexExpression, isInstanceExpression, isLocalVarAssignment, isLocalVarDeclaration, isMemberExpression, isNewExpression, isParameter, isPromiseExpression, isReturnStatement, isScopedExpression, isStatementExpression, isThisExpression, isUnaryExpression, isVariableExpression, TstBinaryExpression, TstDecimalLiteralExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstVariableExpression } from "../TstExpression.js";
+import { isBinaryExpression, isDecimalLiteral, isFunctionCall, isIfStatement, isIndexExpression, isInstanceExpression, isLocalVarAssignment, isLocalVarDeclaration, isMemberExpression, isMissingInstanceExpression, isNativeMemberExpression, isNewExpression, isParameter, isPromiseExpression, isReturnStatement, isScopedExpression, isStatementExpression, isThisExpression, isUnaryExpression, isVariableExpression, TstBinaryExpression, TstDecimalLiteralExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstMissingInstanceExpression, TstNativeMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstVariableExpression } from "../TstExpression.js";
 
 export class TstReplaceVisitor {
 
@@ -47,6 +47,12 @@ export class TstReplaceVisitor {
         }
         if (isPromiseExpression(expr)) {
             return this.visitPromiseExpression(expr);
+        }
+        if (isNativeMemberExpression(expr)) {
+            return this.visitNativeMemberExpression(expr);
+        }
+        if (isMissingInstanceExpression(expr)) {
+            return this.visitMissingInstanceExpression(expr);
         }
 
         if (expr.exprType === "null") {
@@ -101,6 +107,25 @@ export class TstReplaceVisitor {
             promiseError: expr.promiseError,
             promiseValue: expr.promiseValue,
         } as TstPromiseExpression;
+    }
+
+    visitNativeMemberExpression(expr: TstNativeMemberExpression): TstExpression {
+        return {
+            exprType: expr.exprType,
+            object: this.visit(expr.object),
+            callback: expr.callback,
+            memberType: expr.memberType,
+        } as TstNativeMemberExpression;
+    }
+
+    visitMissingInstanceExpression(expr: TstMissingInstanceExpression): TstExpression {
+        return {
+            exprType: expr.exprType,
+            error: expr.error,
+            instance: expr.instance,
+            meta: expr.meta,
+            propertyName: expr.propertyName,
+        } as TstMissingInstanceExpression;
     }
 
     visitFunctionCallExpression(expr: TstFunctionCallExpression): TstExpression {

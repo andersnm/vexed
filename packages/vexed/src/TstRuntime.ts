@@ -1,6 +1,6 @@
 import { readFile } from "fs/promises";
 import path from "path";
-import { InstanceMeta, isInstanceExpression, ScopeMeta, TstExpression, TstInstanceExpression, TstInstanceObject, TstPromiseExpression, TstScopedExpression, TstVariable, TypeMeta } from "./TstExpression.js";
+import { InstanceMeta, isInstanceExpression, RuntimeMeta, ScopeMeta, TstExpression, TstInstanceExpression, TstInstanceObject, TstPromiseExpression, TstScopedExpression, TstVariable, TypeMeta } from "./TstExpression.js";
 import { TypeDefinition, TypeMethod } from "./TstType.js";
 import { TstExpressionTypeVisitor } from "./visitors/TstExpressionTypeVisitor.js";
 import { printExpression } from "./visitors/TstPrintVisitor.js";
@@ -23,9 +23,8 @@ class BoolTypeDefinition extends TypeDefinition {
     }
 
     createInstance(args: TstExpression[]): TstInstanceObject {
-        return this.runtime.createInstance(this, args, false);
+        return this.runtime.createInstance(this, args, false, true);
     }
-
 }
 
 class StringTypeDefinition extends TypeDefinition {
@@ -43,7 +42,7 @@ class StringTypeDefinition extends TypeDefinition {
 
     createInstance(args: TstExpression[]): TstInstanceObject {
         // console.log("[StringTypeDefinition] Creating instance of type", this.name);
-        return this.runtime.createInstance(this, args, "");
+        return this.runtime.createInstance(this, args, "", true);
     }
 
     resolveProperty(instance: TstInstanceObject, propertyName: string): TstExpression | null {
@@ -66,7 +65,7 @@ class IntTypeDefinition extends TypeDefinition {
 
     createInstance(args: TstExpression[]): TstInstanceObject {
         // console.log("[IntTypeDefinition] Creating instance of type", this.name);
-        return this.runtime.createInstance(this, args, 0);
+        return this.runtime.createInstance(this, args, 0, true);
     }
 }
 
@@ -90,7 +89,7 @@ class ArrayBaseTypeDefinition extends TypeDefinition {
 
     createInstance(args: TstExpression[]): TstInstanceObject {
         // console.log("[ArrayBaseTypeDefinition] Creating instance of type", this.name);
-        return this.runtime.createInstance(this, args, []);
+        return this.runtime.createInstance(this, args, [], true);
     }
 
     resolveProperty(instance: TstInstanceObject, propertyName: string): TstExpression | null {
@@ -389,21 +388,24 @@ export class TstRuntime {
         this.types.push(specializedArrayType);
     }
 
-    createInstance(type: TypeDefinition, args: TstExpression[], userData: any = null): TstInstanceObject {
+    createInstance(type: TypeDefinition, args: TstExpression[], userData: any = null, sealed: boolean = false): TstInstanceObject {
         const obj: TstInstanceObject = { 
             [TypeMeta]: type,
             [InstanceMeta]: userData,
             [ScopeMeta]: new Map<TypeDefinition, TstScope>(),
+            [RuntimeMeta]: { sealed },
         };
 
         this.setupInstanceScope(obj, type, args);
         return obj;
     }
 
-    reduceInstanceProperties(reducer: TstReduceExpressionVisitor, obj: TstInstanceObject, scopeType: TypeDefinition) {
+    reduceInstanceProperties(reducer: TstReduceExpressionVisitor, obj: TstInstanceObject, scopeType: TypeDefinition): boolean {
+
+        let sealable = true;
 
         if (scopeType.extends) {
-            this.reduceInstanceProperties(reducer, obj, scopeType.extends);
+            sealable &&= this.reduceInstanceProperties(reducer, obj, scopeType.extends);
         }
 
         for (let propertyDeclaration of scopeType.properties) {
@@ -420,10 +422,13 @@ export class TstRuntime {
                 throw new Error(`Type mismatch when reducing property ${propertyDeclaration.name} of type ${propertyDeclaration.type.name}, got ${reducedType?.name || "unknown"}`);
             }
 
+            sealable &&= isInstanceExpression(reduced) && reduced.instance[RuntimeMeta].sealed;
+
             obj[propertyDeclaration.name] = reduced;
         }
 
         // console.log("Promises: ", reducer.promiseExpressions);
+        return sealable;
     }
 
     visitInstanceProperties(visitor: TstReplaceVisitor, obj: TstInstanceObject, scopeType: TypeDefinition) {
@@ -458,13 +463,25 @@ export class TstRuntime {
             let reduceCount = 0;
 
             for (let instance of instances) {
+
+                if (instance[RuntimeMeta].sealed) {
+                    continue
+                }
+
                 const instanceType = instance[TypeMeta];
 
                 const reducer = new TstReduceExpressionVisitor(this, this.globalScope);
                 const scopeReducer = new TstReduceScopeVisitor(this);
 
                 this.visitInstanceProperties(scopeReducer, instance, instanceType);
-                this.reduceInstanceProperties(reducer, instance, instanceType);
+
+                let sealable = this.reduceInstanceProperties(reducer, instance, instanceType);
+                if (sealable && !instance[RuntimeMeta].sealed) {
+                    // console.log("[TstRuntime] Sealing " + instanceType.name, instanceType.sealedInstance);
+                    instance[RuntimeMeta].sealed = true;
+                    instanceType.sealedInstance(instance);
+                }
+
                 reduceCount += reducer.reduceCount;
                 reduceCount += scopeReducer.reduceCount;
                 promiseExpressions.push(...reducer.promiseExpressions);

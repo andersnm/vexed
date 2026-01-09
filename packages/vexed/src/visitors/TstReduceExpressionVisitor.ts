@@ -1,4 +1,4 @@
-import { InstanceMeta, isInstanceExpression, isReturnStatement, ScopeMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
+import { InstanceMeta, isInstanceExpression, isReturnStatement, ScopeMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstMissingInstanceExpression, TstNativeMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
 import { TstRuntime } from "../TstRuntime.js";
 import { printExpression, printScope } from "./TstPrintVisitor.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
@@ -167,6 +167,26 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         }
 
         this.promiseExpressions.push(expr);
+        return expr;
+    }
+
+    visitNativeMemberExpression(expr: TstNativeMemberExpression): TstExpression {
+        const objectExpr = this.visit(expr.object);
+
+        if (isInstanceExpression(objectExpr)) {
+            this.reduceCount++;
+            return expr.callback(objectExpr.instance);
+        }
+
+        return {
+            exprType: "nativeMember",
+            object: objectExpr,
+            callback: expr.callback,
+            memberType: expr.memberType,
+        } as TstNativeMemberExpression;
+    }
+
+    visitMissingInstanceExpression(expr: TstMissingInstanceExpression): TstExpression {
         return expr;
     }
 

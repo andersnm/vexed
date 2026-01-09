@@ -4,6 +4,7 @@ import { TstScope } from "./visitors/TstReduceExpressionVisitor.js";
 export const TypeMeta: unique symbol = Symbol("TypeMeta");
 export const InstanceMeta: unique symbol = Symbol("InstanceMeta");
 export const ScopeMeta: unique symbol = Symbol("ScopeMeta");
+export const RuntimeMeta: unique symbol = Symbol("RuntimeMeta");
 
 export function isDecimalLiteral(expr: TstExpression): expr is TstDecimalLiteralExpression {
     return expr.exprType === "decimalLiteral";
@@ -61,6 +62,14 @@ export function isPromiseExpression(expr: TstExpression): expr is TstPromiseExpr
     return expr.exprType === "promise";
 }
 
+export function isNativeMemberExpression(expr: TstExpression): expr is TstNativeMemberExpression {
+    return expr.exprType === "nativeMember";
+}
+
+export function isMissingInstanceExpression(expr: TstExpression): expr is TstMissingInstanceExpression {
+    return expr.exprType === "missingInstance";
+}
+
 export function isIfStatement(stmt: TstStatement): stmt is TstIfStatement {
     return stmt.stmtType === "if";
 }
@@ -92,10 +101,15 @@ export interface TstInitializer {
     argument: TstExpression;
 }
 
+export interface TstRuntimeInstanceInfo {
+    sealed: boolean;
+}
+
 export type TstInstanceObject = {
     [TypeMeta]: TypeDefinition;
     [InstanceMeta]: any;
     [ScopeMeta]: Map<TypeDefinition, TstScope>;
+    [RuntimeMeta]: TstRuntimeInstanceInfo;
     [key: string]: TstExpression; // TODO: it's really just an expression here when it reduces.
 };
 
@@ -195,6 +209,24 @@ export interface TstPromiseExpression extends TstExpression {
     promise: Promise<TstExpression>;
     promiseError?: Error;
     promiseValue?: TstExpression;
+}
+
+export interface TstNativeMemberExpression extends TstExpression {
+    exprType: "nativeMember";
+    object: TstExpression;
+    memberType: TypeDefinition;
+    callback: (value: TstInstanceObject) => TstExpression;
+}
+
+export interface TstMissingInstanceExpression extends TstExpression {
+    exprType: "missingInstance";
+    error: Error;
+    meta: {
+        resourceType: string;
+    };
+    instance: TstInstanceObject;
+    propertyName: string;
+    propertyType: TypeDefinition;
 }
 
 export interface TstStatement {
