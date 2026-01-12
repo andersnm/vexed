@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { jsonCommand } from "./jsonCommand.js";
 import { astCommand } from "./astCommand.js";
+import { diffCommand } from "./diffCommand.js";
 
 // Commands:
 //   - json: evaluate -> output state as JSON
@@ -32,6 +33,11 @@ async function main() {
 
     if (positionals[0] === "ast") {
         await astCommand(positionals.slice(1));
+        return;
+    }
+
+    if (positionals[0] === "diff") {
+        await diffCommand(positionals.slice(1));
         return;
     }
 

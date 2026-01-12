@@ -1,6 +1,7 @@
 import { promises as fs } from "fs";
 import { parseArgs } from "node:util";
 import { printJsonObject, printObject, TstRuntime } from "vexed";
+import { registerDigitalOcean } from "./digitalocean.js";
 
 // "json" is a general-purpose "Vexed Configuration Language" mode.
 // Evaluates plain Vexed scripts without any provider types nor remote state.
@@ -24,6 +25,8 @@ export async function jsonCommand(args: string[]) {
     const runtime = new TstRuntime();
     runtime.verbose = values.verbose || false;
 
+    registerDigitalOcean(runtime);
+
     runtime.loadScript(script, fileName);
 
     const main = runtime.getType("Main");
@@ -31,7 +34,7 @@ export async function jsonCommand(args: string[]) {
         throw new Error("No Main class found");
     }
 
-    const instance = main.createInstance([]);
+    const instance = main.createInstance([])!;
 
     if (values.verbose) console.log("Created main instance: ", printObject(instance));
 

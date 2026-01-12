@@ -1,0 +1,43 @@
+class VpcWrap(Vpc vpc) {
+  public string id = vpc.id;
+}
+
+class Provider() extends DigitalOceanProvider() {
+  # this sets a default provider in the runtime, or explicit via constructor args?
+  apiToken = "abc"; # io.getEnvironmentVariable("DO_API_TOKEN");
+  region = "nyc3";
+}
+
+class ExampleDroplet(Provider provider, VpcWrap vpc) extends Droplet(provider) {
+  # id = 123123; # TODO: ERROR: id is readonly
+  name = "example-droplet2";
+  vpc_uuid = vpc.id;
+}
+
+class DefaultVpc(Provider provider) extends Vpc(provider) {
+  name = "default-vpc";
+  region = provider.region;
+}
+
+class GwVpc(string vpc_uuid) extends VpcNatGatewayVpc() {
+  vpc_uuid = vpc_uuid;
+}
+
+class ExampleNatGateway(Provider provider, Vpc vpc) extends VpcNatGateway(provider) {
+  name = "test-vpc-nat-gateways2";
+  region = provider.region;
+  vpcs = [
+    GwVpc(vpc.id)
+  ];
+  private GwVpc[] dummy = GwVpc[](); # array types are only generated from properties atm
+}
+
+class Main() {
+  public Provider provider = Provider();
+  public DefaultVpc vpc = DefaultVpc(this.provider);
+  public ExampleDroplet droplet = ExampleDroplet(this.provider, VpcWrap(this.vpc));
+  public ExampleNatGateway gateway = ExampleNatGateway(this.provider, this.vpc);
+
+  public int dropletId = this.droplet.id;
+  public string dropletName = this.droplet.name;
+}
