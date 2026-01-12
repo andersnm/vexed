@@ -1,4 +1,4 @@
-import { InstanceMeta, isInstanceExpression, isReturnStatement, ScopeMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstMissingInstanceExpression, TstNativeMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
+import { InstanceMeta, isInstanceExpression, isReturnStatement, RuntimeMeta, ScopeMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstMissingInstanceExpression, TstNativeMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
 import { TstRuntime } from "../TstRuntime.js";
 import { printExpression, printScope } from "./TstPrintVisitor.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
@@ -153,8 +153,24 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
 
     visitInstanceExpression(expr: TstInstanceExpression): TstExpression {
 
-        return expr;
+        if (expr.instance[RuntimeMeta].sealed) {
+            return expr;
+        }
 
+        // Reduce array elements
+        const instanceType = expr.instance[TypeMeta];
+        if (!instanceType.name.endsWith("[]")) {
+            return expr;
+        }
+
+        const array = expr.instance[InstanceMeta] as TstExpression[];
+
+        for (let i = 0; i < array.length; i++) {
+            const element = array[i];
+            array[i] = this.visit(element);
+        }
+
+        return expr;
     }
 
     visitPromiseExpression(expr: TstPromiseExpression): TstExpression {

@@ -89,7 +89,7 @@ class ArrayBaseTypeDefinition extends TypeDefinition {
 
     createInstance(args: TstExpression[]): TstInstanceObject {
         // console.log("[ArrayBaseTypeDefinition] Creating instance of type", this.name);
-        return this.runtime.createInstance(this, args, [], true);
+        return this.runtime.createInstance(this, args, []);
     }
 
     resolveProperty(instance: TstInstanceObject, propertyName: string): TstExpression | null {
@@ -108,7 +108,7 @@ class ArrayBaseTypeDefinition extends TypeDefinition {
     }
 }
 
-class ArrayTypeDefinition extends ArrayBaseTypeDefinition {
+export class ArrayTypeDefinition extends ArrayBaseTypeDefinition {
     constructor(runtime: TstRuntime, name: string) {
         super(runtime, name);
     }
@@ -400,6 +400,33 @@ export class TstRuntime {
         return obj;
     }
 
+    isTypeAssignable(fromType: TypeDefinition | null, toType: TypeDefinition | null): boolean {
+        if (!fromType || !toType) return false;
+
+        // Handle array types
+        const anyArrayType = this.getType("any[]");
+        if (fromType.extends === anyArrayType && toType.extends === anyArrayType) {
+            const fromElementName = fromType.name.substring(0, fromType.name.length - 2);
+            const toElementName = toType.name.substring(0, toType.name.length - 2);
+            const fromElementType = this.tryGetType(fromElementName);
+            const toElementType = this.tryGetType(toElementName);
+            return this.isTypeAssignable(fromElementType, toElementType);
+        }
+
+        // Handle class inheritance
+        if (fromType.extends || toType.extends) {
+            let current: TypeDefinition | undefined = fromType;
+            while (current) {
+                if (current === toType) return true;
+                current = current.extends;
+            }
+            return false;
+        }
+
+        // Fallback to strict equality
+        return fromType === toType;
+    }
+
     reduceInstanceProperties(reducer: TstReduceExpressionVisitor, obj: TstInstanceObject, scopeType: TypeDefinition): boolean {
 
         let sealable = true;
@@ -418,7 +445,7 @@ export class TstRuntime {
 
             // Check if types match
             const reducedType = this.getExpressionType(reduced, obj[TypeMeta]);
-            if (reducedType != propertyDeclaration.type) {
+            if (!this.isTypeAssignable(reducedType, propertyDeclaration.type)) {
                 throw new Error(`Type mismatch when reducing property ${propertyDeclaration.name} of type ${propertyDeclaration.type.name}, got ${reducedType?.name || "unknown"}`);
             }
 
@@ -452,6 +479,20 @@ export class TstRuntime {
         return [ ... instanceVisitor.visited];
     }
 
+    reduceArrayElements(reducer: TstReduceExpressionVisitor, instance: TstInstanceObject): boolean {
+        let sealable = true;
+        const array = instance[InstanceMeta] as TstExpression[];
+
+        for (let i = 0; i < array.length; i++) {
+            const element = array[i];
+            const reduced = reducer.visit(element);
+            sealable &&= isInstanceExpression(reduced) && reduced.instance[RuntimeMeta].sealed;
+            array[i] = reduced;
+        }
+
+        return sealable;
+    }
+
     async reduceInstance(obj: TstInstanceObject) {
         let counter = 0;
         let promiseExpressions: TstPromiseExpression[] = [];
@@ -465,7 +506,7 @@ export class TstRuntime {
             for (let instance of instances) {
 
                 if (instance[RuntimeMeta].sealed) {
-                    continue
+                    continue;
                 }
 
                 const instanceType = instance[TypeMeta];
@@ -476,6 +517,11 @@ export class TstRuntime {
                 this.visitInstanceProperties(scopeReducer, instance, instanceType);
 
                 let sealable = this.reduceInstanceProperties(reducer, instance, instanceType);
+
+                if (instanceType.name.endsWith("[]")) {
+                    sealable &&= this.reduceArrayElements(reducer, instance)
+                }
+
                 if (sealable && !instance[RuntimeMeta].sealed) {
                     // console.log("[TstRuntime] Sealing " + instanceType.name, instanceType.sealedInstance);
                     instance[RuntimeMeta].sealed = true;
