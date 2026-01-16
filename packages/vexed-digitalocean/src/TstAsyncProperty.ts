@@ -17,7 +17,7 @@ export function getInstanceMetaFromScopeParameter<T>(instance: TstInstanceObject
     return parameterExpression.instance[InstanceMeta] as T;
 }
 
-export function makeThisRemoteNativeMemberExpression(memberType: TypeDefinition, callback: (remoteInstance: TstInstanceObject) => TstInstanceObject): TstNativeMemberExpression {
+export function makeThisRemoteNativeMemberExpression(memberType: TypeDefinition, memberName: string, callback: (remoteInstance: TstInstanceObject) => TstInstanceObject): TstNativeMemberExpression {
     return {
         exprType: "nativeMember", // invokes callback and reduces when object is an instance
         object: {
@@ -28,6 +28,7 @@ export function makeThisRemoteNativeMemberExpression(memberType: TypeDefinition,
             property: "remote", // a promise to an opaque object, awaited by the runtime, translated to TstExpression by the callback
         },
         memberType,
+        memberName,
         callback: (value: TstInstanceObject) => {
             return { 
                 exprType: "instance",

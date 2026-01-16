@@ -1,6 +1,6 @@
 import { promises as fs } from "fs";
 import { inspect, isPrimitive, parseArgs } from "node:util";
-import { InstanceMeta, isInstanceExpression, isMemberExpression, isMissingInstanceExpression, isParameter, isScopedExpression, printExpression, printJsonObject, printObject, RuntimeMeta, TstExpression, TstInstanceExpression, TstInstanceObject, TstMemberExpression, TstMissingInstanceExpression, TstParameterExpression, TstRuntime, TstScopedExpression, TstVariable, TstVariableExpression, TypeDefinition, TypeMeta } from "vexed";
+import { InstanceMeta, isInstanceExpression, isMemberExpression, isMissingInstanceExpression, isNativeMemberExpression, isParameter, isScopedExpression, printExpression, printJsonObject, printObject, RuntimeMeta, TstExpression, TstInstanceExpression, TstInstanceObject, TstMemberExpression, TstMissingInstanceExpression, TstParameterExpression, TstRuntime, TstScopedExpression, TstVariable, TstVariableExpression, TypeDefinition, TypeMeta } from "vexed";
 import { registerDigitalOcean } from "./digitalocean.js";
 import { TstReplaceVisitor } from "vexed/dist/visitors/TstReplaceVisitor.js";
 import { getScopeParameter, TstScope } from "vexed/dist/visitors/TstReduceExpressionVisitor.js";
@@ -217,7 +217,7 @@ class PrintDiffVisitor extends TstReplaceVisitor {
             return {
                 kind: "scoped",
                 scope: this.printScope(expr.scope),
-                expr: this.printExpression(expr.expr),
+                body: this.printExpression(expr.expr),
             };
         }
 
@@ -234,6 +234,14 @@ class PrintDiffVisitor extends TstReplaceVisitor {
                 kind: "parameter",
                 name: expr.name,
             };
+        }
+
+        if (isNativeMemberExpression(expr)) {
+            return this.printExpression({
+                exprType: "member",
+                object: expr.object,
+                property: expr.memberName,
+            } as TstMemberExpression);
         }
 
         return {
@@ -274,7 +282,6 @@ class PrintDiffVisitor extends TstReplaceVisitor {
         // }
 
         const obj: Record<string, unknown> = {};
-        obj["__ID__"] = this.getInstanceRef(instance);
         this.printInstanceType(instance, obj, instanceType);
         return obj;
     }
@@ -335,45 +342,41 @@ class ProviderDiffer {
                 const dependencies: TstEdge[] = [];
                 getResourceEdges(instances, edges, resourceBaseType, instance, [], [], dependencies);
 
-                resources.push({ instance, typeName: instanceType.name, sourceInstance: instance, remoteObject, dependencies });
+                // TODO: typeName = resource type vs derived class type
+                // want to return the top-most non-script class
+                let extendsType: TypeDefinition | undefined = instanceType
+                for (; extendsType; extendsType = extendsType.extends) {
+                    if (extendsType.fileName === "<native>") {
+                        break;
+                    }
+                }
+
+                resources.push({ instance, typeName: extendsType?.name??"ERROR", sourceInstance: instance, remoteObject, dependencies });
             }
         }
 
-        console.log("Yo, here's the data")
-
-        const printDependency = (dep: TstEdge): string => {
-            return dep.from[TypeMeta].name + "->" + dep.to[TypeMeta].name;
-        }
-
-        // TODO: sort topologically
-        // TODO: emit create statements for new resources, update statements for updated fields, -- cant create delete yet
-        // TODO: emit computations for dependencies after creation
-        // computation = assume reduction engine, print expressions that are missing
-        // whats needed? parameters?
-        // it should be possible to implement a completely separate applyer based on the plan, and with a single stack
-
-        // const resourceInstances: TstInstanceObject[] = resources.map(r => r.instance);
         const sorted = topoSort<TstInstanceObject>(instances, edges);
 
         // TODO: diff doesnt have to be sorted
-        // but, the diff should have generated object IDs, 
 
         type DiffAction = { type: string; };
-        type CreateDiffAction = DiffAction & { type: "create", sourceObject: any, remoteObject: any, depends: [ string, string ][];  };
-        type UpdateDiffAction = DiffAction & { type: "update", sourceObject: any, remoteObject: any; depends: [ string, string ][];  };
+        type CreateDiffAction = DiffAction & { type: "create", providerType: string, sourceObject: any, remoteObject: any, depends: string[];  };
+        type UpdateDiffAction = DiffAction & { type: "update", providerType: string, sourceObject: any, remoteObject: any; depends: string[];  };
 
         const objects: any[] = [];
+        const objectNames: string[] = [];
         const actions: DiffAction[] = [];
 
         const result = {
             objects,
+            objectNames,
             actions,
         }
 
         const printVisitor = new PrintDiffVisitor();
 
-        const printDependencyReference = (dep: TstEdge): [ string, string ] => {
-            return [ printVisitor.printInstanceRef(dep.from), printVisitor.printInstanceRef(dep.to) ];
+        const printDependencyReference = (dep: TstEdge): string => {
+            return printVisitor.printInstanceRef(dep.to);
         }
 
         for (let sortedInstance of sorted) {
@@ -381,23 +384,12 @@ class ProviderDiffer {
                 continue;
             }
             objects.push(printVisitor.printInstance(sortedInstance));
+            objectNames.push(printVisitor.getInstanceRef(sortedInstance));
 
             const resource = resources.find(r => r.instance === sortedInstance)!;
             if (!resource) continue;
 
             if (resource.remoteObject === null) {
-                // need to target a simple vm that executes remote API calls and evaluates the changecodes
-                // is a global object table, 
-                // after the instance is created, recompute all expressions referencing the instance
-                // -> 
-                // and then all expressions referencing those expressions
-
-                // but do we even want this - the runtime can do the same with a --apply flag
-                
-                // const instanceType = sortedInstance[TypeMeta];
-                // const refs: TstEdge[] = [];
-                // findInstanceReferences(sortedInstance, instanceType, refs);
-                // refs[0].
                 const refs = edges.filter(e => e.to === sortedInstance);
 
                 const recompute = [];
@@ -413,6 +405,7 @@ class ProviderDiffer {
 
                 result.actions.push({
                     type: "create",
+                    providerType: resource.typeName, // sortedInstance[TypeMeta].name,
                     sourceObject: printVisitor.printInstanceRef(resource.sourceInstance),
                     remoteObject: "",
                     depends: resource.dependencies?.map(d => printDependencyReference(d)) || [],
@@ -424,27 +417,15 @@ class ProviderDiffer {
             } else {
                 result.actions.push({
                     type: "update",
+                    providerType: resource.typeName, // sortedInstance[TypeMeta].name,
                     sourceObject: printVisitor.printInstanceRef(resource.sourceInstance),
                     remoteObject: resource.remoteObject,
                     depends: resource.dependencies?.map(d => printDependencyReference(d)) || [],
                 } as UpdateDiffAction);
-
-                console.log("Update " + resource.typeName + ":");
-                console.log("  Desired: " + printObject(resource.sourceInstance));
-                console.log("  Current: " + inspect(resource.remoteObject));
             }
         }
 
-        console.log(inspect(result, false, Infinity, true));
-        // for (let resource of resources) {
-        //     console.log("Resource type: " + resource.typeName);
-        //     console.log("Desired state: " + inspect(resource.sourceObject))
-        //     console.log("Current state: " + inspect(resource.remoteObject))
-        //     console.log("Dependencies: " + resource.dependencies?.map(d => printDependency(d)).join(", ") || "None");
-        // }
-        // console.log(inspect(resources, { ...inspect.defaultOptions, depth: 4, colors: true }));
-        // console.log("Missing instances:");
-        // console.log(missingVisitor.missingInstances);
+        return result;
     }
 }
 
@@ -454,7 +435,7 @@ export async function diffCommand(args: string[]) {
         options: {
             force: { type: "boolean", short: "f" },
             verbose: { type: "boolean", short: "v" },
-            steps: { type: "string", short: "s" } 
+            debug: { type: "boolean", short: "d" } 
         }, 
         allowPositionals: true,
         args 
@@ -465,7 +446,6 @@ export async function diffCommand(args: string[]) {
 
     const runtime = new TstRuntime();
     runtime.verbose = values.verbose || false;
-    runtime.maxSteps = values.steps ? parseInt(values.steps) : runtime.maxSteps;
 
     registerDigitalOcean(runtime);
 
@@ -483,5 +463,10 @@ export async function diffCommand(args: string[]) {
     await runtime.reduceInstance(instance);
 
     const differ = new ProviderDiffer();
-    differ.diff(runtime, instance);
+    const diff = differ.diff(runtime, instance);
+    if (values.debug) {
+        console.log(inspect(diff, false, Infinity, true));
+    } else {
+        console.log(JSON.stringify(diff, null, 2));
+    }
 }

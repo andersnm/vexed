@@ -67,7 +67,7 @@ export class DropletTypeDefinition extends TypeDefinition {
             modifier: "public",
             name: "id",
             type: this.runtime.getType("int"),
-            initializer: makeThisRemoteNativeMemberExpression(this.runtime.getType("int"), (remoteInstance: TstInstanceObject) => {
+            initializer: makeThisRemoteNativeMemberExpression(this.runtime.getType("int"), "id", (remoteInstance: TstInstanceObject) => {
                 const droplet = remoteInstance[InstanceMeta] as DropletInfo;
                 return this.runtime.createInt(droplet.id);
             }),

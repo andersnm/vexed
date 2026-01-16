@@ -31,7 +31,7 @@ export class DigitalOceanProviderTypeDefinition extends TypeDefinition {
         const apiToken = jsonOutput.apiToken as string;
         const region = jsonOutput.region as string;
 
-        console.log("[DigitalOcean] Sealing the provider instance: " + apiToken + ", " + region);
+        // console.log("[DigitalOcean] Sealing the provider instance: " + apiToken + ", " + region);
 
         const api = new DigitalOceanApi(apiToken, region);
         const repository = new DigitalOceanRepository(api);

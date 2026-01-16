@@ -86,7 +86,7 @@ export class VpcNatGatewayTypeDefinition extends TypeDefinition {
             modifier: "public",
             name: "id",
             type: this.runtime.getType("string"),
-            initializer: makeThisRemoteNativeMemberExpression(this.runtime.getType("string"), (remoteInstance: TstInstanceObject) => {
+            initializer: makeThisRemoteNativeMemberExpression(this.runtime.getType("string"), "id", (remoteInstance: TstInstanceObject) => {
                 const natGateway = remoteInstance[InstanceMeta] as VpcNatGatewayInfo;
                 return this.runtime.createString(natGateway.id);
             }),

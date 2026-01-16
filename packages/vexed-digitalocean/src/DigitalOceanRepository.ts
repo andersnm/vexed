@@ -210,7 +210,6 @@ export class DigitalOceanRepository {
     }
 
     async getVpcByName(name: string): Promise<VpcInfo | null> {
-        console.log("[DigitalOcean] getVpcByName " + name);
         const vpcs = await this.getVpcs();
         return vpcs.vpcs.find(v => v.name === name) || null;
     }
@@ -224,7 +223,6 @@ export class DigitalOceanRepository {
     }
 
     async getVpcNatGatewayByName(name: string): Promise<VpcNatGatewayInfo | null> {
-        console.log("[DigitalOcean] getVpcNatGatewayByName " + name);
         const vpcNatGateways = await this.getVpcNatGateways();
         return vpcNatGateways.vpc_nat_gateways.find(g => g.name === name) || null;
     }

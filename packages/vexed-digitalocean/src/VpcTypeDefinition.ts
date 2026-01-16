@@ -65,7 +65,7 @@ export class VpcTypeDefinition extends TypeDefinition {
             modifier: "public",
             name: "id",
             type: this.runtime.getType("string"),
-            initializer: makeThisRemoteNativeMemberExpression(this.runtime.getType("string"), (remoteInstance: TstInstanceObject) => {
+            initializer: makeThisRemoteNativeMemberExpression(this.runtime.getType("string"), "id", (remoteInstance: TstInstanceObject) => {
                 const vpc = remoteInstance[InstanceMeta] as VpcInfo;
                 return this.runtime.createString(vpc.id);
             }),
