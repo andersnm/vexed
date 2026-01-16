@@ -115,6 +115,7 @@ export class TstReplaceVisitor {
             object: this.visit(expr.object),
             callback: expr.callback,
             memberType: expr.memberType,
+            memberName: expr.memberName,
         } as TstNativeMemberExpression;
     }
 

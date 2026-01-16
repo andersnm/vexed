@@ -215,6 +215,7 @@ export interface TstNativeMemberExpression extends TstExpression {
     exprType: "nativeMember";
     object: TstExpression;
     memberType: TypeDefinition;
+    memberName: string;
     callback: (value: TstInstanceObject) => TstExpression;
 }
 

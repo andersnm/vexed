@@ -199,6 +199,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
             object: objectExpr,
             callback: expr.callback,
             memberType: expr.memberType,
+            memberName: expr.memberName,
         } as TstNativeMemberExpression;
     }
 
