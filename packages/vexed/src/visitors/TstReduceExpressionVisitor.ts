@@ -1,6 +1,5 @@
 import { InstanceMeta, isInstanceExpression, isReturnStatement, RuntimeMeta, ScopeMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstMissingInstanceExpression, TstNativeMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
 import { TstRuntime } from "../TstRuntime.js";
-import { printExpression, printScope } from "./TstPrintVisitor.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
 
 export interface TstScope {
@@ -40,10 +39,15 @@ function isScopeReduced(scope: TstScope): boolean {
 export class TstReduceExpressionVisitor extends TstReplaceVisitor {
 
     reduceCount: number = 0;
-    promiseExpressions: TstPromiseExpression[] = [];
+    scopeStack: TstScope[] = [];
 
-    constructor(private runtime: TstRuntime, private scope: TstScope) {
+    constructor(private runtime: TstRuntime, scope: TstScope) {
         super();
+        this.scopeStack.push(scope);
+    }
+
+    get scope() {
+        return this.scopeStack[this.scopeStack.length - 1];
     }
 
     visitMemberExpression(expr: TstMemberExpression): TstExpression {
@@ -129,17 +133,15 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
             throw new Error("Internal error: Empty scoped expression");
         }
 
-        const scopeVisitor = new TstReduceExpressionVisitor(this.runtime, expr.scope);
-        const visited = scopeVisitor.visit(expr.expr);
-        this.promiseExpressions.push(...scopeVisitor.promiseExpressions);
-        this.reduceCount += scopeVisitor.reduceCount;
-
-        const canReduce = isScopeReduced(expr.scope);
+        const beforeReduceCount = this.reduceCount;
+        this.scopeStack.push(expr.scope);
+        const visited = this.visit(expr.expr);
+        this.scopeStack.pop();
 
         // Reduce scope only when:
         //  - the scope expression cannot be reduced no more
         //  - all parameters in the scope - and its parent scopes - are reduced to instances
-        if (canReduce && scopeVisitor.reduceCount === 0) {
+        if (isScopeReduced(expr.scope) && beforeReduceCount === this.reduceCount) {
             this.reduceCount++;
             return visited;
         }
@@ -152,24 +154,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
     }
 
     visitInstanceExpression(expr: TstInstanceExpression): TstExpression {
-
-        if (expr.instance[RuntimeMeta].sealed) {
-            return expr;
-        }
-
-        // Reduce array elements
-        const instanceType = expr.instance[TypeMeta];
-        if (!instanceType.name.endsWith("[]")) {
-            return expr;
-        }
-
-        const array = expr.instance[InstanceMeta] as TstExpression[];
-
-        for (let i = 0; i < array.length; i++) {
-            const element = array[i];
-            array[i] = this.visit(element);
-        }
-
+        // Anything instance-specific is reduced separately
         return expr;
     }
 
@@ -182,7 +167,6 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
             return expr.promiseValue;
         }
 
-        this.promiseExpressions.push(expr);
         return expr;
     }
 

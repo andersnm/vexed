@@ -1,7 +1,7 @@
 import test, { mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { promises as fs } from "fs";
-import { InstanceMeta, isInstanceExpression, isParameter, isScopedExpression, TstInstanceObject, TstRuntime, TypeDefinition, TypeMeta } from 'vexed';
+import { InstanceMeta, isInstanceExpression, isParameter, isScopedExpression, printJsonObject, TstInstanceObject, TstRuntime, TypeDefinition, TypeMeta } from 'vexed';
 
 async function compileInstance(runtime: TstRuntime, fileName: string): Promise<TstInstanceObject> {
 
@@ -91,6 +91,16 @@ test('Parse basic-subclass-parameters', async () => {
 test('Parse basic-array', async () => {
     const runtime = new TstRuntime();
     const instance = await compileInstance(runtime, "./files/basic-array.vexed");
+
+    await runtime.reduceInstance(instance);
+
+    const object = printJsonObject(instance);
+    assert.deepEqual(object.strArray, [ "It's a string", "String, it is" ]);
+    assert.deepEqual(object.strStrArray, [ [ "It's a string", "String, it is" ], [ "One", "Two", "Three" ] ]);
+    assert.deepEqual(object.intArray, [ 1, 2, 3 ]);
+    assert.deepEqual(object.intIntArray, [ [ 1, 2, 3, 4, 5 ], [ 6, 7 ] ]);
+    assert.deepEqual(object.boolArray, [ true, false, true, false ]);
+    assert.deepEqual(object.boolArray2D, [ [ true, false, true, false ], [ false, false, false ] ]);
 
 });
 

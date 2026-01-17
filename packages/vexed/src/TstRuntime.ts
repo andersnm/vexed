@@ -5,7 +5,8 @@ import { TypeDefinition, TypeMethod } from "./TstType.js";
 import { TstExpressionTypeVisitor } from "./visitors/TstExpressionTypeVisitor.js";
 import { printExpression } from "./visitors/TstPrintVisitor.js";
 import { TstReduceExpressionVisitor, TstScope } from "./visitors/TstReduceExpressionVisitor.js";
-import { TstReduceScopeVisitor } from "./visitors/TstReduceScopeVisitor.js";
+import { TstPromiseVisitor } from "./visitors/TstPromiseVisitor.js";
+import { TstScopeVisitor } from "./visitors/TstScopeVisitor.js";
 import { TstInstanceVisitor } from "./visitors/TstInstanceVisitor.js";
 import { TstReplaceVisitor } from "./visitors/TstReplaceVisitor.js";
 import { TstBuilder } from "./TstBuilder.js";
@@ -479,6 +480,18 @@ export class TstRuntime {
         return [ ... instanceVisitor.visited];
     }
 
+    getScopesFromRoot(obj: TstInstanceObject): TstScope[] {
+        const scopeVisitor = new TstScopeVisitor(this);
+        this.visitInstanceProperties(scopeVisitor, obj, obj[TypeMeta]);
+        return [ ... scopeVisitor.scopes];
+    }
+
+    getPromisesFromRoot(obj: TstInstanceObject): TstPromiseExpression[] {
+        const promiseVisitor = new TstPromiseVisitor(this);
+        this.visitInstanceProperties(promiseVisitor, obj, obj[TypeMeta]);
+        return [ ... promiseVisitor.promises];
+    }
+
     reduceArrayElements(reducer: TstReduceExpressionVisitor, instance: TstInstanceObject): boolean {
         let sealable = true;
         const array = instance[InstanceMeta] as TstExpression[];
@@ -493,48 +506,73 @@ export class TstRuntime {
         return sealable;
     }
 
+    reduceScopeVariables(reducer: TstReduceExpressionVisitor, scope: TstScope) {
+        for (let i = 0; i < scope.variables.length; i++) {
+            const variable = scope.variables[i];
+            variable.value = reducer.visit(variable.value);
+        }
+    }
+
+    reduceInstanceObject(reducer: TstReduceExpressionVisitor, instance: TstInstanceObject): boolean {
+
+        if (instance[RuntimeMeta].sealed) {
+            return true;
+        }
+
+        const instanceType = instance[TypeMeta];
+
+        let sealable = true;
+
+        // Reduces array items if array
+        if (instanceType.name.endsWith("[]")) {
+            sealable &&= this.reduceArrayElements(reducer, instance)
+        }
+
+        // Reduces all properties on the instance
+        sealable &&= this.reduceInstanceProperties(reducer, instance, instanceType);
+
+        if (sealable && !instance[RuntimeMeta].sealed) {
+            // console.log("[TstRuntime] Sealing " + instanceType.name, instanceType.sealedInstance);
+            instance[RuntimeMeta].sealed = true;
+            instanceType.sealedInstance(instance);
+        }
+
+        return sealable;
+    }
+
     async reduceInstance(obj: TstInstanceObject) {
+
+        while (true) {
+            this.reduceInstanceOnce(obj);
+
+            const promiseExpressions = this.getPromisesFromRoot(obj);
+            if (promiseExpressions.length === 0) {
+                break;
+            }
+
+            await this.resolvePromises(promiseExpressions);
+        }
+    }
+
+    reduceInstanceOnce(obj: TstInstanceObject) {
         let counter = 0;
-        let promiseExpressions: TstPromiseExpression[] = [];
+
         while (true) {
             if (this.verbose) console.log("[TstRuntime] Reduction iteration", counter);
 
-            const instances = this.getInstancesFromRoot(obj);
+            const reducer = new TstReduceExpressionVisitor(this, this.globalScope);
 
-            let reduceCount = 0;
-
-            for (let instance of instances) {
-
-                if (instance[RuntimeMeta].sealed) {
-                    continue;
-                }
-
-                const instanceType = instance[TypeMeta];
-
-                const reducer = new TstReduceExpressionVisitor(this, this.globalScope);
-                const scopeReducer = new TstReduceScopeVisitor(this);
-
-                this.visitInstanceProperties(scopeReducer, instance, instanceType);
-
-                let sealable = this.reduceInstanceProperties(reducer, instance, instanceType);
-
-                if (instanceType.name.endsWith("[]")) {
-                    sealable &&= this.reduceArrayElements(reducer, instance)
-                }
-
-                if (sealable && !instance[RuntimeMeta].sealed) {
-                    // console.log("[TstRuntime] Sealing " + instanceType.name, instanceType.sealedInstance);
-                    instance[RuntimeMeta].sealed = true;
-                    instanceType.sealedInstance(instance);
-                }
-
-                reduceCount += reducer.reduceCount;
-                reduceCount += scopeReducer.reduceCount;
-                promiseExpressions.push(...reducer.promiseExpressions);
-                promiseExpressions.push(...scopeReducer.promiseExpressions);
+            const scopes = this.getScopesFromRoot(obj);
+            for (let scope of scopes) {
+                this.reduceScopeVariables(reducer, scope);
             }
 
-            if (reduceCount === 0) {
+            const instances = this.getInstancesFromRoot(obj);
+            for (let instance of instances) {
+                this.reduceInstanceObject(reducer, instance);
+            }
+
+            if (reducer.reduceCount === 0) {
                 break;
             }
 
@@ -543,11 +581,9 @@ export class TstRuntime {
                 throw new Error("Too many reduction iterations, possible infinite loop");
             }
         }
+    }
 
-        if (promiseExpressions.length === 0) {
-            return;
-        }
-
+    async resolvePromises(promiseExpressions: TstPromiseExpression[]) {
         const promises = promiseExpressions.map(pe => new Promise(async (resolve) => {
             try {
                 pe.promiseValue = await pe.promise;
@@ -559,9 +595,6 @@ export class TstRuntime {
         }));
 
         await Promise.all(promises);
-
-        // reduce again with resolved promises
-        await this.reduceInstance(obj);
     }
 
     createInt(value: number): TstInstanceObject {
