@@ -1,6 +1,7 @@
 import { ProgramParser } from "./ProgramParser.js"; // your token definitions
 import { AstClass, AstClassUnit, AstPropertyStatement, AstParameter, AstProgram, AstPropertyDefinition, AstExpression, AstIdentifierExpression, AstStringLiteralExpression, AstFunctionCallExpression, AstMemberExpression, AstIndexExpression, AstIntegerLiteralExpression, AstDecimalLiteralExpression, AstArrayLiteralExpression, isAstIdentifier, AstBinaryExpression, AstLocation, AstMethodDeclaration, AstIfStatement, AstStatement, AstReturnStatement, AstUnaryExpression, AstLocalVarDeclaration, AstBooleanLiteralExpression, AstLocalVarAssignment } from "./AstProgram.js";
 import { IToken } from "chevrotain";
+import { AstType, AstArrayType, AstIdentifierType } from "./AstType.js";
 
 function createTokenLocation(tok: IToken): AstLocation {
     return {
@@ -35,11 +36,15 @@ export function createVisitor(parser: ProgramParser, fileName: string) {
             return this.visit(ctx[keys[0]]);
         }
 
-        type(ctx: any): string {
-            let base = ctx.Identifier[0].image;
+        type(ctx: any): AstType {
+            let base: AstType = { type: "identifier", typeName: ctx.Identifier[0].image } as AstIdentifierType;
+
             const suffixes = ctx.arrayTypeSuffix ?? [];
             for (const _ of suffixes) {
-                base += "[]";
+                base = {
+                    type: "array",
+                    arrayItemType: base
+                } as AstArrayType;
             }
             return base;
         }

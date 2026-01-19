@@ -4,32 +4,46 @@ import { TstRuntime } from "../TstRuntime.js";
 import { TypeDefinition, TypeMethod } from "../TstType.js";
 import { printExpression } from "../visitors/TstPrintVisitor.js";
 import { TstScope } from "../visitors/TstReduceExpressionVisitor.js";
+import { AstMethodDeclaration } from "../AstProgram.js";
+import { AstIdentifierType } from "../AstType.js";
 
 export class IoTypeDefinition extends TypeDefinition {
     constructor(runtime: TstRuntime) {
         super(runtime, "Io", "<native>");
-    }
 
-    initializeType(): void {
-        this.methods.push({
-            name: "print",
-            declaringType: this,
-            parameters: [
-                { name: "message", type: this.runtime.getType("any") },
+        this.astNode = {
+            type: "class",
+            name: "Io",
+            parameters: [],
+            extends: "any",
+            extendsArguments: [],
+            units: [
+                {
+                    type: "methodDeclaration",
+                    name: "print",
+                    parameters: [
+                        {
+                            name: "message",
+                            type: { type: "identifier", typeName: "any" } as AstIdentifierType,
+                        }
+                    ],
+                    returnType: { type: "identifier", typeName: "any" } as AstIdentifierType,
+                    statementList: [],
+                } as AstMethodDeclaration,
+                {
+                    type: "methodDeclaration",
+                    name: "readTextFile",
+                    parameters: [
+                        {
+                            name: "path",
+                            type: { type: "identifier", typeName: "string" } as AstIdentifierType,
+                        }
+                    ],
+                    returnType: { type: "identifier", typeName: "string" } as AstIdentifierType,
+                    statementList: [],
+                } as AstMethodDeclaration,
             ],
-            returnType: this.runtime.getType("any"),
-            body: [],
-        });
-
-        this.methods.push({
-            name: "readTextFile",
-            declaringType: this,
-            parameters: [
-                { name: "path", type: this.runtime.getType("string") },
-            ],
-            returnType: this.runtime.getType("string"),
-            body: [],
-        });
+        };
     }
 
     callFunction(method: TypeMethod, scope: TstScope): TstExpression | null {

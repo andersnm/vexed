@@ -5,6 +5,15 @@ import { TypeDefinition } from "../TstType.js";
 export class BoolTypeDefinition extends TypeDefinition {
     constructor(runtime: TstRuntime) {
         super(runtime, "bool", "<native>");
+
+        this.astNode = {
+            type: "class",
+            name: "bool",
+            parameters: [],
+            extends: "any",
+            extendsArguments: [],
+            units: [],
+        };
     }
 
     createInstance(args: TstExpression[]): TstInstanceObject {

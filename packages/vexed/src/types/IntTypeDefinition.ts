@@ -5,9 +5,16 @@ import { TypeDefinition } from "../TstType.js";
 export class IntTypeDefinition extends TypeDefinition {
     constructor(runtime: TstRuntime) {
         super(runtime, "int", "<native>");
-    }
 
-    initializeType() {}
+        this.astNode = {
+            type: "class",
+            name: "int",
+            parameters: [],
+            extends: "any",
+            extendsArguments: [],
+            units: [],
+        };
+    }
 
     createInstance(args: TstExpression[]): TstInstanceObject {
         // console.log("[IntTypeDefinition] Creating instance of type", this.name);

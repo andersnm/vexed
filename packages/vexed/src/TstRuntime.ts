@@ -12,6 +12,7 @@ import { StringTypeDefinition } from "./types/StringTypeDefinition.js";
 import { IoTypeDefinition } from "./types/IoTypeDefinition.js";
 import { TypeTypeDefinition } from "./types/TypeTypeDefinition.js";
 import { TstReducer } from "./TstReducer.js";
+import { AstProgram } from "./AstProgram.js";
 
 export class TstRuntime {
     verbose: boolean = false;
@@ -26,18 +27,17 @@ export class TstRuntime {
     };
 
     constructor() {
-        this.types.push(new AnyTypeDefinition(this));
-        this.types.push(new IntTypeDefinition(this));
-        this.types.push(new BoolTypeDefinition(this));
-        this.types.push(new ArrayBaseTypeDefinition(this, "any[]"));
-        this.types.push(new StringTypeDefinition(this));
-        // this.types.push(new ArrayTypeDefinition(this, "string[]"));
-        this.types.push(new IoTypeDefinition(this));
-        this.types.push(new TypeTypeDefinition(this));
 
-        for (let type of this.types) {
-            type.initializeType();
-        }
+        const types = [
+            new AnyTypeDefinition(this),
+            new IntTypeDefinition(this),
+            new BoolTypeDefinition(this),
+            new ArrayBaseTypeDefinition(this, "any[]"),
+            new StringTypeDefinition(this),
+            new IoTypeDefinition(this),
+            new TypeTypeDefinition(this),
+        ];
+        this.registerTypes(types);
 
         this.globalScope.variables.push({
             name: "io",
@@ -164,8 +164,7 @@ export class TstRuntime {
         }
 
         const specializedArrayType = new ArrayTypeDefinition(this, name)!;
-        specializedArrayType.initializeType();
-        this.types.push(specializedArrayType);
+        this.registerTypes([specializedArrayType]);
     }
 
     createInstance(type: TypeDefinition, args: TstExpression[], userData: any = null, sealed: boolean = false): TstInstanceObject {
@@ -238,5 +237,17 @@ export class TstRuntime {
         const program = parser.parse(script, fileName);
         const resolver = new TstBuilder(this);
         resolver.resolveProgram(program);
+    }
+
+    registerTypes(types: TypeDefinition[]) {
+        this.types.push(...types);
+
+        const program = {
+            fileName: "<native>",
+            programUnits: types.filter(t => t.astNode).map(t => t.astNode),
+        } as AstProgram;
+
+        const builder = new TstBuilder(this);
+        builder.resolveProgram(program);
     }
 }

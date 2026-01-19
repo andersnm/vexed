@@ -1,3 +1,4 @@
+import { AstClass } from "./AstProgram.js";
 import { InstanceMeta, RuntimeMeta, TstExpression, TstInitializer, TstInstanceExpression, TstInstanceObject, TstScopedExpression, TstStatement, TstStatementExpression } from "./TstExpression.js";
 import { TstRuntime } from "./TstRuntime.js";
 import { TstScope } from "./visitors/TstReduceExpressionVisitor.js";
@@ -33,6 +34,7 @@ export class TypeDefinition {
     properties: TypeMember[];
     methods: TypeMethod[];
     initializers: TstInitializer[];  // TstVariable?? name+expr
+    astNode?: AstClass;
 
     constructor(runtime: TstRuntime, name: string, fileName: string) {
         this.runtime = runtime;
@@ -42,10 +44,6 @@ export class TypeDefinition {
         this.properties = [];
         this.methods = [];
         this.initializers = [];
-    }
-
-    initializeType() {
-        // override to setup properties, initializers, etc
     }
 
     createInstance(args: TstExpression[]): TstInstanceObject {

@@ -3,6 +3,7 @@ import { InstanceMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpres
 import { TypeDefinition, TypeParameter } from "./TstType.js";
 import { TstRuntime } from "./TstRuntime.js";
 import { TstExpressionTypeVisitor } from "./visitors/TstExpressionTypeVisitor.js";
+import { formatAstTypeName } from "./AstType.js";
 
 // There is no visitor for Ast types, it is only traversed once during conversion to Tst types.
 
@@ -184,13 +185,16 @@ class AstVisitor {
                 else: stmt.elseBlock ? stmt.elseBlock.map(s => this.resolveStatement(s)) : null
             } as TstIfStatement;
         } else if (isAstLocalVarDeclaration(stmt)) {
+            const varTypeName = formatAstTypeName(stmt.varType);
+            const varType = this.runtime.getType(varTypeName);
+
             this.scope.push({
                 name: stmt.name,
-                type: this.runtime.getType(stmt.varType)
+                type: varType,
             });
             return {
                 stmtType: "localVarDeclaration",
-                varType: this.runtime.getType(stmt.varType),
+                varType: varType,
                 name: stmt.name,
                 initializer: stmt.initializer ? this.resolveExpression(stmt.initializer) : null,
             } as TstLocalVarDeclaration;
@@ -232,8 +236,16 @@ export class TstBuilder {
             if (isClass(programUnit)) {
                 for (let unit of programUnit.units) {
                     if (isPropertyDefinition(unit)) {
-                        if (unit.propertyType.endsWith("[]")) {
-                            this.runtime.createArrayType(unit.propertyType);
+                        const propertyTypeName = formatAstTypeName(unit.propertyType);
+                        if (propertyTypeName.endsWith("[]")) {
+                            this.runtime.createArrayType(propertyTypeName);
+                        }
+                    }
+
+                    if (isMethodDeclaration(unit)) {
+                        const returnTypeName = formatAstTypeName(unit.returnType);
+                        if (returnTypeName.endsWith("[]")) {
+                            this.runtime.createArrayType(returnTypeName);
                         }
                     }
                 }
@@ -253,7 +265,8 @@ export class TstBuilder {
                 }
 
                 for (let parameter of programUnit.parameters) {
-                    const parameterType = this.runtime.getType(parameter.type);
+                    const parameterTypeName = formatAstTypeName(parameter.type);
+                    const parameterType = this.runtime.getType(parameterTypeName);
 
                     type.parameters.push({
                         name: parameter.name,
@@ -263,7 +276,8 @@ export class TstBuilder {
 
                 for (let unit of programUnit.units) {
                     if (isMethodDeclaration(unit)) {
-                        const methodType = this.runtime.getType(unit.returnType);
+                        const returnTypeName = formatAstTypeName(unit.returnType);
+                        const methodType = this.runtime.getType(returnTypeName);
                         if (!methodType) {
                             throw new Error(`Could not find type ${unit.returnType} for method ${unit.name} of type ${programUnit.name}`);
                         }
@@ -272,10 +286,14 @@ export class TstBuilder {
                             name: unit.name,
                             declaringType: type,
                             returnType: methodType,
-                            parameters: unit.parameters.map(param => ({
-                                name: param.name,
-                                type: this.runtime.getType(param.type)
-                            })),
+                            parameters: unit.parameters.map(param => {
+                                const parameterTypeName = formatAstTypeName(param.type);
+                                const parameterType = this.runtime.getType(parameterTypeName);
+                                return {
+                                    name: param.name,
+                                    type: parameterType
+                                };
+                            }),
                             body: [], // assigned later
                         });
                     }
@@ -304,7 +322,8 @@ export class TstBuilder {
                         type.initializers.push({ name: unit.name, argument: visitor.resolveExpression(unit.argument) })
                     } else
                     if (isPropertyDefinition(unit)) {
-                        const propertyType = this.runtime.getType(unit.propertyType);
+                        const propertyTypeName = formatAstTypeName(unit.propertyType);
+                        const propertyType = this.runtime.getType(propertyTypeName);
                         if (!propertyType) {
                             throw new Error(`Could not find type ${unit.propertyType} for property ${unit.name} of type ${programUnit.name}`);
                         }

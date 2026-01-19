@@ -1,3 +1,5 @@
+import { AstPropertyDefinition } from "../AstProgram.js";
+import { AstIdentifierType } from "../AstType.js";
 import { InstanceMeta, TstExpression, TstInstanceExpression, TstInstanceObject } from "../TstExpression.js";
 import { TstRuntime } from "../TstRuntime.js";
 import { TypeDefinition } from "../TstType.js";
@@ -5,14 +7,23 @@ import { TypeDefinition } from "../TstType.js";
 export class StringTypeDefinition extends TypeDefinition {
     constructor(runtime: TstRuntime) {
         super(runtime, "string", "<native>");
-    }
 
-    initializeType() {
-        this.properties.push({
-            modifier: "public",
-            name: "length",
-            type: this.runtime.getType("int"),
-        });
+        this.astNode = {
+            type: "class",
+            name: "string",
+            parameters: [ ],
+            extends: "any",
+            extendsArguments: [],
+            units: [
+                {
+                    type: "propertyDefinition",
+                    modifier: "public",
+                    name: "length",
+                    propertyType: { type: "identifier", typeName: "int" } as AstIdentifierType,
+                    argument: null,
+                } as AstPropertyDefinition,
+            ],
+        };
     }
 
     createInstance(args: TstExpression[]): TstInstanceObject {

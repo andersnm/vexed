@@ -2,24 +2,35 @@ import path from "path";
 import { InstanceMeta, TstExpression, TstInstanceExpression, TstInstanceObject } from "../TstExpression.js";
 import { TstRuntime } from "../TstRuntime.js";
 import { TypeDefinition } from "../TstType.js";
+import { AstPropertyDefinition } from "../AstProgram.js";
 
 export class TypeTypeDefinition extends TypeDefinition {
     constructor(runtime: TstRuntime) {
         super(runtime, "Type", "<native>");
-    }
 
-    initializeType(): void {
-        this.properties.push({
-            modifier: "public",
-            name: "name",
-            type: this.runtime.getType("string"),
-        });
-
-        this.properties.push({
-            modifier: "public",
-            name: "scriptPath",
-            type: this.runtime.getType("string"),
-        });
+        this.astNode = {
+            type: "class",
+            name: "Type",
+            parameters: [],
+            extends: "any",
+            extendsArguments: [],
+            units: [
+                {
+                    type: "propertyDefinition",
+                    modifier: "public",
+                    name: "name",
+                    propertyType: { type: "identifier", typeName: "string" },
+                    argument: null,
+                } as AstPropertyDefinition,
+                {
+                    type: "propertyDefinition",
+                    modifier: "public",
+                    name: "scriptPath",
+                    propertyType: { type: "identifier", typeName: "string" },
+                    argument: null,
+                } as AstPropertyDefinition,
+            ],
+        };
     }
 
     resolveProperty(instance: TstInstanceObject, propertyName: string): TstExpression | null {

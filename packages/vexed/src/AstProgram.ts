@@ -1,3 +1,4 @@
+import { AstType } from "./AstType.js";
 
 export function isClass(programUnit: AstProgramUnit): programUnit is AstClass {
     return programUnit.type === "class";
@@ -142,7 +143,7 @@ export interface AstUnaryExpression extends AstExpression {
 
 export interface AstParameter {
     name: string;
-    type: string;
+    type: AstType;
 }
 
 export interface AstClassUnit {
@@ -156,7 +157,7 @@ export interface AstProgramUnit {
 export interface AstMethodDeclaration extends AstClassUnit {
     type: "methodDeclaration";
     name: string;
-    returnType: string;
+    returnType: AstType;
     parameters: AstParameter[];
     statementList: AstStatement[];
 }
@@ -167,7 +168,7 @@ export interface AstStatement {
 
 export interface AstLocalVarDeclaration extends AstStatement {
     stmtType: "localVarDeclaration";
-    varType: string;
+    varType: AstType;
     name: string;
     initializer: AstExpression | null;
 }
@@ -201,14 +202,14 @@ export interface AstPropertyDefinition extends AstClassUnit {
     type: "propertyDefinition";
     modifier: string;
     name: string;
-    propertyType: string;
-    argument: AstExpression;
+    propertyType: AstType;
+    argument: AstExpression | null;
 }
 
 export interface AstClass extends AstProgramUnit {
     type: "class";
     name: string;
-    parameters: { name: string, type: string }[];
+    parameters: { name: string, type: AstType }[];
     extends?: string;
     extendsArguments?: AstExpression[];
     units: AstClassUnit[];

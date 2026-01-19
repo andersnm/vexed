@@ -1,3 +1,5 @@
+import { AstMethodDeclaration, AstParameter, AstPropertyDefinition } from "../AstProgram.js";
+import { AstArrayType, AstFunctionType, AstIdentifierType } from "../AstType.js";
 import { InstanceMeta, TstExpression, TstInstanceExpression, TstInstanceObject } from "../TstExpression.js";
 import { TstRuntime } from "../TstRuntime.js";
 import { TypeDefinition } from "../TstType.js";
@@ -10,14 +12,54 @@ import { TypeDefinition } from "../TstType.js";
 export class ArrayBaseTypeDefinition extends TypeDefinition {
     constructor(runtime: TstRuntime, name: string) {
         super(runtime, name, "<native>");
-    }
 
-    initializeType() {
-        this.properties.push({
-            modifier: "public",
-            name: "length",
-            type: this.runtime.getType("int"),
-        });
+        this.astNode = {
+            type: "class",
+            name: name,
+            parameters: [],
+            extends: "any",
+            extendsArguments: [],
+            units: [
+                // {
+                //     type: "methodDeclaration",
+                //     name: "map",
+                //     genericParameters: ["T"],
+                //     parameters: [
+                //         {
+                //             name: "callback",
+                //             type: { 
+                //                 type: "function",
+                //                 functionParameters: [
+                //                     {
+                //                         type: "identifier",
+                //                         typeName: "any"
+                //                     } as AstIdentifierType
+                //                 ],
+                //                 functionReturnType: { 
+                //                     type: "identifier",
+                //                     typeName: "T"
+                //                 } as AstIdentifierType,
+                //             } as AstFunctionType
+                //         } as AstParameter
+                //     ],
+                //     returnType: {
+                //         type: "array",
+                //         arrayItemType: {
+                //             type: "identifier",
+                //             typeName: "T"
+                //         } as AstIdentifierType
+                //     } as AstArrayType,
+                //     statementList: [],
+                // } as AstMethodDeclaration,
+                {
+                    modifier: "public",
+                    type: "propertyDefinition",
+                    name: "length",
+                    propertyType: { type: "identifier", typeName: "int" } as AstIdentifierType,
+                    argument: null,
+                } as AstPropertyDefinition,
+            ],
+        };
     }
 
     createInstance(args: TstExpression[]): TstInstanceObject {
@@ -44,10 +86,14 @@ export class ArrayBaseTypeDefinition extends TypeDefinition {
 export class ArrayTypeDefinition extends ArrayBaseTypeDefinition {
     constructor(runtime: TstRuntime, name: string) {
         super(runtime, name);
-    }
 
-    initializeType() {
-        // Do not call super.initializeType(). It adds
-        this.extends = this.runtime.getType("any[]");
+        this.astNode = {
+            type: "class",
+            name: name,
+            parameters: [],
+            extends: "any[]",
+            extendsArguments: [],
+            units: [],
+        };
     }
 }
