@@ -1,5 +1,6 @@
-import { InstanceMeta, isInstanceExpression, isReturnStatement, RuntimeMeta, ScopeMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstMissingInstanceExpression, TstNativeMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
+import { InstanceMeta, isFunctionCall, isFunctionReferenceExpression, isInstanceExpression, isMemberExpression, isReturnStatement, RuntimeMeta, ScopeMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstFunctionReferenceExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstMissingInstanceExpression, TstNativeMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
 import { TstRuntime } from "../TstRuntime.js";
+import { printExpression } from "./TstPrintVisitor.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
 
 export interface TstScope {
@@ -24,7 +25,7 @@ export function getScopeParameter(scope: TstScope, name: string): TstVariable | 
 
 function isScopeReduced(scope: TstScope): boolean {
     for (let variable of scope.variables) {
-        if (!isInstanceExpression(variable.value)) {
+        if (!isInstanceExpression(variable.value) && !isFunctionReferenceExpression(variable.value)) {
             return false;
         }
     }
@@ -40,6 +41,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
 
     reduceCount: number = 0;
     scopeStack: TstScope[] = [];
+    scopeReferenceCount: Map<TstScope, number> = new Map();
 
     constructor(private runtime: TstRuntime, scope: TstScope) {
         super();
@@ -50,6 +52,14 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         return this.scopeStack[this.scopeStack.length - 1];
     }
 
+    incrementReferenceCount(scope: TstScope) {
+        const count = this.scopeReferenceCount.get(scope) || 0;
+        this.scopeReferenceCount.set(scope, count + 1);
+        if (scope.parent) {
+            this.incrementReferenceCount(scope.parent);
+        }
+    }
+
     visitMemberExpression(expr: TstMemberExpression): TstExpression {
         const objectExpression = this.visit(expr.object);
 
@@ -57,7 +67,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
             const instanceType = objectExpression.instance[TypeMeta];
             const propertyExpression = instanceType.resolvePropertyDeep(objectExpression.instance, expr.property);
 
-            if (propertyExpression && isInstanceExpression(propertyExpression)) {
+            if (propertyExpression && (isInstanceExpression(propertyExpression) || isFunctionReferenceExpression(propertyExpression))) {
                 this.reduceCount++;
                 return propertyExpression;
             }
@@ -70,10 +80,15 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         } as TstMemberExpression;
     }
 
+    visitFunctionReferenceExpression(expr: TstFunctionReferenceExpression): TstExpression {
+        return super.visitFunctionReferenceExpression(expr);
+    }
+
     visitParameterExpression(expr: TstParameterExpression): TstExpression {
         const parameter = getScopeParameter(this.scope, expr.name);
         if (parameter) {
-            if (isInstanceExpression(parameter.value)) {
+            this.incrementReferenceCount(this.scope);
+            if (isInstanceExpression(parameter.value) || isFunctionReferenceExpression(parameter.value)/* || isFunctionCall(parameter.value)*/) {
                 this.reduceCount++;
                 return parameter.value;
             }
@@ -87,7 +102,8 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
     visitVariableExpression(expr: TstVariableExpression): TstExpression {
         const variable = getScopeParameter(this.scope, expr.name);
         if (variable) {
-            if (isInstanceExpression(variable.value)) {
+            this.incrementReferenceCount(this.scope);
+            if (isInstanceExpression(variable.value) || isFunctionReferenceExpression(variable.value)) {
                 this.reduceCount++;
                 return variable.value;
             }
@@ -100,6 +116,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
 
     visitThisExpression(expr: TstThisExpression): TstExpression {
         this.reduceCount++;
+        this.incrementReferenceCount(this.scope);
         return {
             exprType: "instance",
             instance: this.scope.thisObject,
@@ -108,7 +125,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
 
     visitNewExpression(expr: TstNewExpression): TstExpression {
         this.reduceCount++;
-
+        // this.incrementReferenceCount(this.scope); // ??
         const args = expr.args.map(arg => ({
             exprType: "scoped",
             expr: this.visit(arg),
@@ -141,11 +158,16 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         // Reduce scope only when:
         //  - the scope expression cannot be reduced no more
         //  - all parameters in the scope - and its parent scopes - are reduced to instances
-        if (isScopeReduced(expr.scope) && beforeReduceCount === this.reduceCount) {
+        //  - there are no references to this scope in the scoped expression
+
+        const scopeReferenceCount = this.scopeReferenceCount.get(expr.scope) || 0;
+
+        if (scopeReferenceCount === 0 || (isScopeReduced(expr.scope)) && beforeReduceCount === this.reduceCount) {
             this.reduceCount++;
             return visited;
         }
 
+        this.incrementReferenceCount(expr.scope);
         return {
             exprType: "scoped",
             expr: visited,
@@ -246,6 +268,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
 
     visitUnaryExpression(expr: TstUnaryExpression): TstExpression {
         if (expr.operator === "typeof") {
+            this.incrementReferenceCount(this.scope);
             const operandType = this.runtime.getExpressionType(expr.operand, this.scope.thisObject[TypeMeta]);
             if (!operandType) {
                 throw new Error("Cannot resolve type of operand in typeof expression");
@@ -266,42 +289,104 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
     }
 
     visitFunctionCallExpression(expr: TstFunctionCallExpression): TstExpression {
-        const objectExpr = this.visit(expr.object);
+
+        let callee = this.visit(expr.callee);
+
+        if (isFunctionReferenceExpression(callee)) {
+            ;
+        } else if (isMemberExpression(callee)) {
+            // console.log("Callee is not a function reference : " + callee.exprType);
+
+            if (isInstanceExpression(callee.object)) { 
+                const objType = callee.object.instance[TypeMeta]; 
+                const method = objType.getMethod(callee.property);
+
+                callee = {
+                    exprType: "functionReference",
+                    target: callee.object,
+                    method: method,
+                } as TstFunctionReferenceExpression;
+            } else {
+                throw new Error("Callee member expression object is not an instance" + callee.object.exprType);
+            }
+
+        } else {
+
+            return {
+                exprType: "functionCall",
+                callee: callee,
+                args: expr.args, //expr.args.map(arg => this.visit(arg)),
+                returnType: expr.returnType,
+            } as TstFunctionCallExpression;
+        }
+
+        if (!isFunctionReferenceExpression(callee)) {
+            throw new Error("Should be function reference at this point");
+        }
+
+        if (!isInstanceExpression(callee.target)) {
+            // console.log("Callee target is not instance: " + printExpression(callee.target));
+            return {
+                exprType: "functionCall",
+                callee: callee,
+                args: expr.args, // expr.args.map(arg => this.visit(arg)),
+                returnType: expr.returnType,
+            } as TstFunctionCallExpression;
+        }
+
         const argsExpr = expr.args.map(arg => this.visit(arg));
-        const chainNamedArguments: TstVariable[] = expr.method.parameters.map((p, index) => ({
-            name: p.name,
-            value: argsExpr[index],
-            type: p.type,
-        }));
 
-        if (isInstanceExpression(objectExpr)) {
-            const objectType = expr.method.declaringType;
+        const variables: TstVariable[] = [];
+        for (let i = 0; i < argsExpr.length; i++) {
+            const arg = argsExpr[i];
+            const methodParameter = callee.method.parameters[i];
+            this.incrementReferenceCount(this.scope);
+            const argType = this.runtime.getExpressionType(arg, this.scope.thisObject[TypeMeta]);
 
-            const methodScope = objectExpr.instance[ScopeMeta].get(objectType)
-            if (!methodScope) {
-                throw new Error("Method scope not found for method " + expr.method.name + " on type " + objectType.name);
+            if (!this.runtime.isTypeAssignable(argType, methodParameter.type)) {
+                throw new Error(`Function call argument type mismatch for parameter ${methodParameter.name}: expected ${methodParameter.type.name}, got ${argType ? argType.name : "unknown"}`);
             }
 
-            const scope: TstScope = {
-                parent: methodScope, // the scope of the constructor
-                thisObject: objectExpr.instance,
-                variables: chainNamedArguments,
-                comment: expr.method.declaringType.name + "::" + expr.method.name + "(...)"
-            };
+            variables.push({
+                name: methodParameter.name,
+                value: arg,
+                type: methodParameter.type,
+            });
+        }
 
-            // Functions may "refuse" to invoke, f.ex if expecting a resolved parameter - which is implementation-specific.
-            const returnExpr = objectType.callFunction(expr.method, scope);
-            if (returnExpr) {
-                this.reduceCount++;
-                return returnExpr;
-            }
+        const objectType = callee.method.declaringType;
+
+        const methodScope = callee.target.instance[ScopeMeta].get(objectType);
+        if (!methodScope) {
+            throw new Error("Method scope not found for method " + callee.method.name + " on type " + objectType.name);
+        }
+
+        const scope: TstScope = {
+            parent: methodScope, // the scope of the constructor
+            thisObject: callee.target.instance,
+            variables: variables,
+            comment: callee.method.declaringType.name + "::" + callee.method.name + "(...)"
+        };
+
+        this.incrementReferenceCount(methodScope);
+        this.incrementReferenceCount(scope);
+
+        // Functions may "refuse" to invoke, f.ex if expecting a resolved parameter - which is implementation-specific.
+        const returnExpr = objectType.callFunction(callee.method, scope);
+        if (returnExpr) {
+            this.reduceCount++;
+            return returnExpr;
         }
 
         return {
             exprType: "functionCall",
-            object: objectExpr,
-            method: expr.method,
-            args: argsExpr
+            callee: {
+                exprType: "functionReference",
+                target: callee.target,
+                method: callee.method,
+            } as TstFunctionReferenceExpression,
+            args: argsExpr,
+            returnType: expr.returnType,
         } as TstFunctionCallExpression;
     }
 
@@ -357,6 +442,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         // Create local variable in scope and return no-op
         const initializer = this.visit(stmt.initializer);
         this.scope.variables.push({ name: stmt.name, value: initializer, type: stmt.varType });
+        this.incrementReferenceCount(this.scope);
         this.reduceCount++;
         return []; //{ stmtType: "localVarDeclaration", name: stmt.name, varType: stmt.varType, initializer } as TstLocalVarDeclaration];
     }
@@ -369,6 +455,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         }
 
         variable.value = expr;
+        this.incrementReferenceCount(this.scope);
         this.reduceCount++;
         return [];
     }

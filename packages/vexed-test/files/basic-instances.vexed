@@ -1,0 +1,46 @@
+# This tests edge cases in TstInstanceVisitor and getInstancesFromRoot().
+# Instances must be discoverable everywhere
+
+class Data(string name, int value) {
+    public string name = name;
+    public int value = value;
+}
+
+class Base(Data data) {
+    # From constructor parameter
+    public Data data = data;
+
+    # From base class method
+    Data getRealData(string name, int value) {
+        return Data(name, value * 1);
+    }
+}
+
+# From constructor argument
+class Main() extends Base(this.getRealData("FromConstructor", 10)) {
+
+    public int tempValue = 1000;
+
+    # From plain constructor
+    public Data fieldData = Data("FromField", this.tempValue + 0);
+
+    # From same class method
+    public Data mainClassData = this.getDataFromMain();
+
+    # From same class method calling base class method
+    public Data mainBaseClassData = this.getDataFromBase();
+
+    # From base class method
+    public Data baseClassData = this.getRealData("FromBaseClassMethod", this.tempValue + 0);
+
+    Data getDataFromMain() {
+        int i = 100;
+        # Return instance through method return type
+        return Data("FromMain", i + 0);
+    }
+
+    Data getDataFromBase() {
+        # Return instance through base class' method return type
+        return this.getRealData("FromMainBase", 10 + 0);
+    }
+}

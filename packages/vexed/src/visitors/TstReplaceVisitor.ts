@@ -1,4 +1,4 @@
-import { isBinaryExpression, isDecimalLiteral, isFunctionCall, isIfStatement, isIndexExpression, isInstanceExpression, isLocalVarAssignment, isLocalVarDeclaration, isMemberExpression, isMissingInstanceExpression, isNativeMemberExpression, isNewExpression, isParameter, isPromiseExpression, isReturnStatement, isScopedExpression, isStatementExpression, isThisExpression, isUnaryExpression, isVariableExpression, TstBinaryExpression, TstDecimalLiteralExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstMissingInstanceExpression, TstNativeMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstVariableExpression } from "../TstExpression.js";
+import { isBinaryExpression, isDecimalLiteral, isFunctionCall, isFunctionReferenceExpression, isIfStatement, isIndexExpression, isInstanceExpression, isLocalVarAssignment, isLocalVarDeclaration, isMemberExpression, isMissingInstanceExpression, isNativeMemberExpression, isNewExpression, isParameter, isPromiseExpression, isReturnStatement, isScopedExpression, isStatementExpression, isThisExpression, isUnaryExpression, isVariableExpression, TstBinaryExpression, TstDecimalLiteralExpression, TstExpression, TstFunctionCallExpression, TstFunctionReferenceExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstMissingInstanceExpression, TstNativeMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstVariableExpression } from "../TstExpression.js";
 
 export class TstReplaceVisitor {
 
@@ -11,6 +11,9 @@ export class TstReplaceVisitor {
         }
         if (isFunctionCall(expr)) {
             return this.visitFunctionCallExpression(expr);
+        }
+        if (isFunctionReferenceExpression(expr)) {
+            return this.visitFunctionReferenceExpression(expr);
         }
         if (isMemberExpression(expr)) {
             return this.visitMemberExpression(expr);
@@ -131,11 +134,19 @@ export class TstReplaceVisitor {
 
     visitFunctionCallExpression(expr: TstFunctionCallExpression): TstExpression {
         return {
-            method: expr.method,
-            object: this.visit(expr.object),
+            callee: this.visit(expr.callee),
             exprType: expr.exprType,
             args: expr.args.map(arg => this.visit(arg)),
+            returnType: expr.returnType,
         } as TstFunctionCallExpression;
+    }
+
+    visitFunctionReferenceExpression(expr: TstFunctionReferenceExpression): TstExpression {
+        return {
+            exprType: expr.exprType,
+            method: expr.method,
+            target: this.visit(expr.target),
+        } as TstFunctionReferenceExpression;
     }
 
     visitNewExpression(expr: TstNewExpression): TstExpression {

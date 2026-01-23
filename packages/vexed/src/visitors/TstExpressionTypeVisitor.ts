@@ -1,6 +1,8 @@
-import { TstBinaryExpression, TstDecimalLiteralExpression, TstExpression, TstFunctionCallExpression, TstInstanceExpression, TstMemberExpression, TstMissingInstanceExpression, TstNativeMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstScopedExpression, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
+import { isFunctionReferenceExpression, isInstanceExpression, TstBinaryExpression, TstDecimalLiteralExpression, TstExpression, TstFunctionCallExpression, TstFunctionReferenceExpression, TstInstanceExpression, TstMemberExpression, TstMissingInstanceExpression, TstNativeMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstScopedExpression, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
 import { TstRuntime } from "../TstRuntime.js";
 import { TypeDefinition } from "../TstType.js";
+import { FunctionTypeDefinition, getFunctionTypeName } from "../types/FunctionTypeDefinition.js";
+import { printExpression } from "./TstPrintVisitor.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
 
 // Usage: Visit an expression, then check visitType for the resulting type. One-time use.
@@ -21,7 +23,12 @@ export class TstExpressionTypeVisitor extends TstReplaceVisitor {
             throw new Error("Cannot get type of member expression");
         }
 
-        this.visitType = objectType.getProperty(expr.property)?.type || null;
+        const typeProperty = objectType.getProperty(expr.property);
+        if (!typeProperty) {
+            throw new Error(expr.property + " is not a member of " + objectType.name);
+        }
+
+        this.visitType = typeProperty.type;
         if (!this.visitType) {
             throw new Error(expr.property + " is not a member of " + objectType.name);
         }
@@ -83,7 +90,22 @@ export class TstExpressionTypeVisitor extends TstReplaceVisitor {
     }
 
     visitFunctionCallExpression(expr: TstFunctionCallExpression): TstExpression {
-        this.visitType = expr.method.returnType;
+        this.visit(expr.callee);
+
+        // callee must resolve a function signature type
+        if (!(this.visitType instanceof FunctionTypeDefinition)) {
+            console.log(expr);
+            throw new Error("Callee is not a function type: " + (this.visitType?.name || "unknown"));
+        }
+
+        this.visitType = this.visitType.returnType;
+
+        return expr;
+    }
+
+    visitFunctionReferenceExpression(expr: TstFunctionReferenceExpression): TstExpression {
+        const functionTypeName = getFunctionTypeName(expr.method.returnType, expr.method.parameters.map(p => p.type));
+        this.visitType = this.runtime.getType(functionTypeName);
         return expr;
     }
 

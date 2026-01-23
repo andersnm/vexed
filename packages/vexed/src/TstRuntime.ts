@@ -1,4 +1,4 @@
-import { InstanceMeta, isInstanceExpression, RuntimeMeta, ScopeMeta, TstExpression, TstInstanceExpression, TstInstanceObject, TstPromiseExpression, TstScopedExpression, TstVariable, TypeMeta } from "./TstExpression.js";
+import { InstanceMeta, isFunctionReferenceExpression, isInstanceExpression, RuntimeMeta, ScopeMeta, TstExpression, TstFunctionReferenceExpression, TstInstanceExpression, TstInstanceObject, TstPromiseExpression, TstScopedExpression, TstVariable, TypeMeta } from "./TstExpression.js";
 import { TypeDefinition } from "./TstType.js";
 import { TstExpressionTypeVisitor } from "./visitors/TstExpressionTypeVisitor.js";
 import { TstScope } from "./visitors/TstReduceExpressionVisitor.js";
@@ -13,6 +13,7 @@ import { IoTypeDefinition } from "./types/IoTypeDefinition.js";
 import { TypeTypeDefinition } from "./types/TypeTypeDefinition.js";
 import { TstReducer } from "./TstReducer.js";
 import { AstProgram } from "./AstProgram.js";
+import { FunctionTypeDefinition, getFunctionTypeName } from "./types/FunctionTypeDefinition.js";
 
 export class TstRuntime {
     verbose: boolean = false;
@@ -146,6 +147,17 @@ export class TstRuntime {
 
         const arrayTypeName = type.name + "[]";
         return this.getType(arrayTypeName);
+    }
+
+    createFunctionType(parameterTypes: TypeDefinition[], returnType: TypeDefinition) {
+        const functionTypeName = getFunctionTypeName(returnType, parameterTypes);
+        if (this.tryGetType(functionTypeName)) {
+            return;
+        }
+
+        // console.log("Creating function type: ", functionTypeName);
+        const functionType = new FunctionTypeDefinition(this, returnType, parameterTypes);
+        this.registerTypes([functionType]);
     }
 
     createArrayType(name: string) {

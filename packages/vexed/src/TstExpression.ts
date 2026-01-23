@@ -26,6 +26,10 @@ export function isFunctionCall(expr: TstExpression): expr is TstFunctionCallExpr
     return expr.exprType === "functionCall";
 }
 
+export function isFunctionReferenceExpression(expr: TstExpression): expr is TstFunctionReferenceExpression {
+    return expr.exprType === "functionReference";
+}
+
 export function isScopedExpression(expr: TstExpression): expr is TstScopedExpression {
     return expr.exprType === "scoped";
 }
@@ -142,9 +146,15 @@ export interface TstNewExpression extends TstExpression {
 
 export interface TstFunctionCallExpression extends TstExpression {
     exprType: "functionCall";
-    method: TypeMethod;
-    object: TstExpression;
+    returnType: TypeDefinition;
+    callee: TstExpression;
     args: TstExpression[];
+}
+
+export interface TstFunctionReferenceExpression extends TstExpression {
+    exprType: "functionReference";
+    target: TstExpression;
+    method: TypeMethod;
 }
 
 export interface TstStatementExpression extends TstExpression {

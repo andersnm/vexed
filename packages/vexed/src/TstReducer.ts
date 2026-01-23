@@ -1,26 +1,12 @@
-import { InstanceMeta, isInstanceExpression, RuntimeMeta, TstExpression, TstInstanceObject, TstPromiseExpression, TypeMeta } from "./TstExpression.js";
+import { InstanceMeta, isFunctionReferenceExpression, isInstanceExpression, RuntimeMeta, TstExpression, TstInstanceExpression, TstInstanceObject, TstPromiseExpression, TypeMeta } from "./TstExpression.js";
 import { TypeDefinition } from "./TstType.js";
 import { TstReduceExpressionVisitor, TstScope } from "./visitors/TstReduceExpressionVisitor.js";
 import { TstPromiseVisitor } from "./visitors/TstPromiseVisitor.js";
-import { TstScopeVisitor } from "./visitors/TstScopeVisitor.js";
 import { TstInstanceVisitor } from "./visitors/TstInstanceVisitor.js";
 import { TstRuntime } from "./TstRuntime.js";
 
 export class TstReducer {
     constructor(private runtime: TstRuntime) { }
-
-    getInstancesFromRoot(obj: TstInstanceObject): TstInstanceObject[] {
-        const instanceVisitor = new TstInstanceVisitor(this.runtime);
-        instanceVisitor.visited.add(obj);
-        instanceVisitor.visitInstanceProperties(obj, obj[TypeMeta]);
-        return [ ... instanceVisitor.visited];
-    }
-
-    getScopesFromRoot(obj: TstInstanceObject): TstScope[] {
-        const scopeVisitor = new TstScopeVisitor(this.runtime);
-        scopeVisitor.visitInstanceProperties(obj, obj[TypeMeta]);
-        return [ ... scopeVisitor.scopes];
-    }
 
     getPromisesFromRoot(obj: TstInstanceObject): TstPromiseExpression[] {
         const promiseVisitor = new TstPromiseVisitor(this.runtime);
@@ -36,6 +22,12 @@ export class TstReducer {
             sealable &&= this.reduceInstanceProperties(reducer, obj, scopeType.extends);
         }
 
+        reducer.scopeStack.push({
+            parent: reducer.scope,
+            thisObject: obj,
+            variables: [],
+        });
+
         for (let propertyDeclaration of scopeType.properties) {
             const propertyExpression = scopeType.resolveProperty(obj, propertyDeclaration.name);
             if (!propertyExpression) {
@@ -50,10 +42,12 @@ export class TstReducer {
                 throw new Error(`Type mismatch when reducing property ${propertyDeclaration.name} of type ${propertyDeclaration.type.name}, got ${reducedType?.name || "unknown"}`);
             }
 
-            sealable &&= isInstanceExpression(reduced) && reduced.instance[RuntimeMeta].sealed;
+            sealable &&= (isInstanceExpression(reduced) && reduced.instance[RuntimeMeta].sealed) || isFunctionReferenceExpression(reduced);
 
             obj[propertyDeclaration.name] = reduced;
         }
+
+        reducer.scopeStack.pop();
 
         // console.log("Promises: ", reducer.promiseExpressions);
         return sealable;
@@ -66,7 +60,8 @@ export class TstReducer {
         for (let i = 0; i < array.length; i++) {
             const element = array[i];
             const reduced = reducer.visit(element);
-            sealable &&= isInstanceExpression(reduced) && reduced.instance[RuntimeMeta].sealed;
+
+            sealable &&= ((isInstanceExpression(reduced) && reduced.instance[RuntimeMeta].sealed) || isFunctionReferenceExpression(reduced));
             array[i] = reduced;
         }
 
@@ -127,14 +122,18 @@ export class TstReducer {
         while (true) {
             if (this.runtime.verbose) console.log("[TstRuntime] Reduction iteration", counter);
 
+            const instanceVisitor = new TstInstanceVisitor(this.runtime);
+            instanceVisitor.visited.add(obj);
+            instanceVisitor.visitInstanceProperties(obj, obj[TypeMeta]);
+
             const reducer = new TstReduceExpressionVisitor(this.runtime, this.runtime.globalScope);
 
-            const scopes = this.getScopesFromRoot(obj);
+            const scopes = [ ...instanceVisitor.scopes ];
             for (let scope of scopes) {
                 this.reduceScopeVariables(reducer, scope);
             }
 
-            const instances = this.getInstancesFromRoot(obj);
+            const instances = [ ... instanceVisitor.visited ];
             for (let instance of instances) {
                 this.reduceInstanceObject(reducer, instance);
             }

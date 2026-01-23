@@ -3,11 +3,12 @@
   "private": true,
   "workspaces": [
     "packages/vexed",
-    "packages/vexed-test",
-    "packages/vexed-digitalocean",
-    "packages/vexed-cli"
+    "packages/vexed-cli",
+    "packages/vexed-test"
   ],
   "_disabledWorkspaces":[
+    "packages/vexed-vscode",
+    "packages/vexed-digitalocean"
   ],
   "scripts": {
     "build": "npm run build -ws",

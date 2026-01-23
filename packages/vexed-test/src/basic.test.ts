@@ -50,42 +50,59 @@ function checkInstanceProperty(instance: TstInstanceObject, propName: string, ex
 test('Parse basic-class', async () => {
     const runtime = new TstRuntime();
     const instance = await compileInstance(runtime, "./files/basic-class.vexed");
-    checkScopedInstanceProperty(instance, "mainStr", runtime.getType("string"), "It's a string");
-    checkScopedInstanceProperty(instance, "mainNum", runtime.getType("int"), 123);
-    checkScopedInstanceProperty(instance, "mainBool", runtime.getType("bool"), true);
+    await runtime.reduceInstance(instance);
+    const json = printJsonObject(instance);
+
+    assert.deepEqual(json, {
+        mainStr: "It's a string",
+        mainNum: 123,
+        mainBool: true
+    });
 });
 
 test('Parse basic-subclass', async () => {
     const runtime = new TstRuntime();
     const instance = await compileInstance(runtime, "./files/basic-subclass.vexed");
-    checkScopedInstanceProperty(instance, "baseStr", runtime.getType("string"), "String, it is");
-    checkScopedInstanceProperty(instance, "baseNum", runtime.getType("int"), 321);
-    checkScopedInstanceProperty(instance, "baseBool", runtime.getType("bool"), true);
-    checkScopedInstanceProperty(instance, "mainStr", runtime.getType("string"), "It's a string");
-    checkScopedInstanceProperty(instance, "mainNum", runtime.getType("int"), 123);
-    checkScopedInstanceProperty(instance, "mainBool", runtime.getType("bool"), true);
+    await runtime.reduceInstance(instance);
+    const json = printJsonObject(instance);
 
-    checkScopedInstanceProperty(instance, "abstractInt", runtime.getType("int"), 777);
+    assert.deepEqual(json, {
+        baseStr: "String, it is",
+        baseNum: 321,
+        baseBool: true,
+        mainStr: "It's a string",
+        mainNum: 123,
+        mainBool: true,
+        abstractInt: 777
+    });
 });
 
 test('Parse basic-subclass-parameters', async () => {
     const runtime = new TstRuntime();
     const instance = await compileInstance(runtime, "./files/basic-class-parameters.vexed");
-    checkScopedParameterProperty(instance, "baseStr", runtime.getType("string"), "strValue");
-    checkScopedParameterProperty(instance, "baseNum", runtime.getType("int"), "intValue");
-    checkScopedParameterProperty(instance, "baseBool", runtime.getType("bool"), "boolValue");
-    checkScopedInstanceProperty(instance, "mainStr", runtime.getType("string"), "It's a string");
-    checkScopedInstanceProperty(instance, "mainNum", runtime.getType("int"), 123);
-    checkScopedInstanceProperty(instance, "mainBool", runtime.getType("bool"), true);
 
     await runtime.reduceInstance(instance);
 
-    checkInstanceProperty(instance, "baseStr", runtime.getType("string"), "String, it is");
-    checkInstanceProperty(instance, "baseNum", runtime.getType("int"), 321);
-    checkInstanceProperty(instance, "baseBool", runtime.getType("bool"), true);
-    checkInstanceProperty(instance, "mainStr", runtime.getType("string"), "It's a string");
-    checkInstanceProperty(instance, "mainNum", runtime.getType("int"), 123);
-    checkInstanceProperty(instance, "mainBool", runtime.getType("bool"), true);
+    const json = printJsonObject(instance);
+    
+    assert.deepEqual(json, {
+        baseStr: "String, it is",
+        baseNum: 321,
+        baseBool: true,
+        mainStr: "It's a string",
+        mainNum: 123,
+        mainBool: true,
+        mainBase: {
+            baseStr: "It's a string",
+            baseNum: 123,
+            baseBool: true,
+        },
+        mainSidecar: {
+            sidecarStr: "It's a string",
+            sidecarNum: 123,
+            sidecarBool: true,
+        }
+    });
 });
 
 test('Parse basic-array', async () => {
@@ -102,6 +119,52 @@ test('Parse basic-array', async () => {
     assert.deepEqual(object.boolArray, [ true, false, true, false ]);
     assert.deepEqual(object.boolArray2D, [ [ true, false, true, false ], [ false, false, false ] ]);
 
+});
+
+// test('Parse basic-array-map', async () => {
+//     const runtime = new TstRuntime();
+//     const instance = await compileInstance(runtime, "./files/basic-array-map.vexed");
+
+//     await runtime.reduceInstance(instance);
+
+//     const object = printJsonObject(instance);
+//     assert.deepEqual(object, {
+//         strArray: [ "It's a string", "String, it is" ],
+//         value1: 1,
+//         value2: 999
+//     });
+// });
+
+test('Parse basic-instances', async () => {
+    const runtime = new TstRuntime();
+    const instance = await compileInstance(runtime, "./files/basic-instances.vexed");
+
+    await runtime.reduceInstance(instance);
+
+    const object = printJsonObject(instance);
+    assert.deepEqual(object, {
+        data: {
+            name: "FromConstructor",
+            value: 10,
+        },
+        tempValue: 1000,
+        fieldData: {
+            name: "FromField",
+            value: 1000,
+        },
+        mainClassData: {
+            name: "FromMain",
+            value: 100,
+        },
+        mainBaseClassData: {
+            name: "FromMainBase",
+            value: 10,
+        },
+        baseClassData: {
+            name: "FromBaseClassMethod",
+            value: 1000,
+        }
+    });
 });
 
 test('Parse member-access', async () => {

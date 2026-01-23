@@ -53,6 +53,10 @@ class TstJsonFormatter {
         for (let property of instanceType.properties) {
             const propertyName = property.name;
             const propExpr = instanceType.resolvePropertyExpression(obj, propertyName);
+            if (propExpr && propExpr.exprType === "functionReference") {
+                continue;
+            }
+
             if (propExpr) {
                 outObj[propertyName] = this.printInstanceExpression(propExpr);
             } else {
@@ -78,6 +82,6 @@ class TstJsonFormatter {
             return "<expr:" + expr.exprType + ">";
         }
 
-        throw new Error("Cannot print non-instance expression: " + expr.exprType);
+        throw new Error("Cannot print non-instance expression: " + expr.exprType + ". Use force option to override.");
     }
 }
