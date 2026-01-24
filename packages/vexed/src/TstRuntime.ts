@@ -65,7 +65,7 @@ export class TstRuntime {
         return type || null;
     }
 
-    getExpressionType(expr: TstExpression, thisType: TypeDefinition): TypeDefinition | null {
+    getExpressionType(expr: TstExpression, thisType: TypeDefinition): TypeDefinition {
         const visitor = new TstExpressionTypeVisitor(this, thisType);
         visitor.visit(expr);
         return visitor.visitType;
@@ -203,7 +203,89 @@ export class TstRuntime {
         return obj;
     }
 
-    isTypeAssignable(fromType: TypeDefinition | null, toType: TypeDefinition | null): boolean {
+    constructGenericType(inputType: TypeDefinition, bindings: Map<string, TypeDefinition>): TypeDefinition {
+        if (bindings.size === 0) {
+            return inputType;
+        }
+
+        if (inputType instanceof ArrayBaseTypeDefinition) {
+            const elementTypeName = inputType.name.substring(0, inputType.name.length - 2);
+            const elementType = this.getType(elementTypeName);
+            const resolvedElementType = this.constructGenericType(elementType, bindings);
+            return this.getType(resolvedElementType.name + "[]");
+        }
+
+        if (inputType instanceof GenericUnresolvedTypeDefinition) {
+            const binding = bindings.get(inputType.name);
+            if (!binding) {
+                throw new Error("Cannot resolve generic type: " + inputType.name);
+            }
+
+            return binding;
+        }
+
+        return inputType;
+    }
+
+    inferBindings(expected: TypeDefinition, actual: TypeDefinition, out: Map<string, TypeDefinition>): boolean {
+
+        // inferBindings returns false if there is an inference conflict, otherwise true.
+
+        if (actual instanceof GenericUnresolvedTypeDefinition) {
+            // Cannot infer from an unresolved actual type
+            // If this happens, the the type originator site should resolve it (e.g function return types)
+            throw new Error("Cannot infer from unresolved actual type: " + actual.name);
+        }
+
+        // Case 1: expected is a generic placeholder
+        if (expected instanceof GenericUnresolvedTypeDefinition) {
+            const name = expected.name;
+            const existing = out.get(name);
+
+            if (!existing) {
+                out.set(name, actual);
+                return true;
+            }
+
+            // Must agree with previous inference
+            return existing === actual;
+        }
+
+        // Case 2: both are arrays
+        if (expected instanceof ArrayBaseTypeDefinition && actual instanceof ArrayBaseTypeDefinition) {
+            const expectedElementTypeName = expected.name.substring(0, expected.name.length - 2);
+            const actualElementTypeName = actual.name.substring(0, actual.name.length - 2);
+            const expectedElementType = this.tryGetType(expectedElementTypeName);
+            const actualElementType = this.tryGetType(actualElementTypeName);
+            return this.inferBindings(expectedElementType!, actualElementType!, out);
+        }
+
+        // Case 3: both are function types
+        if (expected instanceof FunctionTypeDefinition && actual instanceof FunctionTypeDefinition) {
+
+            if (!this.inferBindings(expected.returnType, actual.returnType, out)) {
+                return false;
+            }
+
+            if (expected.parameterTypes.length !== actual.parameterTypes.length) {
+                return false;
+            }
+
+            for (let i = 0; i < expected.parameterTypes.length; i++) {
+                if (!this.inferBindings(expected.parameterTypes[i], actual.parameterTypes[i], out)) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        // Inference done
+        return true;
+    }
+
+    isTypeAssignable(fromType: TypeDefinition | null, toType: TypeDefinition | null, bindings: Map<string, TypeDefinition> = new Map()): boolean {
+
         if (!fromType || !toType) return false;
 
         // Handle array types
@@ -213,20 +295,27 @@ export class TstRuntime {
             const toElementName = toType.name.substring(0, toType.name.length - 2);
             const fromElementType = this.tryGetType(fromElementName);
             const toElementType = this.tryGetType(toElementName);
-            return this.isTypeAssignable(fromElementType, toElementType);
+            return this.isTypeAssignable(fromElementType, toElementType, bindings);
         }
 
-        // Unresolved generic T matches any
         if (toType instanceof GenericUnresolvedTypeDefinition) {
-            return true;
+            const bindingType = bindings.get(toType.name);
+            if (!bindingType) {
+                throw new Error("Unbound generic type: " + toType.name);
+            }
+            toType = bindingType;
         }
 
         if (fromType instanceof GenericUnresolvedTypeDefinition) {
-            return true;
+            const bindingType = bindings.get(fromType.name);
+            if (!bindingType) {
+                throw new Error("Unbound generic type: " + fromType.name);
+            }
+            fromType = bindingType;
         }
 
         if (fromType instanceof FunctionTypeDefinition && toType instanceof FunctionTypeDefinition) {
-            if (!this.isTypeAssignable(fromType.returnType, toType.returnType)) {
+            if (!this.isTypeAssignable(fromType.returnType, toType.returnType, bindings)) {
                 return false;
             }
 
@@ -237,7 +326,7 @@ export class TstRuntime {
             for (let i = 0; i < fromType.parameterTypes.length; i++) {
                 const fromParamType = fromType.parameterTypes[i];
                 const toParamType = toType.parameterTypes[i];
-                if (!this.isTypeAssignable(fromParamType, toParamType)) {
+                if (!this.isTypeAssignable(fromParamType, toParamType, bindings)) {
                     return false;
                 }
             }

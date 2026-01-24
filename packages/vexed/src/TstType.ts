@@ -19,6 +19,7 @@ export interface TypeParameter {
 export interface TypeMethod {
     name: string;
     declaringType: TypeDefinition;
+    genericParameters: TypeParameter[];
     parameters: TypeParameter[];
     returnType: TypeDefinition;
     body: TstStatement[];

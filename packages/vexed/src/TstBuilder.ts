@@ -1,10 +1,10 @@
 import { AstClass, AstExpression, AstMethodDeclaration, AstProgram, AstStatement, formatAstTypeName, isAstArrayLiteral, isAstBinaryExpression, isAstBooleanLiteral, isAstDecimalLiteral, isAstFunctionCall, isAstIdentifier, isAstIfStatement, isAstIndexExpression, isAstIntegerLiteral, isAstLocalVarAssignment, isAstLocalVarDeclaration, isAstMember, isAstReturnStatement, isAstStringLiteral, isAstUnaryExpression, isClass, isMethodDeclaration, isPropertyDefinition, isPropertyStatement } from "./AstProgram.js";
 import { InstanceMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstFunctionReferenceExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstReturnStatement, TstStatement, TstThisExpression, TstUnaryExpression, TstUnboundFunctionReferenceExpression, TstVariable, TstVariableExpression } from "./TstExpression.js";
-import { TypeDefinition, TypeParameter } from "./TstType.js";
+import { TypeDefinition, TypeMethod, TypeParameter } from "./TstType.js";
 import { TstRuntime } from "./TstRuntime.js";
 import { TstExpressionTypeVisitor } from "./visitors/TstExpressionTypeVisitor.js";
 import { AstIdentifierType, AstType, isAstArrayType, isAstFunctionType, isAstIdentifierType } from "./AstType.js";
-import { getFunctionTypeName } from "./types/FunctionTypeDefinition.js";
+import { FunctionTypeDefinition, getFunctionTypeName } from "./types/FunctionTypeDefinition.js";
 
 // There is no visitor for Ast types, it is only traversed once during conversion to Tst types.
 
@@ -76,11 +76,36 @@ class AstVisitor {
                 throw new Error("Could not find type for function call callee");
             }
 
+            if (!(methodType instanceof FunctionTypeDefinition)) {
+                throw new Error("Callee is not a function type");
+            }
+
+            const genericBindings = new Map<string, TypeDefinition>();
+
+            const argumentExpressions = expr.args.map(arg => this.resolveExpression(arg));
+
+            for (let i = 0; i < argumentExpressions.length; i++) {
+                const argumentExpression = argumentExpressions[i];
+                const methodParameterType = methodType.parameterTypes[i];
+
+                const argumentType = this.runtime.getExpressionType(argumentExpression, this.thisType);
+                if (!argumentType) {
+                    throw new Error("Could not determine type of argument expression");
+                }
+
+                if (!this.runtime.inferBindings(methodParameterType, argumentType, genericBindings)) {
+                    throw new Error(`Cannot infer bindings for function call argument ${i}: expected ${methodParameterType.name}, got ${argumentType.name}`);
+                }
+            }
+
+            const returnType = this.runtime.constructGenericType(methodType.returnType, genericBindings);
+
             return {
                 exprType: "functionCall", 
                 callee: callee,
-                args: expr.args.map(arg => this.resolveExpression(arg)),
-                returnType: methodType, // lets see if it comes through
+                args: argumentExpressions,
+                returnType: returnType,
+                genericBindings: genericBindings,
             } as TstFunctionCallExpression;
         }
 
@@ -334,10 +359,23 @@ export class TstBuilder {
                             throw new Error(`Could not find type ${unit.returnType} for method ${unit.name} of type ${programUnit.name}`);
                         }
 
-                        const typeMethod = {
+                        const genericParameters: TypeParameter[] = [];
+                        if (unit.genericParameters) {
+                            for (let genericParameter of unit.genericParameters) {
+                                const genericTypeName = formatAstTypeName({ type: "identifier", typeName: genericParameter } as AstIdentifierType, programUnit, unit);
+                                const genericType = this.runtime.getType(genericTypeName);
+                                genericParameters.push({
+                                    name: genericParameter,
+                                    type: genericType,
+                                });
+                            }
+                        }
+
+                        const typeMethod: TypeMethod = {
                             name: unit.name,
                             declaringType: type,
                             returnType: returnType,
+                            genericParameters: genericParameters,
                             parameters: unit.parameters.map(param => {
                                 const parameterTypeName = formatAstTypeName(param.type, programUnit, unit);
                                 const parameterType = this.runtime.getType(parameterTypeName);

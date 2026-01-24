@@ -38,7 +38,10 @@ export class TstReducer {
 
             // Check if types match
             const reducedType = this.runtime.getExpressionType(reduced, obj[TypeMeta]);
-            if (!this.runtime.isTypeAssignable(reducedType, propertyDeclaration.type)) {
+
+            // Empty bindings, everything should be resolved
+            const bindings = new Map<string, TypeDefinition>();
+            if (!this.runtime.isTypeAssignable(reducedType, propertyDeclaration.type, bindings)) {
                 throw new Error(`Type mismatch when reducing property ${propertyDeclaration.name} of type ${propertyDeclaration.type.name}, got ${reducedType?.name || "unknown"}`);
             }
 

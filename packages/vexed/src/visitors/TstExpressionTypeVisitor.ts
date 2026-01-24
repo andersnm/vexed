@@ -8,10 +8,11 @@ import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
 
 export class TstExpressionTypeVisitor extends TstReplaceVisitor {
 
-    visitType: TypeDefinition | null = null;
+    visitType: TypeDefinition;
 
     constructor(private runtime: TstRuntime, private thisType: TypeDefinition) {
         super();
+        this.visitType = thisType;
     }
 
     visitMemberExpression(expr: TstMemberExpression): TstExpression {
@@ -97,8 +98,7 @@ export class TstExpressionTypeVisitor extends TstReplaceVisitor {
             throw new Error("Callee is not a function type: " + (this.visitType?.name || "unknown"));
         }
 
-        this.visitType = this.visitType.returnType;
-
+        this.visitType = this.runtime.constructGenericType(this.visitType.returnType, expr.genericBindings);
         return expr;
     }
 

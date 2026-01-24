@@ -141,6 +141,7 @@ export class TstReplaceVisitor {
             exprType: expr.exprType,
             args: expr.args.map(arg => this.visit(arg)),
             returnType: expr.returnType,
+            genericBindings: expr.genericBindings,
         } as TstFunctionCallExpression;
     }
 

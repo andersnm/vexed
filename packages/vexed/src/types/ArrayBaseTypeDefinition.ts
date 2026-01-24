@@ -111,6 +111,7 @@ export class ArrayBaseTypeDefinition extends TypeDefinition {
                     callee: callbackExpression, 
                     args: [item],
                     returnType: callbackReturnType,
+                    genericBindings: new Map<string, TypeDefinition>(), // should be resolved by now, altho should have it!
                 } as TstFunctionCallExpression,
             } as TstScopedExpression));
 

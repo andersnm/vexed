@@ -153,6 +153,7 @@ export interface TstFunctionCallExpression extends TstExpression {
     returnType: TypeDefinition;
     callee: TstExpression;
     args: TstExpression[];
+    genericBindings: Map<string, TypeDefinition>;
 }
 
 export interface TstFunctionReferenceExpression extends TstExpression {

@@ -1,5 +1,6 @@
 import { InstanceMeta, isFunctionCall, isFunctionReferenceExpression, isInstanceExpression, isMemberExpression, isReturnStatement, isUnboundFunctionReferenceExpression, RuntimeMeta, ScopeMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstFunctionReferenceExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstMissingInstanceExpression, TstNativeMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstUnboundFunctionReferenceExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
 import { TstRuntime } from "../TstRuntime.js";
+import { TypeDefinition } from "../TstType.js";
 import { printExpression } from "./TstPrintVisitor.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
 
@@ -331,6 +332,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
                 callee: callee,
                 args: expr.args, //expr.args.map(arg => this.visit(arg)),
                 returnType: expr.returnType,
+                genericBindings: expr.genericBindings,
             } as TstFunctionCallExpression;
         }
 
@@ -345,6 +347,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
                 callee: callee,
                 args: expr.args, // expr.args.map(arg => this.visit(arg)),
                 returnType: expr.returnType,
+                genericBindings: expr.genericBindings,
             } as TstFunctionCallExpression;
         }
 
@@ -357,14 +360,14 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
             this.incrementReferenceCount(this.scope);
             const argType = this.runtime.getExpressionType(arg, this.scope.thisObject[TypeMeta]);
 
-            if (!this.runtime.isTypeAssignable(argType, methodParameter.type)) {
+            if (!this.runtime.isTypeAssignable(argType, methodParameter.type, expr.genericBindings)) {
                 throw new Error(`Function call argument type mismatch for parameter ${methodParameter.name}: expected ${methodParameter.type.name}, got ${argType ? argType.name : "unknown"}`);
             }
 
             variables.push({
                 name: methodParameter.name,
                 value: arg,
-                type: methodParameter.type,
+                type: argType, // methodParameter.type, // <- use the concrete type
             });
         }
 
@@ -401,6 +404,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
             } as TstFunctionReferenceExpression,
             args: argsExpr,
             returnType: expr.returnType,
+            genericBindings: expr.genericBindings,
         } as TstFunctionCallExpression;
     }
 
@@ -408,6 +412,14 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         const stmts = this.visitStatementList(expr.statements);
         if (stmts.length === 1 && isReturnStatement(stmts[0])) {
             this.reduceCount++;
+
+            const returnValue = stmts[0].returnValue;
+            const returnValueType = this.runtime.getExpressionType(returnValue, this.scope.thisObject[TypeMeta]);
+
+            if (!this.runtime.isTypeAssignable(returnValueType!, expr.returnType, new Map<string, TypeDefinition>())) {
+                throw new Error(`Return type mismatch in statement expression: expected ${expr.returnType.name}, got ${returnValueType ? returnValueType.name : "unknown"}`);
+            }
+
             return stmts[0].returnValue;
         }
 
