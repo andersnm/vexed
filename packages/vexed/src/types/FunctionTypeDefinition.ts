@@ -7,8 +7,8 @@ export function getFunctionTypeName(returnType: TypeDefinition, parameterTypes: 
 }
 
 export class FunctionTypeDefinition extends TypeDefinition {
-    returnType: TypeDefinition = this.runtime.getType("any");
-    parameterTypes: TypeDefinition[] = [];
+    returnType: TypeDefinition;
+    parameterTypes: TypeDefinition[];
 
     constructor(runtime: TstRuntime, returnType: TypeDefinition, parameterTypes: TypeDefinition[]) {
         super(runtime, getFunctionTypeName(returnType, parameterTypes), "<native>");

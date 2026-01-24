@@ -1,4 +1,4 @@
-import { AstType } from "./AstType.js";
+import { AstType, isAstArrayType, isAstFunctionType, isAstIdentifierType } from "./AstType.js";
 
 export function isClass(programUnit: AstProgramUnit): programUnit is AstClass {
     return programUnit.type === "class";
@@ -157,6 +157,7 @@ export interface AstProgramUnit {
 export interface AstMethodDeclaration extends AstClassUnit {
     type: "methodDeclaration";
     name: string;
+    genericParameters?: string[];
     returnType: AstType;
     parameters: AstParameter[];
     statementList: AstStatement[];
@@ -226,4 +227,27 @@ export interface AstLocation {
     startOffset: number;
     endOffset: number;
     image: string;
+}
+
+export function formatAstTypeName(ref: AstType, classDef: AstClass, method: AstMethodDeclaration | null): string {
+    if (isAstIdentifierType(ref)) {
+        const methodGenericParameter = method?.genericParameters?.find(p => p === ref.typeName);
+        if (methodGenericParameter) {
+            return classDef.name + "~" + method!.name + "~" + methodGenericParameter;
+        }
+
+        return ref.typeName;
+    }
+
+    if (isAstArrayType(ref)) {
+        return formatAstTypeName(ref.arrayItemType, classDef, method) + "[]";
+    }
+
+    if (isAstFunctionType(ref)) {
+        const returnType = formatAstTypeName(ref.functionReturnType, classDef, method);
+        const parameterTypes = ref.functionParameters.map(p => formatAstTypeName(p, classDef, method)).join(",");
+        return returnType + "(" + parameterTypes + ")";
+    }
+
+    throw new Error("Unknown NativeTypeRef type: " + ref.type);
 }

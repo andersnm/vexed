@@ -1,4 +1,4 @@
-import { InstanceMeta, isFunctionCall, isFunctionReferenceExpression, isInstanceExpression, isMemberExpression, isReturnStatement, RuntimeMeta, ScopeMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstFunctionReferenceExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstMissingInstanceExpression, TstNativeMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
+import { InstanceMeta, isFunctionCall, isFunctionReferenceExpression, isInstanceExpression, isMemberExpression, isReturnStatement, isUnboundFunctionReferenceExpression, RuntimeMeta, ScopeMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstFunctionReferenceExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstMissingInstanceExpression, TstNativeMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstUnboundFunctionReferenceExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
 import { TstRuntime } from "../TstRuntime.js";
 import { printExpression } from "./TstPrintVisitor.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
@@ -71,6 +71,15 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
                 this.reduceCount++;
                 return propertyExpression;
             }
+
+            if (propertyExpression && isUnboundFunctionReferenceExpression(propertyExpression)) {
+                this.reduceCount++;
+                return {
+                    exprType: "functionReference",
+                    target: objectExpression,
+                    method: propertyExpression.method,
+                } as TstFunctionReferenceExpression;
+            }
         }
 
         return {
@@ -78,6 +87,11 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
             object: objectExpression,
             property: expr.property,
         } as TstMemberExpression;
+    }
+
+    visitUnboundFunctionReferenceExpression(expr: TstUnboundFunctionReferenceExpression): TstExpression {
+        // Can only reduce unbound function references in member expression
+        return super.visitUnboundFunctionReferenceExpression(expr);
     }
 
     visitFunctionReferenceExpression(expr: TstFunctionReferenceExpression): TstExpression {

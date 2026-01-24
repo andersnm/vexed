@@ -1,4 +1,4 @@
-import { isBinaryExpression, isDecimalLiteral, isFunctionCall, isFunctionReferenceExpression, isIfStatement, isIndexExpression, isInstanceExpression, isLocalVarAssignment, isLocalVarDeclaration, isMemberExpression, isMissingInstanceExpression, isNativeMemberExpression, isNewExpression, isParameter, isPromiseExpression, isReturnStatement, isScopedExpression, isStatementExpression, isThisExpression, isUnaryExpression, isVariableExpression, TstBinaryExpression, TstDecimalLiteralExpression, TstExpression, TstFunctionCallExpression, TstFunctionReferenceExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstMissingInstanceExpression, TstNativeMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstVariableExpression } from "../TstExpression.js";
+import { isBinaryExpression, isDecimalLiteral, isFunctionCall, isFunctionReferenceExpression, isIfStatement, isIndexExpression, isInstanceExpression, isLocalVarAssignment, isLocalVarDeclaration, isMemberExpression, isMissingInstanceExpression, isNativeMemberExpression, isNewExpression, isParameter, isPromiseExpression, isReturnStatement, isScopedExpression, isStatementExpression, isThisExpression, isUnaryExpression, isUnboundFunctionReferenceExpression, isVariableExpression, TstBinaryExpression, TstDecimalLiteralExpression, TstExpression, TstFunctionCallExpression, TstFunctionReferenceExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstMissingInstanceExpression, TstNativeMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstUnboundFunctionReferenceExpression, TstVariableExpression } from "../TstExpression.js";
 
 export class TstReplaceVisitor {
 
@@ -14,6 +14,9 @@ export class TstReplaceVisitor {
         }
         if (isFunctionReferenceExpression(expr)) {
             return this.visitFunctionReferenceExpression(expr);
+        }
+        if (isUnboundFunctionReferenceExpression(expr)) {
+            return this.visitUnboundFunctionReferenceExpression(expr);
         }
         if (isMemberExpression(expr)) {
             return this.visitMemberExpression(expr);
@@ -147,6 +150,13 @@ export class TstReplaceVisitor {
             method: expr.method,
             target: this.visit(expr.target),
         } as TstFunctionReferenceExpression;
+    }
+
+    visitUnboundFunctionReferenceExpression(expr: TstUnboundFunctionReferenceExpression): TstExpression {
+        return {
+            exprType: expr.exprType,
+            method: expr.method,
+        } as TstUnboundFunctionReferenceExpression;
     }
 
     visitNewExpression(expr: TstNewExpression): TstExpression {

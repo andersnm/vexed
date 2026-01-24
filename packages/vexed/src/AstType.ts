@@ -30,24 +30,3 @@ export function isAstArrayType(ref: AstType): ref is AstArrayType {
     return ref.type === "array";
 }
 
-export function formatAstTypeName(ref: AstType): string {
-    if (isAstIdentifierType(ref)) {
-        // const scopeType = scope[ref.typeName];
-        // if (scopeType) {
-        //     return scopeType.name;
-        // }
-        return ref.typeName;
-    }
-
-    if (isAstArrayType(ref)) {
-        return formatAstTypeName(ref.arrayItemType) + "[]";
-    }
-
-    if (isAstFunctionType(ref)) {
-        const returnType = formatAstTypeName(ref.functionReturnType);
-        const parameterTypes = ref.functionParameters.map(p => formatAstTypeName(p)).join(",");
-        return returnType + "(" + parameterTypes + ")";
-    }
-
-    throw new Error("Unknown NativeTypeRef type: " + ref.type);
-}

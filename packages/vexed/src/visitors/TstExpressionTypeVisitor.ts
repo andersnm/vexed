@@ -1,8 +1,7 @@
-import { isFunctionReferenceExpression, isInstanceExpression, TstBinaryExpression, TstDecimalLiteralExpression, TstExpression, TstFunctionCallExpression, TstFunctionReferenceExpression, TstInstanceExpression, TstMemberExpression, TstMissingInstanceExpression, TstNativeMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstScopedExpression, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
+import { TstBinaryExpression, TstDecimalLiteralExpression, TstExpression, TstFunctionCallExpression, TstFunctionReferenceExpression, TstInstanceExpression, TstMemberExpression, TstMissingInstanceExpression, TstNativeMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstUnboundFunctionReferenceExpression, TstVariableExpression, TypeMeta } from "../TstExpression.js";
 import { TstRuntime } from "../TstRuntime.js";
 import { TypeDefinition } from "../TstType.js";
 import { FunctionTypeDefinition, getFunctionTypeName } from "../types/FunctionTypeDefinition.js";
-import { printExpression } from "./TstPrintVisitor.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
 
 // Usage: Visit an expression, then check visitType for the resulting type. One-time use.
@@ -104,6 +103,12 @@ export class TstExpressionTypeVisitor extends TstReplaceVisitor {
     }
 
     visitFunctionReferenceExpression(expr: TstFunctionReferenceExpression): TstExpression {
+        const functionTypeName = getFunctionTypeName(expr.method.returnType, expr.method.parameters.map(p => p.type));
+        this.visitType = this.runtime.getType(functionTypeName);
+        return expr;
+    }
+
+    visitUnboundFunctionReferenceExpression(expr: TstUnboundFunctionReferenceExpression): TstExpression {
         const functionTypeName = getFunctionTypeName(expr.method.returnType, expr.method.parameters.map(p => p.type));
         this.visitType = this.runtime.getType(functionTypeName);
         return expr;

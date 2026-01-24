@@ -121,19 +121,28 @@ test('Parse basic-array', async () => {
 
 });
 
-// test('Parse basic-array-map', async () => {
-//     const runtime = new TstRuntime();
-//     const instance = await compileInstance(runtime, "./files/basic-array-map.vexed");
+test('Parse basic-array-map', async () => {
+    const runtime = new TstRuntime();
+    const instance = await compileInstance(runtime, "./files/basic-array-map.vexed");
 
-//     await runtime.reduceInstance(instance);
+    await runtime.reduceInstance(instance);
 
-//     const object = printJsonObject(instance);
-//     assert.deepEqual(object, {
-//         strArray: [ "It's a string", "String, it is" ],
-//         value1: 1,
-//         value2: 999
-//     });
-// });
+    const object = printJsonObject(instance);
+    assert.deepEqual(object, {
+        strArray: [ "ABC", "DEFGH" ],
+        temp: "TEMP",
+        ext: {
+            proof: "Member",
+            literally: [ "Yes we can: 1: Member", "Yes we can: 2: Member", "Yes we can: 3: Member" ]
+        },
+        wrapped: [
+            "[ABC]TEMP",
+            "[DEFGH]TEMP"
+        ],
+        lengths: [ 3, 5 ],
+        canReally: [ "Yes we can: ABC: Member", "Yes we can: DEFGH: Member" ]
+    });
+});
 
 test('Parse basic-instances', async () => {
     const runtime = new TstRuntime();

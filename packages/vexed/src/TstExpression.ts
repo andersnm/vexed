@@ -30,6 +30,10 @@ export function isFunctionReferenceExpression(expr: TstExpression): expr is TstF
     return expr.exprType === "functionReference";
 }
 
+export function isUnboundFunctionReferenceExpression(expr: TstExpression): expr is TstUnboundFunctionReferenceExpression {
+    return expr.exprType === "unboundFunctionReference";
+}
+
 export function isScopedExpression(expr: TstExpression): expr is TstScopedExpression {
     return expr.exprType === "scoped";
 }
@@ -154,6 +158,11 @@ export interface TstFunctionCallExpression extends TstExpression {
 export interface TstFunctionReferenceExpression extends TstExpression {
     exprType: "functionReference";
     target: TstExpression;
+    method: TypeMethod;
+}
+
+export interface TstUnboundFunctionReferenceExpression extends TstExpression {
+    exprType: "unboundFunctionReference";
     method: TypeMethod;
 }
 

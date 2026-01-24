@@ -1,0 +1,28 @@
+class ExtStuff() {
+  public string proof = "Member";
+  public string[] literally = [ "1", "2", "3" ].map(this.canWeDoIt);
+
+  string canWeDoIt(string str) {
+    return "Yes we can: " + str + ": " + this.proof;
+  }
+}
+
+class Main() {
+  public string[] strArray = [ "ABC", "DEFGH" ];
+  public string temp = "TEMP";
+
+  public ExtStuff ext = ExtStuff();
+
+  public string[] wrapped = this.strArray.map(this.wrapString);
+  public int[] lengths = this.strArray.map(this.getLength);
+  public string[] canReally = this.strArray.map(this.ext.canWeDoIt);
+
+  string wrapString(string s) {
+    return "[" + s + "]" + this.temp;
+  }
+
+  int getLength(string s) {
+    return s.length;
+  }
+
+}

@@ -14,6 +14,7 @@ import { TypeTypeDefinition } from "./types/TypeTypeDefinition.js";
 import { TstReducer } from "./TstReducer.js";
 import { AstProgram } from "./AstProgram.js";
 import { FunctionTypeDefinition, getFunctionTypeName } from "./types/FunctionTypeDefinition.js";
+import { GenericUnresolvedTypeDefinition } from "./types/GenericUnresolvedTypeDefinition.js";
 
 export class TstRuntime {
     verbose: boolean = false;
@@ -179,6 +180,17 @@ export class TstRuntime {
         this.registerTypes([specializedArrayType]);
     }
 
+    createGenericUnresolvedType(name: string): TypeDefinition {
+        const type = this.tryGetType(name);
+        if (type) {
+            return type;
+        }
+
+        const genericType = new GenericUnresolvedTypeDefinition(this, name);
+        this.registerTypes([genericType]);
+        return genericType;
+    }
+
     createInstance(type: TypeDefinition, args: TstExpression[], userData: any = null, sealed: boolean = false): TstInstanceObject {
         const obj: TstInstanceObject = { 
             [TypeMeta]: type,
@@ -202,6 +214,35 @@ export class TstRuntime {
             const fromElementType = this.tryGetType(fromElementName);
             const toElementType = this.tryGetType(toElementName);
             return this.isTypeAssignable(fromElementType, toElementType);
+        }
+
+        // Unresolved generic T matches any
+        if (toType instanceof GenericUnresolvedTypeDefinition) {
+            return true;
+        }
+
+        if (fromType instanceof GenericUnresolvedTypeDefinition) {
+            return true;
+        }
+
+        if (fromType instanceof FunctionTypeDefinition && toType instanceof FunctionTypeDefinition) {
+            if (!this.isTypeAssignable(fromType.returnType, toType.returnType)) {
+                return false;
+            }
+
+            if (fromType.parameterTypes.length !== toType.parameterTypes.length) {
+                return false;
+            }
+
+            for (let i = 0; i < fromType.parameterTypes.length; i++) {
+                const fromParamType = fromType.parameterTypes[i];
+                const toParamType = toType.parameterTypes[i];
+                if (!this.isTypeAssignable(fromParamType, toParamType)) {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         // Handle class inheritance
