@@ -30,11 +30,12 @@ export class TstRuntime {
 
     constructor() {
 
+        const anyType = new AnyTypeDefinition(this);
         const types = [
-            new AnyTypeDefinition(this),
+            anyType,
             new IntTypeDefinition(this),
             new BoolTypeDefinition(this),
-            new ArrayBaseTypeDefinition(this, "any[]"),
+            new ArrayBaseTypeDefinition(this, "any[]", anyType),
             new StringTypeDefinition(this),
             new IoTypeDefinition(this),
             new TypeTypeDefinition(this),
@@ -150,47 +151,6 @@ export class TstRuntime {
         return this.getType(arrayTypeName);
     }
 
-    createFunctionType(parameterTypes: TypeDefinition[], returnType: TypeDefinition) {
-        const functionTypeName = getFunctionTypeName(returnType, parameterTypes);
-        if (this.tryGetType(functionTypeName)) {
-            return;
-        }
-
-        // console.log("Creating function type: ", functionTypeName);
-        const functionType = new FunctionTypeDefinition(this, returnType, parameterTypes);
-        this.registerTypes([functionType]);
-    }
-
-    createArrayType(name: string) {
-        if (this.tryGetType(name)) {
-            return;
-        }
-
-        const arrayItemType = name.substring(0, name.length - 2);
-
-        if (!this.tryGetType(arrayItemType)) {
-            if (arrayItemType.endsWith("[]")) {
-                this.createArrayType(arrayItemType);
-            } else {
-                throw new Error("Could not find array item type: " + arrayItemType);
-            }
-        }
-
-        const specializedArrayType = new ArrayTypeDefinition(this, name)!;
-        this.registerTypes([specializedArrayType]);
-    }
-
-    createGenericUnresolvedType(name: string): TypeDefinition {
-        const type = this.tryGetType(name);
-        if (type) {
-            return type;
-        }
-
-        const genericType = new GenericUnresolvedTypeDefinition(this, name);
-        this.registerTypes([genericType]);
-        return genericType;
-    }
-
     createInstance(type: TypeDefinition, args: TstExpression[], userData: any = null, sealed: boolean = false): TstInstanceObject {
         const obj: TstInstanceObject = { 
             [TypeMeta]: type,
@@ -209,10 +169,9 @@ export class TstRuntime {
         }
 
         if (inputType instanceof ArrayBaseTypeDefinition) {
-            const elementTypeName = inputType.name.substring(0, inputType.name.length - 2);
-            const elementType = this.getType(elementTypeName);
-            const resolvedElementType = this.constructGenericType(elementType, bindings);
-            return this.getType(resolvedElementType.name + "[]");
+            const genericElementType = inputType.elementType;
+            const elementType = this.constructGenericType(genericElementType, bindings);
+            return this.getType(elementType.name + "[]");
         }
 
         if (inputType instanceof GenericUnresolvedTypeDefinition) {
@@ -253,11 +212,7 @@ export class TstRuntime {
 
         // Case 2: both are arrays
         if (expected instanceof ArrayBaseTypeDefinition && actual instanceof ArrayBaseTypeDefinition) {
-            const expectedElementTypeName = expected.name.substring(0, expected.name.length - 2);
-            const actualElementTypeName = actual.name.substring(0, actual.name.length - 2);
-            const expectedElementType = this.tryGetType(expectedElementTypeName);
-            const actualElementType = this.tryGetType(actualElementTypeName);
-            return this.inferBindings(expectedElementType!, actualElementType!, out);
+            return this.inferBindings(expected.elementType, actual.elementType, out);
         }
 
         // Case 3: both are function types
@@ -288,14 +243,8 @@ export class TstRuntime {
 
         if (!fromType || !toType) return false;
 
-        // Handle array types
-        const anyArrayType = this.getType("any[]");
-        if (fromType.extends === anyArrayType && toType.extends === anyArrayType) {
-            const fromElementName = fromType.name.substring(0, fromType.name.length - 2);
-            const toElementName = toType.name.substring(0, toType.name.length - 2);
-            const fromElementType = this.tryGetType(fromElementName);
-            const toElementType = this.tryGetType(toElementName);
-            return this.isTypeAssignable(fromElementType, toElementType, bindings);
+        if (fromType instanceof ArrayBaseTypeDefinition && toType instanceof ArrayBaseTypeDefinition) {
+            return this.isTypeAssignable(fromType.elementType, toType.elementType, bindings);
         }
 
         if (toType instanceof GenericUnresolvedTypeDefinition) {

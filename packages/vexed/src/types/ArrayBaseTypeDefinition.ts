@@ -11,7 +11,7 @@ import { getScopeParameter, TstScope } from "../visitors/TstReduceExpressionVisi
  * - As the base class for ArrayTypeDefinition, which is used for types like string[].
  */
 export class ArrayBaseTypeDefinition extends TypeDefinition {
-    constructor(runtime: TstRuntime, name: string) {
+    constructor(runtime: TstRuntime, name: string, public elementType: TypeDefinition) {
         super(runtime, name, "<native>");
 
         this.astNode = {
@@ -95,7 +95,7 @@ export class ArrayBaseTypeDefinition extends TypeDefinition {
                 return null; // Signals to caller that we cannot proceed yet
             }
 
-            // NOTE: callbackReturnType is the T in `map<T>(): T[]`
+            // NOTE: callbackReturnType is the resolved T in `map<T>(): T[]`
             const callbackReturnType = callbackExpression.method.returnType
             const actualType = this.runtime.getType(callbackReturnType.name + "[]");
 
@@ -127,8 +127,8 @@ export class ArrayBaseTypeDefinition extends TypeDefinition {
 }
 
 export class ArrayTypeDefinition extends ArrayBaseTypeDefinition {
-    constructor(runtime: TstRuntime, name: string) {
-        super(runtime, name);
+    constructor(runtime: TstRuntime, name: string, elementType: TypeDefinition) {
+        super(runtime, name, elementType);
 
         this.astNode = {
             type: "class",

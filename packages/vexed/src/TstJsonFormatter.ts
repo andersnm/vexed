@@ -1,14 +1,10 @@
 import { InstanceMeta, isInstanceExpression, isUnboundFunctionReferenceExpression, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstVariableExpression, TypeMeta } from "./TstExpression.js";
 import { TypeDefinition } from "./TstType.js";
+import { ArrayBaseTypeDefinition } from "./types/ArrayBaseTypeDefinition.js";
 
 export const printJsonObject = (obj: TstInstanceObject, force: boolean = false) => {
     const printer = new TstJsonFormatter(force);
     return printer.printObject(obj);
-}
-
-function isTstArrayInstance(obj: TstInstanceObject): boolean {
-    const typeDef = obj[TypeMeta];
-    return typeDef.name.endsWith("[]");
 }
 
 class TstJsonFormatter {
@@ -23,7 +19,7 @@ class TstJsonFormatter {
     printObject(obj: TstInstanceObject): any {
         const instanceType = obj[TypeMeta];
 
-        if (isTstArrayInstance(obj)) {
+        if (instanceType instanceof ArrayBaseTypeDefinition) {
             const arrayValue = obj[InstanceMeta] as TstExpression[];
             return this.printExpressionList(arrayValue);
         }

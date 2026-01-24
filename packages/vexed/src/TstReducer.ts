@@ -4,6 +4,7 @@ import { TstReduceExpressionVisitor, TstScope } from "./visitors/TstReduceExpres
 import { TstPromiseVisitor } from "./visitors/TstPromiseVisitor.js";
 import { TstInstanceVisitor } from "./visitors/TstInstanceVisitor.js";
 import { TstRuntime } from "./TstRuntime.js";
+import { ArrayBaseTypeDefinition } from "./types/ArrayBaseTypeDefinition.js";
 
 export class TstReducer {
     constructor(private runtime: TstRuntime) { }
@@ -89,7 +90,7 @@ export class TstReducer {
         let sealable = true;
 
         // Reduces array items if array
-        if (instanceType.name.endsWith("[]")) {
+        if (instanceType instanceof ArrayBaseTypeDefinition) {
             sealable &&= this.reduceArrayElements(reducer, instance)
         }
 

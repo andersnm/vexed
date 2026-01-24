@@ -1,6 +1,7 @@
 import { TstInstanceExpression, TstExpression, TstInstanceObject, TypeMeta, InstanceMeta, TstScopedExpression, ScopeMeta } from "../TstExpression.js";
 import { TstRuntime } from "../TstRuntime.js";
 import { TypeDefinition } from "../TstType.js";
+import { ArrayBaseTypeDefinition } from "../types/ArrayBaseTypeDefinition.js";
 import { printScope } from "./TstPrintVisitor.js";
 import { TstScope } from "./TstReduceExpressionVisitor.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
@@ -26,7 +27,7 @@ export class TstInstanceVisitor extends TstReplaceVisitor {
 
         this.visitInstanceProperties(expr.instance, expr.instance[TypeMeta]);
 
-        if (instanceType.name.endsWith("[]")) {
+        if (instanceType instanceof ArrayBaseTypeDefinition) {
             const array = expr.instance[InstanceMeta] as TstExpression[];
             for (let i = 0; i < array.length; i++) {
                 const element = array[i];
