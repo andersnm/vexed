@@ -13,7 +13,8 @@
   "scripts": {
     "build": "npm run build -ws",
     "test": "npm run test -workspace vexed-test",
-    "vexed-cli": "node --enable-source-maps packages/vexed-cli/dist/main.js"
+    "vexed-cli": "node --enable-source-maps packages/vexed-cli/dist/main.js",
+    "pack": "npm pack -w vexed -w vexed-cli"
   },
   "devDependencies": {
     "typescript": "^5.9.3"
