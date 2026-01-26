@@ -205,7 +205,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
             return visited;
         }
 
-        this.incrementReferenceCount(expr.scope);
+        // Keep the scoped expression wrapper
         return {
             exprType: "scoped",
             expr: visited,
