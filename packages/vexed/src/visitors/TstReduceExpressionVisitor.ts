@@ -1,6 +1,7 @@
 import { InstanceMeta, isBinaryExpression, isFunctionCall, isFunctionReferenceExpression, isIndexExpression, isInstanceExpression, isMemberExpression, isParameter, isReturnStatement, isScopedExpression, isUnboundFunctionReferenceExpression, isVariableExpression, RuntimeMeta, ScopeMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstFunctionReferenceExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstMissingInstanceExpression, TstNativeMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstUnboundFunctionReferenceExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
 import { TstRuntime } from "../TstRuntime.js";
 import { TypeDefinition } from "../TstType.js";
+import { ArrayBaseTypeDefinition } from "../types/ArrayBaseTypeDefinition.js";
 import { printExpression } from "./TstPrintVisitor.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
 
@@ -42,11 +43,13 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
 
     reduceCount: number = 0;
     scopeStack: TstScope[] = [];
-    scopeReferenceCount: Map<TstScope, number> = new Map();
+    scopeReferenceCount: Map<TstScope, number>;
 
-    constructor(private runtime: TstRuntime, scope: TstScope) {
+    constructor(private runtime: TstRuntime, scope: TstScope, initialScopeReferenceCounts?: Map<TstScope, number>) {
         super();
         this.scopeStack.push(scope);
+        // Use pre-computed reference counts if provided, otherwise start with empty map
+        this.scopeReferenceCount = initialScopeReferenceCounts ? new Map(initialScopeReferenceCounts) : new Map();
     }
 
     get scope() {
@@ -175,11 +178,12 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         const visited = this.visit(expr.expr);
         this.scopeStack.pop();
 
-        // If the visited expression is an array instance, count scope references in array elements
-        // and wrap unreduced elements in scoped expressions to preserve the scope
+        // If the result is an array instance, wrap unreduced elements with the scope context.
+        // This is the natural point to do wrapping because:
+        // 1. We have access to the scope that created the array (expr.scope)
+        // 2. The scope reference counts have been pre-computed by TstInstanceVisitor
+        // 3. Once the scoped expression is reduced, the scope is no longer accessible
         if (isInstanceExpression(visited)) {
-            this.countArrayElementScopeReferences(visited.instance, expr.scope);
-            // Also wrap unreduced elements in scoped expressions to ensure they can be reduced later
             this.wrapArrayElementsInScope(visited.instance, expr.scope);
         }
 
@@ -187,6 +191,8 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         //  - there are no references to this scope in the scoped expression, OR:
         //  - the scope expression cannot be reduced no more
         //  - all parameters in the scope - and its parent scopes - are reduced to instances
+        // Note: Scope reference counts are pre-computed by TstInstanceVisitor, which includes
+        // references from array elements.
 
         const referenceCount = this.scopeReferenceCount.get(expr.scope) || 0;
 
@@ -204,10 +210,12 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
     }
 
     private wrapArrayElementsInScope(instance: TstInstanceObject, scope: TstScope): void {
-        const arrayElements = instance[InstanceMeta];
-        if (!Array.isArray(arrayElements)) {
+        const instanceType = instance[TypeMeta];
+        if (!(instanceType instanceof ArrayBaseTypeDefinition)) {
             return;
         }
+
+        const arrayElements = instance[InstanceMeta] as TstExpression[];
 
         for (let i = 0; i < arrayElements.length; i++) {
             const element = arrayElements[i];
@@ -219,7 +227,8 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
                 // Already wrapped, skip
                 continue;
             } else if (!isFunctionReferenceExpression(element) && !isUnboundFunctionReferenceExpression(element)) {
-                // Wrap unreduced elements in scoped expressions
+                // Wrap unreduced elements (parameters, variables, binary expressions, etc.)
+                // in scoped expressions so they have access to the scope when reduced later
                 arrayElements[i] = {
                     exprType: "scoped",
                     expr: element,
@@ -228,55 +237,6 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
                 } as TstScopedExpression;
             }
         }
-    }
-
-    private countArrayElementScopeReferences(instance: TstInstanceObject, scope: TstScope): void {
-        const arrayElements = instance[InstanceMeta];
-        if (!Array.isArray(arrayElements)) {
-            return;
-        }
-
-        // Visit array elements to count scope references without triggering reduction
-        for (const element of arrayElements) {
-            if (isInstanceExpression(element)) {
-                // Recursively count references in nested arrays
-                this.countArrayElementScopeReferences(element.instance, scope);
-            } else {
-                // Visit the element to count its scope references
-                // This is a "light visit" that counts references but doesn't reduce
-                this.visitForScopeReferences(element, scope);
-            }
-        }
-    }
-
-    private visitForScopeReferences(expr: TstExpression, scope: TstScope): void {
-        // Visit expressions to count scope references without triggering reduction.
-        // This is a "light visit" that only counts parameter and variable references.
-        // Expression types not listed here (e.g., literals, function calls) don't
-        // directly contain scope references at their top level and are intentionally skipped.
-        
-        if (isParameter(expr) || isVariableExpression(expr)) {
-            const ref = getScopeParameter(scope, (expr as any).name);
-            if (ref) {
-                this.incrementReferenceCount(scope);
-            }
-        } else if (isBinaryExpression(expr)) {
-            // Visit both sides of binary expressions
-            this.visitForScopeReferences(expr.left, scope);
-            this.visitForScopeReferences(expr.right, scope);
-        } else if (isMemberExpression(expr)) {
-            // Visit the object part of member expressions
-            this.visitForScopeReferences(expr.object, scope);
-        } else if (isIndexExpression(expr)) {
-            // Visit both object and index
-            this.visitForScopeReferences(expr.object, scope);
-            this.visitForScopeReferences(expr.index, scope);
-        } else if (isScopedExpression(expr)) {
-            // For scoped expressions, increment reference count for the scope
-            this.incrementReferenceCount(expr.scope);
-        }
-        // Other expression types (instances, function references, literals, etc.) 
-        // don't contain direct scope references and require no action
     }
 
     visitInstanceExpression(expr: TstInstanceExpression): TstExpression {

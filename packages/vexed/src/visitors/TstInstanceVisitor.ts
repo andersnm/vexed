@@ -1,17 +1,26 @@
-import { TstInstanceExpression, TstExpression, TstInstanceObject, TypeMeta, InstanceMeta, TstScopedExpression, ScopeMeta } from "../TstExpression.js";
+import { TstInstanceExpression, TstExpression, TstInstanceObject, TypeMeta, InstanceMeta, TstScopedExpression, ScopeMeta, isBinaryExpression, isIndexExpression, isMemberExpression, isParameter, isVariableExpression, isScopedExpression } from "../TstExpression.js";
 import { TstRuntime } from "../TstRuntime.js";
 import { TypeDefinition } from "../TstType.js";
 import { ArrayBaseTypeDefinition } from "../types/ArrayBaseTypeDefinition.js";
 import { printScope } from "./TstPrintVisitor.js";
-import { TstScope } from "./TstReduceExpressionVisitor.js";
+import { TstScope, getScopeParameter } from "./TstReduceExpressionVisitor.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
 
 export class TstInstanceVisitor extends TstReplaceVisitor {
     scopes: Set<TstScope> = new Set();
     visited: Set<TstInstanceObject> = new Set();
+    scopeReferenceCount: Map<TstScope, number> = new Map();
 
     constructor(private runtime: TstRuntime) {
         super();
+    }
+
+    incrementScopeReferenceCount(scope: TstScope) {
+        const count = this.scopeReferenceCount.get(scope) || 0;
+        this.scopeReferenceCount.set(scope, count + 1);
+        if (scope.parent) {
+            this.incrementScopeReferenceCount(scope.parent);
+        }
     }
 
     visitInstanceExpression(expr: TstInstanceExpression): TstExpression {
@@ -31,11 +40,40 @@ export class TstInstanceVisitor extends TstReplaceVisitor {
             const array = expr.instance[InstanceMeta] as TstExpression[];
             for (let i = 0; i < array.length; i++) {
                 const element = array[i];
+                // Count scope references from array elements
+                this.countScopeReferencesInExpression(element);
                 this.visit(element);
             }
         }
 
         return expr;
+    }
+
+    private countScopeReferencesInExpression(expr: TstExpression): void {
+        // Count scope references in expressions without visiting instances
+        // This ensures we count all parameter/variable references from array elements
+        
+        if (isParameter(expr) || isVariableExpression(expr)) {
+            // Find which scope this parameter/variable belongs to
+            const name = (expr as any).name;
+            for (const scope of this.scopes) {
+                const ref = getScopeParameter(scope, name);
+                if (ref) {
+                    this.incrementScopeReferenceCount(scope);
+                    break;
+                }
+            }
+        } else if (isBinaryExpression(expr)) {
+            this.countScopeReferencesInExpression(expr.left);
+            this.countScopeReferencesInExpression(expr.right);
+        } else if (isMemberExpression(expr)) {
+            this.countScopeReferencesInExpression(expr.object);
+        } else if (isIndexExpression(expr)) {
+            this.countScopeReferencesInExpression(expr.object);
+            this.countScopeReferencesInExpression(expr.index);
+        } else if (isScopedExpression(expr)) {
+            this.incrementScopeReferenceCount(expr.scope);
+        }
     }
 
     visitScopedExpression(expr: TstScopedExpression): TstExpression {

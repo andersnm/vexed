@@ -143,7 +143,8 @@ export class TstReducer {
             instanceVisitor.visited.add(obj);
             instanceVisitor.visitInstanceProperties(obj, obj[TypeMeta]);
 
-            const reducer = new TstReduceExpressionVisitor(this.runtime, this.runtime.globalScope);
+            // Pass the scope reference counts from instanceVisitor to the reducer
+            const reducer = new TstReduceExpressionVisitor(this.runtime, this.runtime.globalScope, instanceVisitor.scopeReferenceCount);
 
             const scopes = [ ...instanceVisitor.scopes ];
             for (let scope of scopes) {
