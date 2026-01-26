@@ -299,3 +299,30 @@ test('Parse array-method-params', async () => {
     const resultArray = printJsonObject(resultExpr.instance);
     assert.deepEqual(resultArray, ["test", "test2", "test3"]);
 });
+
+test('Parse array-method-params-comprehensive', async () => {
+    const runtime = new TstRuntime();
+    const instance = await compileInstance(runtime, "./files/array-method-params-comprehensive.vexed");
+
+    await runtime.reduceInstance(instance);
+
+    const result1Expr = instance[TypeMeta].resolvePropertyExpression(instance, "result1");
+    assert.ok(result1Expr);
+    assert.ok(isInstanceExpression(result1Expr));
+    assert.deepEqual(printJsonObject(result1Expr.instance), ["test", "test2", "test3"]);
+
+    const result2Expr = instance[TypeMeta].resolvePropertyExpression(instance, "result2");
+    assert.ok(result2Expr);
+    assert.ok(isInstanceExpression(result2Expr));
+    assert.deepEqual(printJsonObject(result2Expr.instance), ["a", "b", "ab"]);
+
+    const result3Expr = instance[TypeMeta].resolvePropertyExpression(instance, "result3");
+    assert.ok(result3Expr);
+    assert.ok(isInstanceExpression(result3Expr));
+    assert.deepEqual(printJsonObject(result3Expr.instance), [["x", "x1"], ["x2", "x3"]]);
+
+    const result4Expr = instance[TypeMeta].resolvePropertyExpression(instance, "result4");
+    assert.ok(result4Expr);
+    assert.ok(isInstanceExpression(result4Expr));
+    assert.deepEqual(printJsonObject(result4Expr.instance), [10, 20, 30]);
+});

@@ -1,0 +1,22 @@
+class Main() {
+  public result1: string[] = this.makeArray("test");
+  public result2: string[] = this.makeArray2("a", "b");
+  public result3: string[][] = this.makeNestedArray("x");
+  public result4: int[] = this.makeIntArray(10, 20);
+  
+  makeArray(s: string): string[] {
+    return [s, s + "2", s + "3"];
+  }
+  
+  makeArray2(a: string, b: string): string[] {
+    return [a, b, a + b];
+  }
+  
+  makeNestedArray(s: string): string[][] {
+    return [[s, s + "1"], [s + "2", s + "3"]];
+  }
+  
+  makeIntArray(x: int, y: int): int[] {
+    return [x, y, x + y];
+  }
+}

@@ -178,21 +178,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         // If the visited expression is an instance containing an array, wrap its elements
         // in scoped expressions to preserve the scope for later reduction
         if (isInstanceExpression(visited)) {
-            const arrayElements = visited.instance[InstanceMeta];
-            if (Array.isArray(arrayElements)) {
-                // Wrap each element in a scoped expression if it's not already an instance or function reference
-                for (let i = 0; i < arrayElements.length; i++) {
-                    const element = arrayElements[i];
-                    if (!isInstanceExpression(element) && !isFunctionReferenceExpression(element) && !isUnboundFunctionReferenceExpression(element) && !isScopedExpression(element)) {
-                        arrayElements[i] = {
-                            exprType: "scoped",
-                            expr: element,
-                            scope: expr.scope,
-                            comment: "array element"
-                        } as TstScopedExpression;
-                    }
-                }
-            }
+            this.wrapArrayElementsInScope(visited.instance, expr.scope);
         }
 
         // Reduce scope only when:
@@ -213,6 +199,31 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
             expr: visited,
             scope: expr.scope,
         } as TstScopedExpression;
+    }
+
+    private wrapArrayElementsInScope(instance: TstInstanceObject, scope: TstScope): void {
+        const arrayElements = instance[InstanceMeta];
+        if (!Array.isArray(arrayElements)) {
+            return;
+        }
+
+        // Wrap each element in a scoped expression if it's not already an instance or function reference
+        for (let i = 0; i < arrayElements.length; i++) {
+            const element = arrayElements[i];
+            
+            // If the element is an instance expression containing an array, recursively wrap its elements
+            if (isInstanceExpression(element)) {
+                this.wrapArrayElementsInScope(element.instance, scope);
+            } else if (!isFunctionReferenceExpression(element) && !isUnboundFunctionReferenceExpression(element) && !isScopedExpression(element)) {
+                // Wrap non-instance, non-function elements in a scoped expression
+                arrayElements[i] = {
+                    exprType: "scoped",
+                    expr: element,
+                    scope: scope,
+                    comment: "array element"
+                } as TstScopedExpression;
+            }
+        }
     }
 
     visitInstanceExpression(expr: TstInstanceExpression): TstExpression {
