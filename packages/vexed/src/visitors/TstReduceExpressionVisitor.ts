@@ -176,7 +176,10 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         this.scopeStack.pop();
 
         // If the visited expression is an instance containing an array, wrap its elements
-        // in scoped expressions to preserve the scope for later reduction
+        // in scoped expressions to preserve the scope for later reduction.
+        // This is necessary because array elements may contain parameter expressions or other
+        // non-reduced expressions that reference variables in the method's scope. Without
+        // wrapping, these elements would fail to reduce when the array is processed later.
         if (isInstanceExpression(visited)) {
             this.wrapArrayElementsInScope(visited.instance, expr.scope);
         }
@@ -201,6 +204,13 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         } as TstScopedExpression;
     }
 
+    private shouldWrapInScopedExpression(element: TstExpression): boolean {
+        return !isInstanceExpression(element) && 
+               !isFunctionReferenceExpression(element) && 
+               !isUnboundFunctionReferenceExpression(element) && 
+               !isScopedExpression(element);
+    }
+
     private wrapArrayElementsInScope(instance: TstInstanceObject, scope: TstScope): void {
         const arrayElements = instance[InstanceMeta];
         if (!Array.isArray(arrayElements)) {
@@ -214,7 +224,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
             // If the element is an instance expression containing an array, recursively wrap its elements
             if (isInstanceExpression(element)) {
                 this.wrapArrayElementsInScope(element.instance, scope);
-            } else if (!isFunctionReferenceExpression(element) && !isUnboundFunctionReferenceExpression(element) && !isScopedExpression(element)) {
+            } else if (this.shouldWrapInScopedExpression(element)) {
                 // Wrap non-instance, non-function elements in a scoped expression
                 arrayElements[i] = {
                     exprType: "scoped",
