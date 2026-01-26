@@ -1,4 +1,4 @@
-import { InstanceMeta, isFunctionCall, isFunctionReferenceExpression, isInstanceExpression, isMemberExpression, isReturnStatement, isUnboundFunctionReferenceExpression, RuntimeMeta, ScopeMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstFunctionReferenceExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstMissingInstanceExpression, TstNativeMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstUnboundFunctionReferenceExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
+import { InstanceMeta, isFunctionCall, isFunctionReferenceExpression, isInstanceExpression, isMemberExpression, isReturnStatement, isScopedExpression, isUnboundFunctionReferenceExpression, RuntimeMeta, ScopeMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstFunctionReferenceExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstMissingInstanceExpression, TstNativeMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstUnboundFunctionReferenceExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
 import { TstRuntime } from "../TstRuntime.js";
 import { TypeDefinition } from "../TstType.js";
 import { printExpression } from "./TstPrintVisitor.js";
@@ -174,6 +174,26 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         this.scopeStack.push(expr.scope);
         const visited = this.visit(expr.expr);
         this.scopeStack.pop();
+
+        // If the visited expression is an instance containing an array, wrap its elements
+        // in scoped expressions to preserve the scope for later reduction
+        if (isInstanceExpression(visited)) {
+            const arrayElements = visited.instance[InstanceMeta];
+            if (Array.isArray(arrayElements)) {
+                // Wrap each element in a scoped expression if it's not already an instance or function reference
+                for (let i = 0; i < arrayElements.length; i++) {
+                    const element = arrayElements[i];
+                    if (!isInstanceExpression(element) && !isFunctionReferenceExpression(element) && !isUnboundFunctionReferenceExpression(element) && !isScopedExpression(element)) {
+                        arrayElements[i] = {
+                            exprType: "scoped",
+                            expr: element,
+                            scope: expr.scope,
+                            comment: "array element"
+                        } as TstScopedExpression;
+                    }
+                }
+            }
+        }
 
         // Reduce scope only when:
         //  - there are no references to this scope in the scoped expression, OR:

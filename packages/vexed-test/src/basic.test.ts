@@ -286,3 +286,16 @@ test('Parse function-types', async () => {
     // Test 6: Passing function typed variable as parameter
     checkInstanceProperty(instance, "result4", runtime.getType("int"), 15);
 });
+
+test('Parse array-method-params', async () => {
+    const runtime = new TstRuntime();
+    const instance = await compileInstance(runtime, "./files/array-method-params.vexed");
+
+    await runtime.reduceInstance(instance);
+
+    const resultExpr = instance[TypeMeta].resolvePropertyExpression(instance, "result");
+    assert.ok(resultExpr);
+    assert.ok(isInstanceExpression(resultExpr));
+    const resultArray = printJsonObject(resultExpr.instance);
+    assert.deepEqual(resultArray, ["test", "test2", "test3"]);
+});
