@@ -71,11 +71,15 @@ export class ArrayBaseTypeDefinition extends TypeDefinition {
     resolveProperty(instance: TstInstanceObject, propertyName: string): TstExpression | null {
         // console.log("[ArrayBaseTypeDefinition] Resolving", propertyName);
         if (propertyName === "length") {
+            if (instance["length"]) {
+                return instance["length"];
+            }
+
             const arrayValue = instance[InstanceMeta] as any[];
             return { exprType: "instance", instance: this.runtime.createInt(arrayValue.length) } as TstInstanceExpression;
         }
 
-        return null;
+        return super.resolveProperty(instance, propertyName);
     }
 
     resolveIndex(instance: TstInstanceObject, index: number): TstExpression | null {

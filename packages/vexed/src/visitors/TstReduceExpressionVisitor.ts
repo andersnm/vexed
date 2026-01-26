@@ -26,7 +26,7 @@ export function getScopeParameter(scope: TstScope, name: string): TstVariable | 
 
 function isScopeReduced(scope: TstScope): boolean {
     for (let variable of scope.variables) {
-        if (!isInstanceExpression(variable.value) && !isFunctionReferenceExpression(variable.value)) {
+        if (!isInstanceExpression(variable.value) && !isFunctionReferenceExpression(variable.value) && !isUnboundFunctionReferenceExpression(variable.value)) {
             return false;
         }
     }
@@ -65,14 +65,18 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         const objectExpression = this.visit(expr.object);
 
         if (isInstanceExpression(objectExpression)) {
+            // Reduce member expression only if the property is fully reduced
             const instanceType = objectExpression.instance[TypeMeta];
-            const propertyExpression = instanceType.resolvePropertyDeep(objectExpression.instance, expr.property);
+            const propertyExpression = instanceType.resolvePropertyExpression(objectExpression.instance, expr.property);
 
             if (propertyExpression && (isInstanceExpression(propertyExpression) || isFunctionReferenceExpression(propertyExpression))) {
                 this.reduceCount++;
                 return propertyExpression;
             }
 
+            // The instance stores an unbound function reference in the property slot which never reduces.
+            // This is where the function property is accessed, and returns a new bound function reference.
+            // Equivalent to calling `.bind(this)` in JS, but automatically:
             if (propertyExpression && isUnboundFunctionReferenceExpression(propertyExpression)) {
                 this.reduceCount++;
                 return {
@@ -92,7 +96,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
 
     visitUnboundFunctionReferenceExpression(expr: TstUnboundFunctionReferenceExpression): TstExpression {
         // Can only reduce unbound function references in member expression
-        return super.visitUnboundFunctionReferenceExpression(expr);
+        return expr;
     }
 
     visitFunctionReferenceExpression(expr: TstFunctionReferenceExpression): TstExpression {
@@ -130,8 +134,8 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
     }
 
     visitThisExpression(expr: TstThisExpression): TstExpression {
+        // "this" always evaluates inside a scope and reduces immediately. Does not increment the scope reference count.
         this.reduceCount++;
-        this.incrementReferenceCount(this.scope);
         return {
             exprType: "instance",
             instance: this.scope.thisObject,
@@ -166,18 +170,19 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         }
 
         const beforeReduceCount = this.reduceCount;
+        const beforeReferenceCount = this.scopeReferenceCount.get(expr.scope) || 0;
         this.scopeStack.push(expr.scope);
         const visited = this.visit(expr.expr);
         this.scopeStack.pop();
 
         // Reduce scope only when:
+        //  - there are no references to this scope in the scoped expression, OR:
         //  - the scope expression cannot be reduced no more
         //  - all parameters in the scope - and its parent scopes - are reduced to instances
-        //  - there are no references to this scope in the scoped expression
 
-        const scopeReferenceCount = this.scopeReferenceCount.get(expr.scope) || 0;
+        const referenceCount = this.scopeReferenceCount.get(expr.scope) || 0;
 
-        if (scopeReferenceCount === 0 || (isScopeReduced(expr.scope)) && beforeReduceCount === this.reduceCount) {
+        if (referenceCount === beforeReferenceCount || (isScopeReduced(expr.scope)) && beforeReduceCount === this.reduceCount) {
             this.reduceCount++;
             return visited;
         }
@@ -307,26 +312,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
 
         let callee = this.visit(expr.callee);
 
-        if (isFunctionReferenceExpression(callee)) {
-            ;
-        } else if (isMemberExpression(callee)) {
-            // console.log("Callee is not a function reference : " + callee.exprType);
-
-            if (isInstanceExpression(callee.object)) { 
-                const objType = callee.object.instance[TypeMeta]; 
-                const method = objType.getMethod(callee.property);
-
-                callee = {
-                    exprType: "functionReference",
-                    target: callee.object,
-                    method: method,
-                } as TstFunctionReferenceExpression;
-            } else {
-                throw new Error("Callee member expression object is not an instance" + callee.object.exprType);
-            }
-
-        } else {
-
+        if (!isFunctionReferenceExpression(callee)) {
             return {
                 exprType: "functionCall",
                 callee: callee,
@@ -334,10 +320,6 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
                 returnType: expr.returnType,
                 genericBindings: expr.genericBindings,
             } as TstFunctionCallExpression;
-        }
-
-        if (!isFunctionReferenceExpression(callee)) {
-            throw new Error("Should be function reference at this point");
         }
 
         if (!isInstanceExpression(callee.target)) {
@@ -357,8 +339,9 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         for (let i = 0; i < argsExpr.length; i++) {
             const arg = argsExpr[i];
             const methodParameter = callee.method.parameters[i];
-            this.incrementReferenceCount(this.scope);
-            const argType = this.runtime.getExpressionType(arg, this.scope.thisObject[TypeMeta]);
+
+            // TODO: remove the thisType
+            const argType = this.runtime.getExpressionType(arg, null as any);
 
             if (!this.runtime.isTypeAssignable(argType, methodParameter.type, expr.genericBindings)) {
                 throw new Error(`Function call argument type mismatch for parameter ${methodParameter.name}: expected ${methodParameter.type.name}, got ${argType ? argType.name : "unknown"}`);

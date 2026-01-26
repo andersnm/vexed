@@ -1,10 +1,11 @@
-import { InstanceMeta, isFunctionReferenceExpression, isInstanceExpression, RuntimeMeta, TstExpression, TstInstanceExpression, TstInstanceObject, TstPromiseExpression, TypeMeta } from "./TstExpression.js";
+import { InstanceMeta, isFunctionReferenceExpression, isInstanceExpression, isUnboundFunctionReferenceExpression, RuntimeMeta, TstExpression, TstInstanceExpression, TstInstanceObject, TstPromiseExpression, TypeMeta } from "./TstExpression.js";
 import { TypeDefinition } from "./TstType.js";
 import { TstReduceExpressionVisitor, TstScope } from "./visitors/TstReduceExpressionVisitor.js";
 import { TstPromiseVisitor } from "./visitors/TstPromiseVisitor.js";
 import { TstInstanceVisitor } from "./visitors/TstInstanceVisitor.js";
 import { TstRuntime } from "./TstRuntime.js";
 import { ArrayBaseTypeDefinition } from "./types/ArrayBaseTypeDefinition.js";
+import { FunctionTypeDefinition } from "./types/FunctionTypeDefinition.js";
 
 export class TstReducer {
     constructor(private runtime: TstRuntime) { }
@@ -40,10 +41,22 @@ export class TstReducer {
             // Check if types match
             const reducedType = this.runtime.getExpressionType(reduced, obj[TypeMeta]);
 
-            // Empty bindings, everything should be resolved
-            const bindings = new Map<string, TypeDefinition>();
-            if (!this.runtime.isTypeAssignable(reducedType, propertyDeclaration.type, bindings)) {
-                throw new Error(`Type mismatch when reducing property ${propertyDeclaration.name} of type ${propertyDeclaration.type.name}, got ${reducedType?.name || "unknown"}`);
+            if (isUnboundFunctionReferenceExpression(reduced) && propertyDeclaration.type instanceof FunctionTypeDefinition) {
+                // This is a special case because "isTypeAssignable()" assumes all types are concrete.
+                // But generic class member functions are allowed to have unresolved generics. These are stored
+                // as unbound function reference expressions in properties, and copied and bound when accessed.
+                // The generic types are known at the call sites.
+
+                // Should be identical generic type in that case:
+                if (reducedType !== propertyDeclaration.type) {
+                    throw new Error(`Type mismatch when reducing property ${propertyDeclaration.name} of type ${propertyDeclaration.type.name}, got unbound function reference of type ${reducedType?.name || "unknown"}`);
+                }
+            } else {
+                // Empty bindings, everything should be resolved (except for unbound function references)
+                const bindings = new Map<string, TypeDefinition>();
+                if (!this.runtime.isTypeAssignable(reducedType, propertyDeclaration.type, bindings)) {
+                    throw new Error(`Type mismatch when reducing property ${propertyDeclaration.name} of type ${propertyDeclaration.type.name}, got ${reducedType?.name || "unknown"}`);
+                }
             }
 
             sealable &&= (isInstanceExpression(reduced) && reduced.instance[RuntimeMeta].sealed) || isFunctionReferenceExpression(reduced);

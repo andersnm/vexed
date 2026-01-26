@@ -28,7 +28,7 @@ export class StringTypeDefinition extends TypeDefinition {
 
     createInstance(args: TstExpression[]): TstInstanceObject {
         // console.log("[StringTypeDefinition] Creating instance of type", this.name);
-        return this.runtime.createInstance(this, args, "", true);
+        return this.runtime.createInstance(this, args, "", false); // NOTE: if sealed, the "length" property doesn't reduce
     }
 
     resolveProperty(instance: TstInstanceObject, propertyName: string): TstExpression | null {
