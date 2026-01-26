@@ -1,4 +1,4 @@
-import { TstInstanceExpression, TstExpression, TstInstanceObject, TypeMeta, InstanceMeta, TstScopedExpression, ScopeMeta, isBinaryExpression, isIndexExpression, isMemberExpression, isParameter, isVariableExpression, isScopedExpression } from "../TstExpression.js";
+import { TstInstanceExpression, TstExpression, TstInstanceObject, TypeMeta, InstanceMeta, TstScopedExpression, ScopeMeta, isBinaryExpression, isIndexExpression, isMemberExpression, isParameter, isVariableExpression, isScopedExpression, TstParameterExpression, TstVariableExpression } from "../TstExpression.js";
 import { TstRuntime } from "../TstRuntime.js";
 import { TypeDefinition } from "../TstType.js";
 import { ArrayBaseTypeDefinition } from "../types/ArrayBaseTypeDefinition.js";
@@ -54,8 +54,8 @@ export class TstInstanceVisitor extends TstReplaceVisitor {
         // This ensures we count all parameter/variable references from array elements
         
         if (isParameter(expr) || isVariableExpression(expr)) {
-            // Find which scope this parameter/variable belongs to
-            const name = (expr as any).name;
+            // Both parameter and variable expressions have a 'name' property
+            const name = isParameter(expr) ? (expr as TstParameterExpression).name : (expr as TstVariableExpression).name;
             for (const scope of this.scopes) {
                 const ref = getScopeParameter(scope, name);
                 if (ref) {
