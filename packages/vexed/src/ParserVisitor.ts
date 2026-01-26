@@ -1,7 +1,7 @@
 import { ProgramParser } from "./ProgramParser.js"; // your token definitions
 import { AstClass, AstClassUnit, AstPropertyStatement, AstParameter, AstProgram, AstPropertyDefinition, AstExpression, AstIdentifierExpression, AstStringLiteralExpression, AstFunctionCallExpression, AstMemberExpression, AstIndexExpression, AstIntegerLiteralExpression, AstDecimalLiteralExpression, AstArrayLiteralExpression, isAstIdentifier, AstBinaryExpression, AstLocation, AstMethodDeclaration, AstIfStatement, AstStatement, AstReturnStatement, AstUnaryExpression, AstLocalVarDeclaration, AstBooleanLiteralExpression, AstLocalVarAssignment } from "./AstProgram.js";
 import { IToken } from "chevrotain";
-import { AstType, AstArrayType, AstIdentifierType } from "./AstType.js";
+import { AstType, AstArrayType, AstIdentifierType, AstFunctionType } from "./AstType.js";
 
 function createTokenLocation(tok: IToken): AstLocation {
     return {
@@ -37,6 +37,38 @@ export function createVisitor(parser: ProgramParser, fileName: string) {
         }
 
         type(ctx: any): AstType {
+            if (ctx.functionType) {
+                return this.visit(ctx.functionType);
+            }
+            if (ctx.simpleType) {
+                return this.visit(ctx.simpleType);
+            }
+            throw new Error("Unexpected type shape");
+        }
+
+        functionType(ctx: any): AstFunctionType {
+            if (!ctx.type || ctx.type.length === 0) {
+                throw new Error("Function type must have a return type");
+            }
+
+            const parameterTypes: AstType[] = [];
+
+            // All types except the last one are parameters
+            for (let i = 0; i < ctx.type.length - 1; i++) {
+                parameterTypes.push(this.visit(ctx.type[i]));
+            }
+
+            // The last type is always the return type
+            const returnType = this.visit(ctx.type[ctx.type.length - 1]);
+
+            return {
+                type: "function",
+                functionReturnType: returnType,
+                functionParameters: parameterTypes
+            } as AstFunctionType;
+        }
+
+        simpleType(ctx: any): AstType {
             let base: AstType = { type: "identifier", typeName: ctx.Identifier[0].image } as AstIdentifierType;
 
             const suffixes = ctx.arrayTypeSuffix ?? [];

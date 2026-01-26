@@ -73,6 +73,34 @@ export class ProgramParser extends CstParser {
   });
 
   type = this.RULE("type", () => {
+    this.OR([
+      {
+        // Function type: (type1, type2): returnType
+        GATE: () => this.LA(1).tokenType === LParen,
+        ALT: () => this.SUBRULE(this.functionType)
+      },
+      {
+        // Simple type: identifier with optional array suffixes
+        ALT: () => this.SUBRULE(this.simpleType)
+      }
+    ]);
+  });
+
+  functionType = this.RULE("functionType", () => {
+    this.CONSUME(LParen);
+    this.OPTION(() => {
+      this.SUBRULE(this.type);
+      this.MANY(() => {
+        this.CONSUME(Comma);
+        this.SUBRULE2(this.type);
+      });
+    });
+    this.CONSUME(RParen);
+    this.CONSUME(Colon);
+    this.SUBRULE3(this.type);
+  });
+
+  simpleType = this.RULE("simpleType", () => {
     this.CONSUME(Identifier);
     this.MANY(() => this.SUBRULE(this.arrayTypeSuffix));
   });

@@ -1,0 +1,40 @@
+# Test function type parsing and usage
+
+class Main() {
+  # Test 1: Function typed field - simple function type
+  public adderFunc: (int, int): int = this.add;
+
+  # Test 2: Function typed field - function with no parameters
+  public getterFunc: (): int = this.getValue;
+
+  # Test 3: Calling function typed variable
+  public result1: int = this.adderFunc(5, 10);
+
+  # Test 4: Calling function typed variable with no parameters
+  public result3: int = this.getterFunc();
+
+  # Test 5: Using function typed variable with array.map()
+  public numbers: int[] = [1, 2, 3];
+  public processFunc: (int): int = this.double;
+  public doubled: int[] = this.numbers.map(this.processFunc);
+
+  # Test 6: Passing function typed variable as parameter
+  public result4: int = this.applyFunction(this.adderFunc, 7, 8);
+
+  # Helper methods
+  add(a: int, b: int): int {
+    return a + b;
+  }
+
+  getValue(): int {
+    return 42;
+  }
+
+  double(n: int): int {
+    return n * 2;
+  }
+
+  applyFunction(f: (int, int): int, x: int, y: int): int {
+    return f(x, y);
+  }
+}
