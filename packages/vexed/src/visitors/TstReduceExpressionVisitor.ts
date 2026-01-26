@@ -230,27 +230,6 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         }
     }
 
-    private hasUnreducedArrayElements(instance: TstInstanceObject): boolean {
-        const arrayElements = instance[InstanceMeta];
-        if (!Array.isArray(arrayElements)) {
-            return false;
-        }
-
-        for (const element of arrayElements) {
-            if (isInstanceExpression(element)) {
-                // Check nested arrays
-                if (this.hasUnreducedArrayElements(element.instance)) {
-                    return true;
-                }
-            } else if (!isFunctionReferenceExpression(element) && !isUnboundFunctionReferenceExpression(element)) {
-                // Non-instance, non-function elements are considered unreduced
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     private countArrayElementScopeReferences(instance: TstInstanceObject, scope: TstScope): void {
         const arrayElements = instance[InstanceMeta];
         if (!Array.isArray(arrayElements)) {
@@ -271,15 +250,14 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
     }
 
     private visitForScopeReferences(expr: TstExpression, scope: TstScope): void {
-        // Visit parameter and variable expressions to increment scope references
-        if (isParameter(expr)) {
-            const parameter = getScopeParameter(scope, expr.name);
-            if (parameter) {
-                this.incrementReferenceCount(scope);
-            }
-        } else if (isVariableExpression(expr)) {
-            const variable = getScopeParameter(scope, expr.name);
-            if (variable) {
+        // Visit expressions to count scope references without triggering reduction.
+        // This is a "light visit" that only counts parameter and variable references.
+        // Expression types not listed here (e.g., literals, function calls) don't
+        // directly contain scope references at their top level and are intentionally skipped.
+        
+        if (isParameter(expr) || isVariableExpression(expr)) {
+            const ref = getScopeParameter(scope, (expr as any).name);
+            if (ref) {
                 this.incrementReferenceCount(scope);
             }
         } else if (isBinaryExpression(expr)) {
@@ -297,7 +275,8 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
             // For scoped expressions, increment reference count for the scope
             this.incrementReferenceCount(expr.scope);
         }
-        // For other expression types (instances, function references, etc.), no action needed
+        // Other expression types (instances, function references, literals, etc.) 
+        // don't contain direct scope references and require no action
     }
 
     visitInstanceExpression(expr: TstInstanceExpression): TstExpression {
