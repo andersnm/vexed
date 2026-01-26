@@ -70,7 +70,7 @@ export class AstVisitor {
             }
 
             const callee = this.resolveExpression(expr.callee);
-            const methodType = this.runtime.getExpressionType(callee, this.thisType);
+            const methodType = this.runtime.getExpressionType(callee);
             if (!methodType) {
                 throw new Error("Could not find type for function call callee");
             }
@@ -87,7 +87,7 @@ export class AstVisitor {
                 const argumentExpression = argumentExpressions[i];
                 const methodParameterType = methodType.parameterTypes[i];
 
-                const argumentType = this.runtime.getExpressionType(argumentExpression, this.thisType);
+                const argumentType = this.runtime.getExpressionType(argumentExpression);
                 if (!argumentType) {
                     throw new Error("Could not determine type of argument expression");
                 }
@@ -112,7 +112,7 @@ export class AstVisitor {
             // Classify all identifiers as parameter, type, function, variable
 
             if (expr.value === "this") {
-                return { exprType: "this" } as TstThisExpression;
+                return { exprType: "this", type: this.thisType } as TstThisExpression;
             } else {
                 const pi = this.parameters.find(p => p.name == expr.value);
                 if (pi) {
@@ -126,7 +126,7 @@ export class AstVisitor {
 
                 const gi = this.runtime.globalScope.variables.find(v => v.name === expr.value);
                 if (gi) {
-                    const giType = this.runtime.getExpressionType(gi.value, this.thisType);
+                    const giType = this.runtime.getExpressionType(gi.value);
                     return { exprType: "variable", name: expr.value, type: giType } as TstVariableExpression;
                 }
 
@@ -144,7 +144,7 @@ export class AstVisitor {
 
         if (isAstArrayLiteral(expr)) {
             const elements = expr.elements.map(e => this.resolveExpression(e));
-            const visitor = new TstExpressionTypeVisitor(this.runtime, this.thisType)
+            const visitor = new TstExpressionTypeVisitor(this.runtime)
             const arrayType = this.runtime.findArrayType(visitor, elements);
             if (!arrayType) {
                 throw new Error("Could not determine array type for elements");

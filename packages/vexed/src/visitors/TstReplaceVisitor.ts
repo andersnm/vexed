@@ -79,6 +79,7 @@ export class TstReplaceVisitor {
     visitThisExpression(expr: TstThisExpression): TstExpression {
         return {
             exprType: expr.exprType,
+            type: expr.type,
         } as TstThisExpression;
     }
 

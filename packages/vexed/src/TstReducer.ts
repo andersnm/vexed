@@ -38,7 +38,7 @@ export class TstReducer {
             const reduced = reducer.visit(propertyExpression);
 
             // Check if types match
-            const reducedType = this.runtime.getExpressionType(reduced, obj[TypeMeta]);
+            const reducedType = this.runtime.getExpressionType(reduced);
 
             // Empty bindings, everything should be resolved
             const bindings = new Map<string, TypeDefinition>();

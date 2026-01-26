@@ -208,6 +208,7 @@ export interface TstMemberExpression extends TstExpression {
 
 export interface TstThisExpression extends TstExpression {
     exprType: "this";
+    type: TypeDefinition;
 }
 
 export interface TstBinaryExpression extends TstExpression {

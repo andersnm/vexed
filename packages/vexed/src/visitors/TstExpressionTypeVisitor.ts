@@ -10,9 +10,9 @@ export class TstExpressionTypeVisitor extends TstReplaceVisitor {
 
     visitType: TypeDefinition;
 
-    constructor(private runtime: TstRuntime, private thisType: TypeDefinition) {
+    constructor(private runtime: TstRuntime) {
         super();
-        this.visitType = thisType;
+        this.visitType = runtime.getType("any"); // Default to any type
     }
 
     visitMemberExpression(expr: TstMemberExpression): TstExpression {
@@ -47,7 +47,7 @@ export class TstExpressionTypeVisitor extends TstReplaceVisitor {
     }
 
     visitThisExpression(expr: TstThisExpression): TstExpression {
-        this.visitType = this.thisType;
+        this.visitType = expr.type;
         return expr;
     }
 
