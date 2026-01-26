@@ -25,25 +25,25 @@
 
 ```ts
 class Main() {
-  int adder(int a, int b) {
-    int localInt = 2;
+  int adder(a: int, b: int) {
+    let localInt: int = 2;
     return a + b + localInt + this.memberInt;
   }
 
-  int factorial(int n) {
+  int factorial(n: int) {
     if (n <= 1) {
       return 1;
     }
 
-    int next = n;
+    let next: int = n;
     next = next - 1;
     return n * this.factorial(next);
   }
 
-  public int memberInt = 7;
-  public int value1 = this.adder(1, 1);
-  public int value2 = this.adder(1, this.value1);
-  public int fac5 = this.factorial(5);
+  public memberInt: int = 7;
+  public value1: int = this.adder(1, 1);
+  public value2: int = this.adder(1, this.value1);
+  public fac5: int = this.factorial(5);
 }
 ```
 
