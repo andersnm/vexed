@@ -109,7 +109,6 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
     visitParameterExpression(expr: TstParameterExpression): TstExpression {
         const parameter = getScopeParameter(this.scope, expr.name);
         if (parameter) {
-            this.incrementReferenceCount(this.scope);
             if (isInstanceExpression(parameter.value) || isFunctionReferenceExpression(parameter.value)/* || isFunctionCall(parameter.value)*/) {
                 this.reduceCount++;
                 return parameter.value;
@@ -124,7 +123,6 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
     visitVariableExpression(expr: TstVariableExpression): TstExpression {
         const variable = getScopeParameter(this.scope, expr.name);
         if (variable) {
-            this.incrementReferenceCount(this.scope);
             if (isInstanceExpression(variable.value) || isFunctionReferenceExpression(variable.value)) {
                 this.reduceCount++;
                 return variable.value;
@@ -173,7 +171,6 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         }
 
         const beforeReduceCount = this.reduceCount;
-        const beforeReferenceCount = this.scopeReferenceCount.get(expr.scope) || 0;
         this.scopeStack.push(expr.scope);
         const visited = this.visit(expr.expr);
         this.scopeStack.pop();
@@ -196,11 +193,10 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
 
         const referenceCount = this.scopeReferenceCount.get(expr.scope) || 0;
 
-        // Reduce the scoped expression if:
-        // 1. Reference count unchanged (was pre-computed, no dynamic changes), OR
-        // 2. No external references (count <= 1: none or only self-reference), OR
-        // 3. The scope is fully reduced AND no reduction happened during the visit
-        if (referenceCount === beforeReferenceCount || referenceCount <= 1 || (isScopeReduced(expr.scope) && beforeReduceCount === this.reduceCount)) {
+        // Reduce the scoped expression when:
+        // 1. There are minimal/no references (count <= 1), OR
+        // 2. The scope is fully reduced AND stable (no reduction during visit)
+        if (referenceCount <= 1 || (isScopeReduced(expr.scope) && beforeReduceCount === this.reduceCount)) {
             this.reduceCount++;
             return visited;
         }
@@ -336,7 +332,6 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
 
     visitUnaryExpression(expr: TstUnaryExpression): TstExpression {
         if (expr.operator === "typeof") {
-            this.incrementReferenceCount(this.scope);
             const operandType = this.runtime.getExpressionType(expr.operand);
             if (!operandType) {
                 throw new Error("Cannot resolve type of operand in typeof expression");
@@ -414,9 +409,6 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
             variables: variables,
             comment: callee.method.declaringType.name + "::" + callee.method.name + "(...)"
         };
-
-        this.incrementReferenceCount(methodScope);
-        this.incrementReferenceCount(scope);
 
         // Functions may "refuse" to invoke, f.ex if expecting a resolved parameter - which is implementation-specific.
         const returnExpr = objectType.callFunction(callee.method, scope);
@@ -498,7 +490,6 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         // Create local variable in scope and return no-op
         const initializer = this.visit(stmt.initializer);
         this.scope.variables.push({ name: stmt.name, value: initializer, type: stmt.varType });
-        this.incrementReferenceCount(this.scope);
         this.reduceCount++;
         return []; //{ stmtType: "localVarDeclaration", name: stmt.name, varType: stmt.varType, initializer } as TstLocalVarDeclaration];
     }
@@ -511,7 +502,6 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         }
 
         variable.value = expr;
-        this.incrementReferenceCount(this.scope);
         this.reduceCount++;
         return [];
     }
