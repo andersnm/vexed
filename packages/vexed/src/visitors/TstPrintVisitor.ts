@@ -1,5 +1,6 @@
-import { InstanceMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstFunctionReferenceExpression, TstIfStatement, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNativeMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstVariableExpression, TypeMeta } from "../TstExpression.js";
+import { InstanceMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstFunctionReferenceExpression, TstIfStatement, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNativeMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstVariableExpression, TypeMeta } from "../TstExpression.js";
 import { TypeDefinition } from "../TstType.js";
+import { ArrayBaseTypeDefinition } from "../types/ArrayBaseTypeDefinition.js";
 import { TstScope } from "./TstReduceExpressionVisitor.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
 
@@ -34,11 +35,6 @@ export const printObject = (obj: TstInstanceObject) => {
     return printer.output.join("");
 }
 
-function isTstArrayInstance(obj: TstInstanceObject): boolean {
-    const typeDef = obj[TypeMeta];
-    return typeDef.name.endsWith("[]");
-}
-
 function getPropertyNames(scopeType: TypeDefinition, propertyNames: string[]) {
     if (scopeType.extends) {
         getPropertyNames(scopeType.extends, propertyNames);
@@ -69,7 +65,7 @@ export class TstPrintVisitor extends TstReplaceVisitor {
 
         const instanceType = obj[TypeMeta];
 
-        if (isTstArrayInstance(obj)) {
+        if (instanceType instanceof ArrayBaseTypeDefinition) {
             this.output.push("[");
             const arrayValue = obj[InstanceMeta] as TstExpression[];
             this.printExpressionList(arrayValue);
@@ -143,6 +139,17 @@ export class TstPrintVisitor extends TstReplaceVisitor {
             this.printScope(scope.parent);
         }
         this.output.push(")");
+    }
+
+    visitNullExpression(expr: TstExpression): TstExpression {
+        this.output.push("null");
+        return expr;
+    }
+
+    visitUnaryExpression(expr: TstUnaryExpression): TstExpression {
+        this.output.push(expr.operator);
+        this.visit(expr.operand);
+        return expr;
     }
 
     visitMemberExpression(expr: TstMemberExpression): TstExpression {
@@ -236,7 +243,7 @@ export class TstPrintVisitor extends TstReplaceVisitor {
     }
 
     visitStatementExpression(expr: TstStatementExpression): TstExpression {
-        this.output.push("{\n");
+        this.output.push("<stmt>{\n");
         this.indent();
         expr.statements.forEach((stmt) => {
             this.printIndent();
