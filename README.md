@@ -25,12 +25,12 @@
 
 ```ts
 class Main() {
-  int adder(a: int, b: int) {
+  adder(a: int, b: int): int {
     let localInt: int = 2;
     return a + b + localInt + this.memberInt;
   }
 
-  int factorial(n: int) {
+  factorial(n: int): int {
     if (n <= 1) {
       return 1;
     }

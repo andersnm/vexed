@@ -140,20 +140,22 @@ export class ProgramParser extends CstParser {
         },
         ALT: () => this.SUBRULE(this.propertyDefinition)
       },
-      // Method declaration: <type> <identifier> (...)
-      // Example: int foo(a: string) { ... }
+      // Method declaration: <identifier> (...): <type>
+      // Example: foo(a: string): int { ... }
       // Everything else that doesn't match above alternatives
       { ALT: () => this.SUBRULE(this.methodDeclaration) }
     ]);
   });
 
   methodDeclaration = this.RULE("methodDeclaration", () => {
-    this.SUBRULE(this.type);
     this.CONSUME(Identifier);
 
     this.CONSUME(LParen);
     this.OPTION(() => this.SUBRULE(this.parameterList));
     this.CONSUME(RParen);
+
+    this.CONSUME(Colon);
+    this.SUBRULE(this.type);
 
     this.SUBRULE(this.statementList);
   });

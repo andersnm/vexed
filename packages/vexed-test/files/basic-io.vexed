@@ -3,12 +3,12 @@ class Main() {
   public content: string = io.readTextFile(this.getFileName());
   public warped: string = this.testAsyncParam(this.content);
 
-  string testAsyncParam(asynced: string) {
+  testAsyncParam(asynced: string): string {
     let tmp: any = io.print(asynced); # Prints "Promise<string>"
     return asynced;
   }
 
-  string getFileName() {
+  getFileName(): string {
     return this.fileName;
   }
 }
