@@ -2,14 +2,14 @@ class Main() {
     public x: int = this.expensive();
     public value: int = this.getter(this.x, this.x);
 
-    int expensive() {
+    expensive(): int {
         # simulate expensive function call
         let tmp: any = io.print("Hello from expensive");
         tmp = io.print(this.x); # Should print partial eval
         return 2;
     }
 
-    int getter(a: int, b: int) {
+    getter(a: int, b: int): int {
         let tmp: any = io.print(a);
         let tmp2: any = io.print(b);
         return a + b;

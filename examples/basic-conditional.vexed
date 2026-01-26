@@ -1,6 +1,6 @@
 class Helper() {
   public x: bool = true;
-  int mipikus() {
+  mipikus(): int {
     # return "string";
   }
 }
@@ -26,13 +26,13 @@ class Main() extends Yolo(77) {
   public testIntDivide: int = 8 / 2;
   public joll: bool = 3 > 2;
 
-  int pes(kake: int) {
+  pes(kake: int): int {
     const www: int = 9;
     # www = www + 1;
     return kake + www + 2;
   }
 
-  int hei(sjekk: int) {
+  hei(sjekk: int): int {
     if (sjekk > 10) {
       return 42;
     } else {

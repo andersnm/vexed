@@ -11,7 +11,7 @@ class Base(data: Data) {
     public data: Data = data;
 
     # From base class method
-    Data getRealData(name: string, value: int) {
+    getRealData(name: string, value: int): Data {
         return Data(name, value * 1);
     }
 }
@@ -33,13 +33,13 @@ class Main() extends Base(this.getRealData("FromConstructor", 10)) {
     # From base class method
     public baseClassData: Data = this.getRealData("FromBaseClassMethod", this.tempValue + 0);
 
-    Data getDataFromMain() {
+    getDataFromMain(): Data {
         let i: int = 100;
         # Return instance through method return type
         return Data("FromMain", i + 0);
     }
 
-    Data getDataFromBase() {
+    getDataFromBase(): Data {
         # Return instance through base class' method return type
         return this.getRealData("FromMainBase", 10 + 0);
     }

@@ -2,7 +2,7 @@ class ExtStuff() {
   public proof: string = "Member";
   public literally: string[] = [ "1", "2", "3" ].map(this.canWeDoIt);
 
-  string canWeDoIt(str: string) {
+  canWeDoIt(str: string): string {
     return "Yes we can: " + str + ": " + this.proof;
   }
 }
@@ -17,11 +17,11 @@ class Main() {
   public lengths: int[] = this.strArray.map(this.getLength);
   public canReally: string[] = this.strArray.map(this.ext.canWeDoIt);
 
-  string wrapString(s: string) {
+  wrapString(s: string): string {
     return "[" + s + "]" + this.temp;
   }
 
-  int getLength(s: string) {
+  getLength(s: string): int {
     return s.length;
   }
 

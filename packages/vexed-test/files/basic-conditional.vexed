@@ -6,7 +6,7 @@ class Main() {
   public num1: int = this.getNum(2);
   public num2: int = this.getNum(200);
 
-  int getNum(a: int) {
+  getNum(a: int): int {
     if (a < 10) {
       return 1;
     } else {

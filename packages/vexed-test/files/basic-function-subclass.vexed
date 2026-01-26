@@ -1,14 +1,14 @@
 class Base(constructorInt: int, constructorInt2: int) {
   public abstractInt: int;
 
-  int baseAdder(a: int, b: int) {
+  baseAdder(a: int, b: int): int {
     let localInt: int = 22;
     return a + b + localInt + constructorInt + constructorInt2 + this.abstractInt;
   }
 }
 
 class Main() extends Base(77, this.value3) {
-  int adder(a: int, b: int) {
+  adder(a: int, b: int): int {
     return this.baseAdder(a, b);
   }
 
