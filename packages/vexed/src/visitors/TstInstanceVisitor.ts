@@ -40,8 +40,7 @@ export class TstInstanceVisitor extends TstReplaceVisitor {
             const array = expr.instance[InstanceMeta] as TstExpression[];
             for (let i = 0; i < array.length; i++) {
                 const element = array[i];
-                // Count scope references from array elements before visiting
-                this.countReferences(element);
+                // Visit array elements - counting happens via visitor overrides
                 this.visit(element);
             }
         }
@@ -84,26 +83,6 @@ export class TstInstanceVisitor extends TstReplaceVisitor {
         this.incrementScopeReferenceCount(expr.scope);
         
         return super.visitScopedExpression(expr);
-    }
-
-    private countReferences(expr: TstExpression): void {
-        // Recursively count references without triggering full visitation
-        // This is needed for array elements to ensure we count all references
-        if (isParameter(expr)) {
-            this.countParameterOrVariableReference((expr as TstParameterExpression).name);
-        } else if (isVariableExpression(expr)) {
-            this.countParameterOrVariableReference((expr as TstVariableExpression).name);
-        } else if (isBinaryExpression(expr)) {
-            this.countReferences(expr.left);
-            this.countReferences(expr.right);
-        } else if (isMemberExpression(expr)) {
-            this.countReferences(expr.object);
-        } else if (isIndexExpression(expr)) {
-            this.countReferences(expr.object);
-            this.countReferences(expr.index);
-        } else if (isScopedExpression(expr)) {
-            this.incrementScopeReferenceCount(expr.scope);
-        }
     }
 
     private countParameterOrVariableReference(name: string): void {
