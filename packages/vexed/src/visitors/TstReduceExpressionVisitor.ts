@@ -196,7 +196,11 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
 
         const referenceCount = this.scopeReferenceCount.get(expr.scope) || 0;
 
-        if (referenceCount === beforeReferenceCount || (isScopeReduced(expr.scope) && beforeReduceCount === this.reduceCount)) {
+        // Reduce the scoped expression if:
+        // 1. No new references were added during the visit (count unchanged), OR  
+        // 2. Only the scoped expression itself references the scope (count is 1), OR
+        // 3. The scope is fully reduced AND no reduction happened during the visit
+        if (referenceCount === beforeReferenceCount || referenceCount === 1 || (isScopeReduced(expr.scope) && beforeReduceCount === this.reduceCount)) {
             this.reduceCount++;
             return visited;
         }
