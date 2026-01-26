@@ -1,5 +1,5 @@
 class Main() {
-  public string mainStr = "It's a string";
-  public int mainNum = 123;
-  public bool mainBool = true;
+  public mainStr: string = "It's a string";
+  public mainNum: int = 123;
+  public mainBool: bool = true;
 }

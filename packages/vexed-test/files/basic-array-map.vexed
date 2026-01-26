@@ -1,27 +1,27 @@
 class ExtStuff() {
-  public string proof = "Member";
-  public string[] literally = [ "1", "2", "3" ].map(this.canWeDoIt);
+  public proof: string = "Member";
+  public literally: string[] = [ "1", "2", "3" ].map(this.canWeDoIt);
 
-  string canWeDoIt(string str) {
+  string canWeDoIt(str: string) {
     return "Yes we can: " + str + ": " + this.proof;
   }
 }
 
 class Main() {
-  public string[] strArray = [ "ABC", "DEFGH" ];
-  public string temp = "TEMP";
+  public strArray: string[] = [ "ABC", "DEFGH" ];
+  public temp: string = "TEMP";
 
-  public ExtStuff ext = ExtStuff();
+  public ext: ExtStuff = ExtStuff();
 
-  public string[] wrapped = this.strArray.map(this.wrapString);
-  public int[] lengths = this.strArray.map(this.getLength);
-  public string[] canReally = this.strArray.map(this.ext.canWeDoIt);
+  public wrapped: string[] = this.strArray.map(this.wrapString);
+  public lengths: int[] = this.strArray.map(this.getLength);
+  public canReally: string[] = this.strArray.map(this.ext.canWeDoIt);
 
-  string wrapString(string s) {
+  string wrapString(s: string) {
     return "[" + s + "]" + this.temp;
   }
 
-  int getLength(string s) {
+  int getLength(s: string) {
     return s.length;
   }
 
