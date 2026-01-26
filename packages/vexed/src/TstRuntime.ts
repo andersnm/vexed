@@ -66,8 +66,8 @@ export class TstRuntime {
         return type || null;
     }
 
-    getExpressionType(expr: TstExpression, thisType: TypeDefinition): TypeDefinition {
-        const visitor = new TstExpressionTypeVisitor(this, thisType);
+    getExpressionType(expr: TstExpression): TypeDefinition {
+        const visitor = new TstExpressionTypeVisitor(this);
         visitor.visit(expr);
         return visitor.visitType;
     }

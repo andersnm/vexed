@@ -289,7 +289,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
     visitUnaryExpression(expr: TstUnaryExpression): TstExpression {
         if (expr.operator === "typeof") {
             this.incrementReferenceCount(this.scope);
-            const operandType = this.runtime.getExpressionType(expr.operand, this.scope.thisObject[TypeMeta]);
+            const operandType = this.runtime.getExpressionType(expr.operand);
             if (!operandType) {
                 throw new Error("Cannot resolve type of operand in typeof expression");
             }
@@ -340,8 +340,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
             const arg = argsExpr[i];
             const methodParameter = callee.method.parameters[i];
 
-            // TODO: remove the thisType
-            const argType = this.runtime.getExpressionType(arg, null as any);
+            const argType = this.runtime.getExpressionType(arg);
 
             if (!this.runtime.isTypeAssignable(argType, methodParameter.type, expr.genericBindings)) {
                 throw new Error(`Function call argument type mismatch for parameter ${methodParameter.name}: expected ${methodParameter.type.name}, got ${argType ? argType.name : "unknown"}`);
@@ -397,7 +396,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
             this.reduceCount++;
 
             const returnValue = stmts[0].returnValue;
-            const returnValueType = this.runtime.getExpressionType(returnValue, this.scope.thisObject[TypeMeta]);
+            const returnValueType = this.runtime.getExpressionType(returnValue);
 
             if (!this.runtime.isTypeAssignable(returnValueType!, expr.returnType, new Map<string, TypeDefinition>())) {
                 throw new Error(`Return type mismatch in statement expression: expected ${expr.returnType.name}, got ${returnValueType ? returnValueType.name : "unknown"}`);

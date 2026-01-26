@@ -39,7 +39,7 @@ export class TstReducer {
             const reduced = reducer.visit(propertyExpression);
 
             // Check if types match
-            const reducedType = this.runtime.getExpressionType(reduced, obj[TypeMeta]);
+            const reducedType = this.runtime.getExpressionType(reduced);
 
             if (isUnboundFunctionReferenceExpression(reduced) && propertyDeclaration.type instanceof FunctionTypeDefinition) {
                 // This is a special case because "isTypeAssignable()" assumes all types are concrete.
