@@ -1,4 +1,4 @@
-import { TstInstanceExpression, TstExpression, TstInstanceObject, TypeMeta, InstanceMeta, TstScopedExpression, ScopeMeta, isBinaryExpression, isIndexExpression, isMemberExpression, isParameter, isVariableExpression, isScopedExpression, TstParameterExpression, TstVariableExpression } from "../TstExpression.js";
+import { TstInstanceExpression, TstExpression, TstInstanceObject, TypeMeta, InstanceMeta, TstScopedExpression, ScopeMeta, isBinaryExpression, isIndexExpression, isMemberExpression, isParameter, isVariableExpression, isScopedExpression, TstParameterExpression, TstVariableExpression, TstBinaryExpression, TstMemberExpression, TstIndexExpression } from "../TstExpression.js";
 import { TstRuntime } from "../TstRuntime.js";
 import { TypeDefinition } from "../TstType.js";
 import { ArrayBaseTypeDefinition } from "../types/ArrayBaseTypeDefinition.js";
@@ -40,8 +40,8 @@ export class TstInstanceVisitor extends TstReplaceVisitor {
             const array = expr.instance[InstanceMeta] as TstExpression[];
             for (let i = 0; i < array.length; i++) {
                 const element = array[i];
-                // Count scope references from array elements
-                this.countScopeReferencesInExpression(element);
+                // Count scope references from array elements before visiting
+                this.countReferences(element);
                 this.visit(element);
             }
         }
@@ -49,38 +49,72 @@ export class TstInstanceVisitor extends TstReplaceVisitor {
         return expr;
     }
 
-    private countScopeReferencesInExpression(expr: TstExpression): void {
-        // Count scope references in expressions without visiting instances
-        // This ensures we count all parameter/variable references from array elements
-        
-        if (isParameter(expr) || isVariableExpression(expr)) {
-            // Both parameter and variable expressions have a 'name' property
-            const name = isParameter(expr) ? (expr as TstParameterExpression).name : (expr as TstVariableExpression).name;
-            for (const scope of this.scopes) {
-                const ref = getScopeParameter(scope, name);
-                if (ref) {
-                    this.incrementScopeReferenceCount(scope);
-                    break;
-                }
-            }
-        } else if (isBinaryExpression(expr)) {
-            this.countScopeReferencesInExpression(expr.left);
-            this.countScopeReferencesInExpression(expr.right);
-        } else if (isMemberExpression(expr)) {
-            this.countScopeReferencesInExpression(expr.object);
-        } else if (isIndexExpression(expr)) {
-            this.countScopeReferencesInExpression(expr.object);
-            this.countScopeReferencesInExpression(expr.index);
-        } else if (isScopedExpression(expr)) {
-            this.incrementScopeReferenceCount(expr.scope);
-        }
+    visitParameterExpression(expr: TstParameterExpression): TstExpression {
+        // Count reference when visiting parameter expressions
+        this.countParameterOrVariableReference(expr.name);
+        return super.visitParameterExpression(expr);
+    }
+
+    visitVariableExpression(expr: TstVariableExpression): TstExpression {
+        // Count reference when visiting variable expressions
+        this.countParameterOrVariableReference(expr.name);
+        return super.visitVariableExpression(expr);
+    }
+
+    visitBinaryExpression(expr: TstBinaryExpression): TstExpression {
+        // Visit both sides to count references
+        return super.visitBinaryExpression(expr);
+    }
+
+    visitMemberExpression(expr: TstMemberExpression): TstExpression {
+        // Visit object to count references
+        return super.visitMemberExpression(expr);
+    }
+
+    visitIndexExpression(expr: TstIndexExpression): TstExpression {
+        // Visit both object and index to count references
+        return super.visitIndexExpression(expr);
     }
 
     visitScopedExpression(expr: TstScopedExpression): TstExpression {
         // Collect instances referenced only from variables
         this.visitScope(expr.scope);
-
+        
+        // Count reference to the scoped expression's scope
+        this.incrementScopeReferenceCount(expr.scope);
+        
         return super.visitScopedExpression(expr);
+    }
+
+    private countReferences(expr: TstExpression): void {
+        // Recursively count references without triggering full visitation
+        // This is needed for array elements to ensure we count all references
+        if (isParameter(expr)) {
+            this.countParameterOrVariableReference((expr as TstParameterExpression).name);
+        } else if (isVariableExpression(expr)) {
+            this.countParameterOrVariableReference((expr as TstVariableExpression).name);
+        } else if (isBinaryExpression(expr)) {
+            this.countReferences(expr.left);
+            this.countReferences(expr.right);
+        } else if (isMemberExpression(expr)) {
+            this.countReferences(expr.object);
+        } else if (isIndexExpression(expr)) {
+            this.countReferences(expr.object);
+            this.countReferences(expr.index);
+        } else if (isScopedExpression(expr)) {
+            this.incrementScopeReferenceCount(expr.scope);
+        }
+    }
+
+    private countParameterOrVariableReference(name: string): void {
+        // Find which scope this parameter/variable belongs to and increment its count
+        for (const scope of this.scopes) {
+            const ref = getScopeParameter(scope, name);
+            if (ref) {
+                this.incrementScopeReferenceCount(scope);
+                break;
+            }
+        }
     }
 
     public visitInstanceProperties(obj: TstInstanceObject, scopeType: TypeDefinition) {
