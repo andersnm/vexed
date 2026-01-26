@@ -61,12 +61,11 @@ export class AstVisitor {
             // TODO: constructor vs function typed variable
             if (isAstIdentifier(expr.callee)) {
                 const functionName = expr.callee.value;
-                const typeIfNewExpression = this.runtime.getType(functionName);
-                if (!typeIfNewExpression) {
-                    throw new Error("Unknown type: " + functionName);
+                const typeIfNewExpression = this.runtime.tryGetType(functionName);
+                if (typeIfNewExpression) {
+                    return { exprType: "new", type: typeIfNewExpression, args: expr.args.map(arg => this.resolveExpression(arg)) } as TstNewExpression;
                 }
-
-                return { exprType: "new", type: typeIfNewExpression, args: expr.args.map(arg => this.resolveExpression(arg)) } as TstNewExpression;
+                // If not a type, fall through to handle as a function-typed variable
             }
 
             const callee = this.resolveExpression(expr.callee);

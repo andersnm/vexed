@@ -263,3 +263,26 @@ test('Parse call-once', async () => {
     checkInstanceProperty(instance, "x", runtime.getType("int"), 2);
     checkInstanceProperty(instance, "value", runtime.getType("int"), 4);
 });
+
+test('Parse function-types', async () => {
+    const runtime = new TstRuntime();
+    const instance = await compileInstance(runtime, "./files/function-types.vexed");
+
+    await runtime.reduceInstance(instance);
+
+    // Test 3: Calling function typed variables
+    checkInstanceProperty(instance, "result1", runtime.getType("int"), 15);
+    
+    // Test 4: Calling function typed variable with no parameters
+    checkInstanceProperty(instance, "result3", runtime.getType("int"), 42);
+    
+    // Test 5: Using function typed variable with array.map()
+    const doubledExpr = instance[TypeMeta].resolvePropertyExpression(instance, "doubled");
+    assert.ok(doubledExpr);
+    assert.ok(isInstanceExpression(doubledExpr));
+    const doubledArray = printJsonObject(doubledExpr.instance);
+    assert.deepEqual(doubledArray, [2, 4, 6]);
+    
+    // Test 6: Passing function typed variable as parameter
+    checkInstanceProperty(instance, "result4", runtime.getType("int"), 15);
+});
