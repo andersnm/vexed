@@ -22,6 +22,10 @@ export function isNewExpression(expr: TstExpression): expr is TstNewExpression {
     return expr.exprType === "new";
 }
 
+export function isNewArrayExpression(expr: TstExpression): expr is TstNewArrayExpression {
+    return expr.exprType === "newArray";
+}
+
 export function isFunctionCall(expr: TstExpression): expr is TstFunctionCallExpression {
     return expr.exprType === "functionCall";
 }
@@ -146,6 +150,12 @@ export interface TstNewExpression extends TstExpression {
     exprType: "new";
     type: TypeDefinition;
     args: TstExpression[];
+}
+
+export interface TstNewArrayExpression extends TstExpression {
+    exprType: "newArray";
+    arrayType: TypeDefinition;
+    elements: TstExpression[];
 }
 
 export interface TstFunctionCallExpression extends TstExpression {

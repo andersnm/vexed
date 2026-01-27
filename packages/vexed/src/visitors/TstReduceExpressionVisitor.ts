@@ -1,4 +1,4 @@
-import { InstanceMeta, isFunctionCall, isFunctionReferenceExpression, isInstanceExpression, isMemberExpression, isReturnStatement, isUnboundFunctionReferenceExpression, RuntimeMeta, ScopeMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstFunctionReferenceExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstMissingInstanceExpression, TstNativeMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstUnboundFunctionReferenceExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
+import { InstanceMeta, isFunctionCall, isFunctionReferenceExpression, isInstanceExpression, isMemberExpression, isReturnStatement, isUnboundFunctionReferenceExpression, RuntimeMeta, ScopeMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstFunctionReferenceExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstMissingInstanceExpression, TstNativeMemberExpression, TstNewArrayExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstUnboundFunctionReferenceExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
 import { TstRuntime } from "../TstRuntime.js";
 import { TypeDefinition } from "../TstType.js";
 import { printExpression } from "./TstPrintVisitor.js";
@@ -157,6 +157,25 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         return {
             exprType: "instance",
             instance: instance,
+        } as TstInstanceExpression;
+    }
+
+    visitNewArrayExpression(expr: TstNewArrayExpression): TstExpression {
+        this.reduceCount++;
+
+        const scopedElements = expr.elements.map(element => ({
+            exprType: "scoped",
+            expr: this.visit(element),
+            scope: this.scope,
+            comment: "array element",
+        } as TstScopedExpression));
+
+        const arrayInstance = expr.arrayType.createInstance([]);
+        arrayInstance![InstanceMeta].push(...scopedElements);
+
+        return {
+            exprType: "instance",
+            instance: arrayInstance,
         } as TstInstanceExpression;
     }
 
