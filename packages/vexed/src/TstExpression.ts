@@ -1,5 +1,6 @@
 import { TypeDefinition, TypeMethod } from "./TstType.js";
 import { TstScope } from "./visitors/TstReduceExpressionVisitor.js";
+import { AstLocation } from "./AstProgram.js";
 
 export const TypeMeta: unique symbol = Symbol("TypeMeta");
 export const InstanceMeta: unique symbol = Symbol("InstanceMeta");
@@ -127,6 +128,7 @@ export type TstInstanceObject = {
 
 export interface TstExpression {
     exprType: string;
+    location?: AstLocation;
 }
 
 export interface TstDecimalLiteralExpression extends TstExpression {

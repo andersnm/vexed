@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { jsonCommand } from "./jsonCommand.js";
 import { astCommand } from "./astCommand.js";
+import { ScriptError } from "vexed";
 
 // Commands:
 //   - json: evaluate -> output state as JSON
@@ -46,6 +47,10 @@ async function main() {
 Error.stackTraceLimit = Infinity;
 
 main().catch(err => {
+    if (err instanceof ScriptError) {
+        console.error(err.formatForVSCode());
+        process.exit(1);
+    }
     console.error("Fatal error:", err);
     process.exit(1);
 });

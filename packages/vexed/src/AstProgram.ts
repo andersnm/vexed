@@ -78,6 +78,7 @@ export function isAstLocalVarAssignment(expr: AstStatement): expr is AstLocalVar
 
 export interface AstExpression {
     exprType: string;
+    location?: AstLocation;
 }
 
 export interface AstIdentifierExpression {
@@ -222,6 +223,7 @@ export interface AstProgram {
 }
 
 export interface AstLocation {
+    fileName: string;
     line: number;
     column: number;
     startOffset: number;

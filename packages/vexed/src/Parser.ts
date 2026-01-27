@@ -2,19 +2,7 @@ import { Lexer } from "chevrotain";
 import { allTokens, ProgramParser } from "./ProgramParser.js";
 import { createVisitor } from "./ParserVisitor.js";
 import { AstProgram } from "./AstProgram.js";
-
-export interface ParserErrorInfo {
-    fileName: string;
-    line: number;
-    column: number;
-    message: string;
-}
-
-export class ParserError extends Error {
-    constructor(message: string, public errors: ParserErrorInfo[]) {
-        super(message);
-    }
-}
+import { ScriptError, ScriptErrorInfo } from "./ScriptError.js";
 
 export class Parser {
 
@@ -27,7 +15,7 @@ export class Parser {
                 return { fileName, line: err.line!, column: err.column!, message: err.message };
             });
 
-            throw new ParserError("Lexing errors detected", errors);
+            throw new ScriptError("Lexing errors detected", errors);
         }
 
         const parser = new ProgramParser();
@@ -40,7 +28,7 @@ export class Parser {
                 return { fileName, line: err.token.startLine!, column: err.token.startColumn!, message: err.message };
             });
 
-            throw new ParserError("Parsing errors detected", errors);
+            throw new ScriptError("Parsing errors detected", errors);
         }
 
         const visitor = createVisitor(parser, fileName);

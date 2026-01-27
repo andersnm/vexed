@@ -3,8 +3,9 @@ import { AstClass, AstClassUnit, AstPropertyStatement, AstParameter, AstProgram,
 import { IToken } from "chevrotain";
 import { AstType, AstArrayType, AstIdentifierType, AstFunctionType } from "./AstType.js";
 
-function createTokenLocation(tok: IToken): AstLocation {
+function createTokenLocation(tok: IToken, fileName: string): AstLocation {
     return {
+        fileName,
         line: tok.startLine!,
         column: tok.startColumn!,
         startOffset: tok.startOffset,
