@@ -254,7 +254,8 @@ export function createVisitor(parser: ProgramParser, fileName: string) {
                     exprType: "binary",
                     operator: operatorToken.image,
                     lhs: node,
-                    rhs: right
+                    rhs: right,
+                    location: createTokenLocation(operatorToken, fileName)
                 } as AstBinaryExpression;
             }
 
@@ -455,20 +456,40 @@ export function createVisitor(parser: ProgramParser, fileName: string) {
 
         primaryExpression(ctx: any): AstExpression {
             if (ctx.Identifier) {
-                return { exprType: "identifier", value: ctx.Identifier[0].image } as AstIdentifierExpression;
+                return { 
+                    exprType: "identifier", 
+                    value: ctx.Identifier[0].image,
+                    location: createTokenLocation(ctx.Identifier[0], fileName)
+                } as AstIdentifierExpression;
             }
             if (ctx.StringLiteral) {
                 const str = JSON.parse(ctx.StringLiteral[0].image);
-                return { exprType: "stringLiteral", value: str } as AstStringLiteralExpression;
+                return { 
+                    exprType: "stringLiteral", 
+                    value: str,
+                    location: createTokenLocation(ctx.StringLiteral[0], fileName)
+                } as AstStringLiteralExpression;
             }
             if (ctx.IntegerLiteral) {
-                return { exprType: "integerLiteral", value: ctx.IntegerLiteral[0].image } as AstIntegerLiteralExpression;
+                return { 
+                    exprType: "integerLiteral", 
+                    value: ctx.IntegerLiteral[0].image,
+                    location: createTokenLocation(ctx.IntegerLiteral[0], fileName)
+                } as AstIntegerLiteralExpression;
             }
             if (ctx.DecimalLiteral) {
-                return { exprType: "decimalLiteral", value: ctx.DecimalLiteral[0].image } as AstDecimalLiteralExpression;
+                return { 
+                    exprType: "decimalLiteral", 
+                    value: ctx.DecimalLiteral[0].image,
+                    location: createTokenLocation(ctx.DecimalLiteral[0], fileName)
+                } as AstDecimalLiteralExpression;
             }
             if (ctx.BooleanLiteral) {
-                return { exprType: "booleanLiteral", value: ctx.BooleanLiteral[0].image === "true" } as AstBooleanLiteralExpression;
+                return { 
+                    exprType: "booleanLiteral", 
+                    value: ctx.BooleanLiteral[0].image === "true",
+                    location: createTokenLocation(ctx.BooleanLiteral[0], fileName)
+                } as AstBooleanLiteralExpression;
             }
             if (ctx.arrayLiteral) {
                 return this.visit(ctx.arrayLiteral);

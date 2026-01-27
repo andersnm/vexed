@@ -8,12 +8,24 @@ import { FunctionTypeDefinition, getFunctionTypeName } from "./types/FunctionTyp
 import { ArrayTypeDefinition } from "./types/ArrayBaseTypeDefinition.js";
 import { GenericUnresolvedTypeDefinition } from "./types/GenericUnresolvedTypeDefinition.js";
 import { AstVisitor } from "./AstVisitor.js";
+import { ScriptError, ScriptErrorInfo } from "./ScriptError.js";
 
 export class TstBuilder {
     private runtime: TstRuntime;
+    private errors: ScriptErrorInfo[] = [];
 
     constructor(runtime: TstRuntime) {
         this.runtime = runtime;
+    }
+
+    private addError(fileName: string, line: number, column: number, message: string) {
+        this.errors.push({ fileName, line, column, message });
+    }
+
+    private throwIfErrors() {
+        if (this.errors.length > 0) {
+            throw new ScriptError("Type resolution errors detected", this.errors);
+        }
     }
 
     collectType(type: AstType, classDef: AstClass, method: AstMethodDeclaration | null) {
@@ -154,9 +166,17 @@ export class TstBuilder {
                 for (let unit of programUnit.units) {
                     if (isPropertyDefinition(unit)) {
                         const propertyTypeName = formatAstTypeName(unit.propertyType, programUnit, null);
-                        const propertyType = this.runtime.getType(propertyTypeName);
+                        const propertyType = this.runtime.tryGetType(propertyTypeName);
                         if (!propertyType) {
-                            throw new Error(`Could not find type ${unit.propertyType} for property ${unit.name} of type ${programUnit.name}`);
+                            // Use argument expression location if available, otherwise default to 0:0
+                            const location = unit.argument?.location;
+                            this.addError(
+                                location?.fileName || visited.fileName,
+                                location?.line || 0,
+                                location?.column || 0,
+                                `Could not find type ${propertyTypeName} for property ${unit.name} of type ${programUnit.name}`
+                            );
+                            continue;
                         }
 
                         type.properties.push({
@@ -166,9 +186,17 @@ export class TstBuilder {
                         });
                     } else if (isMethodDeclaration(unit)) {
                         const returnTypeName = formatAstTypeName(unit.returnType, programUnit, unit);
-                        const returnType = this.runtime.getType(returnTypeName);
+                        const returnType = this.runtime.tryGetType(returnTypeName);
                         if (!returnType) {
-                            throw new Error(`Could not find type ${unit.returnType} for method ${unit.name} of type ${programUnit.name}`);
+                            // Use statement list location if available, otherwise default to 0:0
+                            const location = unit.statementList?.[0]?.location;
+                            this.addError(
+                                location?.fileName || visited.fileName,
+                                location?.line || 0,
+                                location?.column || 0,
+                                `Could not find type ${returnTypeName} for method ${unit.name} of type ${programUnit.name}`
+                            );
+                            continue;
                         }
 
                         const genericParameters: TypeParameter[] = [];
@@ -241,12 +269,20 @@ export class TstBuilder {
                     } else
                     if (isPropertyDefinition(unit)) {
                         const propertyTypeName = formatAstTypeName(unit.propertyType, programUnit, null);
-                        const propertyType = this.runtime.getType(propertyTypeName);
+                        const propertyType = this.runtime.tryGetType(propertyTypeName);
                         if (!propertyType) {
-                            throw new Error(`Could not find type ${unit.propertyType} for property ${unit.name} of type ${programUnit.name}`);
+                            // Use argument expression location if available, otherwise default to 0:0
+                            const location = unit.argument?.location;
+                            this.addError(
+                                location?.fileName || visited.fileName,
+                                location?.line || 0,
+                                location?.column || 0,
+                                `Could not find type ${propertyTypeName} for property ${unit.name} of type ${programUnit.name}`
+                            );
+                            continue;
                         }
 
-                        const typeProperty = type.properties.find(p => p.name === unit.name)!;
+                        const typeProperty = type.properties.find(p => p.name === unit.name)!;;
                         typeProperty.initializer = unit.argument ? visitor.resolveExpression(unit.argument) : undefined;
                     } else if (isMethodDeclaration(unit)) {
                         const typeMethod = type.methods.find(m => m.name === unit.name);
@@ -264,5 +300,8 @@ export class TstBuilder {
                 }
             }
         }
+
+        // Throw accumulated errors if any
+        this.throwIfErrors();
     }
 }

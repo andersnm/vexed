@@ -166,6 +166,7 @@ export interface AstMethodDeclaration extends AstClassUnit {
 
 export interface AstStatement {
     stmtType: "if" | "return" | "localVarDeclaration" | "localVarAssignment";
+    location?: AstLocation;
 }
 
 export interface AstLocalVarDeclaration extends AstStatement {
