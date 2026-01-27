@@ -1,3 +1,4 @@
+import { AstLocation } from "./AstLocation.js";
 import { AstType, isAstArrayType, isAstFunctionType, isAstIdentifierType } from "./AstType.js";
 
 export function isClass(programUnit: AstProgramUnit): programUnit is AstClass {
@@ -78,51 +79,52 @@ export function isAstLocalVarAssignment(expr: AstStatement): expr is AstLocalVar
 
 export interface AstExpression {
     exprType: string;
+    location: AstLocation;
 }
 
-export interface AstIdentifierExpression {
+export interface AstIdentifierExpression extends AstExpression {
     exprType: "identifier";
     value: string;
 }
 
-export interface AstStringLiteralExpression {
+export interface AstStringLiteralExpression extends AstExpression {
     exprType: "stringLiteral";
     value: string;
 }
 
-export interface AstIntegerLiteralExpression {
+export interface AstIntegerLiteralExpression extends AstExpression {
     exprType: "integerLiteral";
     value: string;
 }
 
-export interface AstDecimalLiteralExpression {
+export interface AstDecimalLiteralExpression extends AstExpression {
     exprType: "decimalLiteral";
     value: string;
 }
 
-export interface AstBooleanLiteralExpression {
+export interface AstBooleanLiteralExpression extends AstExpression {
     exprType: "booleanLiteral";
     value: boolean;
 }
 
-export interface AstArrayLiteralExpression {
+export interface AstArrayLiteralExpression extends AstExpression {
     exprType: "arrayLiteral";
     elements: AstExpression[];
 }
 
-export interface AstFunctionCallExpression {
+export interface AstFunctionCallExpression extends AstExpression {
     exprType: "functionCall";
     callee: AstExpression;
     args: AstExpression[];
 }
 
-export interface AstMemberExpression {
+export interface AstMemberExpression extends AstExpression {
     exprType: "member";
     object: AstExpression;
     property: string;
 }
 
-export interface AstIndexExpression {
+export interface AstIndexExpression extends AstExpression{
     exprType: "index";
     object: AstExpression;
     index: AstExpression;
@@ -144,14 +146,17 @@ export interface AstUnaryExpression extends AstExpression {
 export interface AstParameter {
     name: string;
     type: AstType;
+    location?: AstLocation;
 }
 
 export interface AstClassUnit {
     type: "methodDeclaration" | "propertyStatement" | "propertyDefinition";
+    location?: AstLocation;
 }
 
 export interface AstProgramUnit {
     type: "class";
+    location?: AstLocation;
 }
 
 export interface AstMethodDeclaration extends AstClassUnit {
@@ -165,6 +170,7 @@ export interface AstMethodDeclaration extends AstClassUnit {
 
 export interface AstStatement {
     stmtType: "if" | "return" | "localVarDeclaration" | "localVarAssignment";
+    location: AstLocation;
 }
 
 export interface AstLocalVarDeclaration extends AstStatement {
@@ -219,14 +225,6 @@ export interface AstClass extends AstProgramUnit {
 export interface AstProgram {
     fileName: string;
     programUnits: AstProgramUnit[];
-}
-
-export interface AstLocation {
-    line: number;
-    column: number;
-    startOffset: number;
-    endOffset: number;
-    image: string;
 }
 
 export function formatAstTypeName(ref: AstType, classDef: AstClass, method: AstMethodDeclaration | null): string {

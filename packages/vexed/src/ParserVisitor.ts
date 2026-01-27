@@ -1,10 +1,12 @@
 import { ProgramParser } from "./ProgramParser.js"; // your token definitions
-import { AstClass, AstClassUnit, AstPropertyStatement, AstParameter, AstProgram, AstPropertyDefinition, AstExpression, AstIdentifierExpression, AstStringLiteralExpression, AstFunctionCallExpression, AstMemberExpression, AstIndexExpression, AstIntegerLiteralExpression, AstDecimalLiteralExpression, AstArrayLiteralExpression, isAstIdentifier, AstBinaryExpression, AstLocation, AstMethodDeclaration, AstIfStatement, AstStatement, AstReturnStatement, AstUnaryExpression, AstLocalVarDeclaration, AstBooleanLiteralExpression, AstLocalVarAssignment } from "./AstProgram.js";
+import { AstClass, AstClassUnit, AstPropertyStatement, AstParameter, AstProgram, AstPropertyDefinition, AstExpression, AstIdentifierExpression, AstStringLiteralExpression, AstFunctionCallExpression, AstMemberExpression, AstIndexExpression, AstIntegerLiteralExpression, AstDecimalLiteralExpression, AstArrayLiteralExpression, isAstIdentifier, AstBinaryExpression, AstMethodDeclaration, AstIfStatement, AstStatement, AstReturnStatement, AstUnaryExpression, AstLocalVarDeclaration, AstBooleanLiteralExpression, AstLocalVarAssignment } from "./AstProgram.js";
 import { IToken } from "chevrotain";
 import { AstType, AstArrayType, AstIdentifierType, AstFunctionType } from "./AstType.js";
+import { AstLocation } from "./AstLocation.js";
 
-function createTokenLocation(tok: IToken): AstLocation {
+function createTokenLocation(fileName: string, tok: IToken): AstLocation {
     return {
+        fileName: fileName,
         line: tok.startLine!,
         column: tok.startColumn!,
         startOffset: tok.startOffset,
@@ -64,18 +66,24 @@ export function createVisitor(parser: ProgramParser, fileName: string) {
             return {
                 type: "function",
                 functionReturnType: returnType,
-                functionParameters: parameterTypes
+                functionParameters: parameterTypes,
+                location: createTokenLocation(fileName, ctx.type[0])
             } as AstFunctionType;
         }
 
         simpleType(ctx: any): AstType {
-            let base: AstType = { type: "identifier", typeName: ctx.Identifier[0].image } as AstIdentifierType;
+            let base: AstType = {
+                type: "identifier",
+                typeName: ctx.Identifier[0].image,
+                location: createTokenLocation(fileName, ctx.Identifier[0]),
+            } as AstIdentifierType;
 
             const suffixes = ctx.arrayTypeSuffix ?? [];
             for (const _ of suffixes) {
                 base = {
                     type: "array",
-                    arrayItemType: base
+                    arrayItemType: base,
+                    location: createTokenLocation(fileName, ctx.Identifier[0]),
                 } as AstArrayType;
             }
             return base;
@@ -95,7 +103,7 @@ export function createVisitor(parser: ProgramParser, fileName: string) {
             const type = this.visit(ctx.type);
             const name = ctx.Identifier[0].image;
 
-            return { name, type };
+            return { name, type, location: createTokenLocation(fileName, ctx.Identifier[0]) };
         }
 
         class(ctx: any): AstClass {
@@ -108,6 +116,7 @@ export function createVisitor(parser: ProgramParser, fileName: string) {
                 extends: ctx.Identifier[1] ? ctx.Identifier[1].image : null,
                 extendsArguments: ctx.expressionList ? this.visit(ctx.expressionList) : null,
                 units: ctx.classUnit ? ctx.classUnit.map((u: any) => this.visit(u)) : [],
+                location: createTokenLocation(fileName, ctx.Identifier[0])
             };
         }
 
@@ -137,6 +146,7 @@ export function createVisitor(parser: ProgramParser, fileName: string) {
                 returnType,
                 parameters,
                 statementList,
+                location: createTokenLocation(fileName, nameToken)
             };
         }
 
@@ -159,6 +169,7 @@ export function createVisitor(parser: ProgramParser, fileName: string) {
                 varType: this.visit(ctx.type),
                 name: ctx.Identifier[0].image,
                 initializer: ctx.expression ? this.visit(ctx.expression) : null,
+                location: createTokenLocation(fileName, ctx.Identifier[0]),
             };
         }
 
@@ -167,6 +178,7 @@ export function createVisitor(parser: ProgramParser, fileName: string) {
                 stmtType: "localVarAssignment",
                 name: ctx.Identifier[0].image,
                 expr: this.visit(ctx.expression),
+                location: createTokenLocation(fileName, ctx.Identifier[0]),
             };
         }
 
@@ -192,7 +204,8 @@ export function createVisitor(parser: ProgramParser, fileName: string) {
                 stmtType: "if",
                 condition,
                 thenBlock,
-                elseBlock
+                elseBlock,
+                location: createTokenLocation(fileName, ctx.If[0]),
             };
         }
 
@@ -200,6 +213,7 @@ export function createVisitor(parser: ProgramParser, fileName: string) {
             return {
                 stmtType: "return",
                 returnValue: this.visit(ctx.expression),
+                location: createTokenLocation(fileName, ctx.Return[0]),
             };
         }
 
@@ -208,6 +222,7 @@ export function createVisitor(parser: ProgramParser, fileName: string) {
                 type: "propertyStatement",
                 name: ctx.Identifier[0].image,
                 argument: this.visit(ctx.expression),
+                location: createTokenLocation(fileName, ctx.Identifier[0]),
             };
         }
 
@@ -219,6 +234,7 @@ export function createVisitor(parser: ProgramParser, fileName: string) {
                 propertyType: this.visit(ctx.type),
                 name: ctx.Identifier[0].image,
                 argument: ctx.expression ? this.visit(ctx.expression) : null,
+                location: createTokenLocation(fileName, ctx.Identifier[0]),
             };
         }
 
@@ -253,7 +269,8 @@ export function createVisitor(parser: ProgramParser, fileName: string) {
                     exprType: "binary",
                     operator: operatorToken.image,
                     lhs: node,
-                    rhs: right
+                    rhs: right,
+                    location: createTokenLocation(fileName, operatorToken),
                 } as AstBinaryExpression;
             }
 
@@ -275,7 +292,8 @@ export function createVisitor(parser: ProgramParser, fileName: string) {
                     exprType: "binary",
                     operator: operatorToken.image,
                     lhs: node,
-                    rhs: right
+                    rhs: right,
+                    location: createTokenLocation(fileName, operatorToken),
                 } as AstBinaryExpression;
             }
 
@@ -297,7 +315,8 @@ export function createVisitor(parser: ProgramParser, fileName: string) {
                     exprType: "binary",
                     operator: operatorToken.image,
                     lhs: node,
-                    rhs: right
+                    rhs: right,
+                    location: createTokenLocation(fileName, operatorToken),
                 } as AstBinaryExpression;
             }
 
@@ -327,7 +346,8 @@ export function createVisitor(parser: ProgramParser, fileName: string) {
                     exprType: "binary",
                     operator: operatorToken.image,
                     lhs: node,
-                    rhs: right
+                    rhs: right,
+                    location: createTokenLocation(fileName, operatorToken),
                 } as AstBinaryExpression;
             }
 
@@ -352,7 +372,8 @@ export function createVisitor(parser: ProgramParser, fileName: string) {
                     exprType: "binary",
                     operator: operatorToken.image,
                     lhs: node,
-                    rhs: right
+                    rhs: right,
+                    location: createTokenLocation(fileName, operatorToken),
                 } as AstBinaryExpression;
             }
 
@@ -377,7 +398,8 @@ export function createVisitor(parser: ProgramParser, fileName: string) {
                     exprType: "binary",
                     operator: operatorToken.image,
                     lhs: node,
-                    rhs: right
+                    rhs: right,
+                    location: createTokenLocation(fileName, operatorToken),
                 } as AstBinaryExpression;
             }
 
@@ -390,6 +412,7 @@ export function createVisitor(parser: ProgramParser, fileName: string) {
                     exprType: "unary",
                     operator: "typeof",
                     operand: this.visit(ctx.unaryExpression[0]),
+                    location: createTokenLocation(fileName, ctx.Typeof[0]),
                 } as AstUnaryExpression;
             }
 
@@ -398,6 +421,7 @@ export function createVisitor(parser: ProgramParser, fileName: string) {
                     exprType: "unary",
                     operator: "!",
                     operand: this.visit(ctx.unaryExpression[0]),
+                    location: createTokenLocation(fileName, ctx.Not[0]),
                 } as AstUnaryExpression;
             }
 
@@ -424,20 +448,36 @@ export function createVisitor(parser: ProgramParser, fileName: string) {
 
         suffix(ctx: any, base: AstExpression): AstExpression {
             if (ctx.Dot) {
-                return { exprType: "member", object: base, property: ctx.Identifier[0].image } as AstMemberExpression;
+                return {
+                    exprType: "member",
+                    object: base, 
+                    property: ctx.Identifier[0].image,
+                    location: createTokenLocation(fileName, ctx.Dot[0]),
+                } as AstMemberExpression;
             }
             if (ctx.arguments) {
-                return { exprType: "functionCall", callee: base, args: this.visit(ctx.arguments) } as AstFunctionCallExpression;
+                return {
+                    exprType: "functionCall",
+                    callee: base,
+                    args: this.visit(ctx.arguments),
+                    location: createTokenLocation(fileName, ctx.arguments[0]),
+                } as AstFunctionCallExpression;
             }
             if (ctx.indexSuffix) {
-                return { exprType: "index", object: base, index: this.visit(ctx.indexSuffix) } as AstIndexExpression;
+                return {
+                    exprType: "index",
+                    object: base,
+                    index: this.visit(ctx.indexSuffix),
+                    location: createTokenLocation(fileName, ctx.indexSuffix[0]),
+                } as AstIndexExpression;
             }
 
             if (ctx.arrayTypeSuffix) {
                 if (isAstIdentifier(base)) {
                     return {
                         exprType: "identifier",
-                        value: base.value + "[]"
+                        value: base.value + "[]",
+                        location: base.location,
                     } as AstIdentifierExpression ;
                 } else {
                     throw new Error("Array type suffix can only be applied to identifiers");
@@ -454,20 +494,40 @@ export function createVisitor(parser: ProgramParser, fileName: string) {
 
         primaryExpression(ctx: any): AstExpression {
             if (ctx.Identifier) {
-                return { exprType: "identifier", value: ctx.Identifier[0].image } as AstIdentifierExpression;
+                return {
+                    exprType: "identifier",
+                    value: ctx.Identifier[0].image,
+                    location: createTokenLocation(fileName, ctx.Identifier[0]),
+                } as AstIdentifierExpression;
             }
             if (ctx.StringLiteral) {
                 const str = JSON.parse(ctx.StringLiteral[0].image);
-                return { exprType: "stringLiteral", value: str } as AstStringLiteralExpression;
+                return {
+                    exprType: "stringLiteral",
+                    value: str,
+                    location: createTokenLocation(fileName, ctx.StringLiteral[0]),
+                } as AstStringLiteralExpression;
             }
             if (ctx.IntegerLiteral) {
-                return { exprType: "integerLiteral", value: ctx.IntegerLiteral[0].image } as AstIntegerLiteralExpression;
+                return {
+                    exprType: "integerLiteral",
+                    value: ctx.IntegerLiteral[0].image,
+                    location: createTokenLocation(fileName, ctx.IntegerLiteral[0]),
+                } as AstIntegerLiteralExpression;
             }
             if (ctx.DecimalLiteral) {
-                return { exprType: "decimalLiteral", value: ctx.DecimalLiteral[0].image } as AstDecimalLiteralExpression;
+                return {
+                    exprType: "decimalLiteral",
+                    value: ctx.DecimalLiteral[0].image,
+                    location: createTokenLocation(fileName, ctx.DecimalLiteral[0]),
+                } as AstDecimalLiteralExpression;
             }
             if (ctx.BooleanLiteral) {
-                return { exprType: "booleanLiteral", value: ctx.BooleanLiteral[0].image === "true" } as AstBooleanLiteralExpression;
+                return {
+                    exprType: "booleanLiteral",
+                    value: ctx.BooleanLiteral[0].image === "true",
+                    location: createTokenLocation(fileName, ctx.BooleanLiteral[0]),
+                } as AstBooleanLiteralExpression;
             }
             if (ctx.arrayLiteral) {
                 return this.visit(ctx.arrayLiteral);
@@ -490,7 +550,11 @@ export function createVisitor(parser: ProgramParser, fileName: string) {
 
         arrayLiteral(ctx: any): AstExpression {
             const elements = ctx.expression ? ctx.expression.map((exprCtx: any) => this.visit(exprCtx)) : [];
-            return { exprType: "arrayLiteral", elements } as AstArrayLiteralExpression;
+            return {
+                exprType: "arrayLiteral", 
+                elements,
+                location: createTokenLocation(fileName, ctx.LBracket[0]),
+            } as AstArrayLiteralExpression;
         }
 
         parenthesizedExpression(ctx: any): AstExpression {

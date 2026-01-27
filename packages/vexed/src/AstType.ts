@@ -1,5 +1,8 @@
+import { AstLocation } from "./AstLocation.js";
+
 export interface AstType {
     type: "identifier" | "function" | "array";
+    location?: AstLocation;
 }
 
 export interface AstFunctionType extends AstType {
