@@ -286,3 +286,39 @@ test('Parse function-types', async () => {
     // Test 6: Passing function typed variable as parameter
     checkInstanceProperty(instance, "result4", runtime.getType("int"), 15);
 });
+
+test('Array literal with method parameter', async () => {
+    const runtime = new TstRuntime();
+    const instance = await compileInstance(runtime, "./files/array-parameter.vexed");
+    await runtime.reduceInstance(instance);
+    const json = printJsonObject(instance);
+
+    assert.deepEqual(json, {
+        result: ["test", "test2", "test3"]
+    });
+});
+
+test('Array literal with complex parameter scenarios', async () => {
+    const runtime = new TstRuntime();
+    const instance = await compileInstance(runtime, "./files/array-parameter-complex.vexed");
+    await runtime.reduceInstance(instance);
+    const json = printJsonObject(instance);
+
+    assert.deepEqual(json, {
+        simpleArray: ["hello", "hello2", "hello3"],
+        nestedArray: ["nested_suffix", "nested_suffix2"],
+        multiParamArray: ["one", "two", "onetwo"]
+    });
+});
+
+test('Array literal with both direct values and parameters', async () => {
+    const runtime = new TstRuntime();
+    const instance = await compileInstance(runtime, "./files/array-direct-and-parameter.vexed");
+    await runtime.reduceInstance(instance);
+    const json = printJsonObject(instance);
+
+    assert.deepEqual(json, {
+        directArray: ["direct1", "direct2", "direct3"],
+        result: ["test", "test2", "test3"]
+    });
+});

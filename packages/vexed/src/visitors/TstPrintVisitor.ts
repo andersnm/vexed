@@ -1,4 +1,4 @@
-import { InstanceMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstFunctionReferenceExpression, TstIfStatement, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNativeMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstVariableExpression, TypeMeta } from "../TstExpression.js";
+import { InstanceMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstFunctionReferenceExpression, TstIfStatement, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNativeMemberExpression, TstNewArrayExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstVariableExpression, TypeMeta } from "../TstExpression.js";
 import { TypeDefinition } from "../TstType.js";
 import { ArrayBaseTypeDefinition } from "../types/ArrayBaseTypeDefinition.js";
 import { TstScope } from "./TstReduceExpressionVisitor.js";
@@ -214,6 +214,11 @@ export class TstPrintVisitor extends TstReplaceVisitor {
 
     visitNewExpression(expr: TstNewExpression): TstExpression {
         this.output.push("new " + expr.type.name);
+        return expr;
+    }
+
+    visitNewArrayExpression(expr: TstNewArrayExpression): TstExpression {
+        this.output.push("new " + expr.arrayType.name + " [...]");
         return expr;
     }
 
