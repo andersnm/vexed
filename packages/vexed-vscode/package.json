@@ -21,7 +21,8 @@
         ],
         "extensions": [
           ".vexed"
-        ]
+        ],
+        "configuration": "./language-configuration.json"
       }
     ],
     "grammars": [
