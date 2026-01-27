@@ -1,7 +1,7 @@
 import test, { mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { promises as fs } from "fs";
-import { InstanceMeta, isInstanceExpression, isParameter, isScopedExpression, printJsonObject, TstInstanceObject, TstRuntime, TypeDefinition, TypeMeta } from 'vexed';
+import { InstanceMeta, isInstanceExpression, isParameter, isScopedExpression, printJsonObject, ScriptError, TstInstanceObject, TstRuntime, TypeDefinition, TypeMeta } from 'vexed';
 
 async function compileInstance(runtime: TstRuntime, fileName: string): Promise<TstInstanceObject> {
 
@@ -321,4 +321,26 @@ test('Array literal with both direct values and parameters', async () => {
         directArray: ["direct1", "direct2", "direct3"],
         result: ["test", "test2", "test3"]
     });
+});
+
+test('ScriptError collection for unknown types', async () => {
+    const runtime = new TstRuntime();
+    const script = `class Main() {
+    public foo: UnknownType1 = null;
+    public bar: UnknownType2 = null;
+}`;
+    
+    await assert.rejects(
+        async () => {
+            runtime.loadScript(script, "test.vx");
+        },
+        (err: any) => {
+            assert.ok(err.errors, "Should have errors array");
+            assert.equal(err.errors.length, 4, "Should have 4 errors (2 from each pass)");
+            assert.equal(err.errors[0].fileName, "test.vx");
+            assert.ok(err.errors[0].message.includes("UnknownType1"));
+            assert.ok(err.errors[1].message.includes("UnknownType2"));
+            return true;
+        }
+    );
 });

@@ -282,7 +282,7 @@ export class TstBuilder {
                             continue;
                         }
 
-                        const typeProperty = type.properties.find(p => p.name === unit.name)!;;
+                        const typeProperty = type.properties.find(p => p.name === unit.name)!;
                         typeProperty.initializer = unit.argument ? visitor.resolveExpression(unit.argument) : undefined;
                     } else if (isMethodDeclaration(unit)) {
                         const typeMethod = type.methods.find(m => m.name === unit.name);
