@@ -1,0 +1,5 @@
+class Main() {
+    testMethod(param: UnknownParamType): int {
+        return 1;
+    }
+}

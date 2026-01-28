@@ -1,0 +1,3 @@
+class Main() {
+    public unknownTypeProp: UnknownType;
+}
