@@ -4,17 +4,17 @@
   "workspaces": [
     "packages/vexed",
     "packages/vexed-cli",
-    "packages/vexed-test"
+    "packages/vexed-test",
+    "packages/vexed-vscode"
   ],
   "_disabledWorkspaces":[
-    "packages/vexed-vscode",
     "packages/vexed-digitalocean"
   ],
   "scripts": {
     "build": "npm run build -ws",
     "test": "npm run test -workspace vexed-test",
     "vexed-cli": "node --enable-source-maps packages/vexed-cli/dist/main.js",
-    "pack": "npm pack -w vexed -w vexed-cli"
+    "pack": "npm pack -w vexed -w vexed-cli && npm run build -w vexed-syntax"
   },
   "devDependencies": {
     "typescript": "^5.9.3"
