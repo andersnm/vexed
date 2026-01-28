@@ -3,6 +3,6 @@ import { TypeDefinition } from "../TstType.js";
 
 export class GenericUnresolvedTypeDefinition extends TypeDefinition {
     constructor(runtime: TstRuntime, name: string) {
-        super(runtime, name, "<native>");
+        super(runtime, name);
     }
 }

@@ -9,7 +9,7 @@ import { AstIdentifierType } from "../AstType.js";
 
 export class IoTypeDefinition extends TypeDefinition {
     constructor(runtime: TstRuntime) {
-        super(runtime, "Io", "<native>");
+        super(runtime, "Io");
 
         this.astNode = {
             type: "class",

@@ -12,7 +12,7 @@ import { getScopeParameter, TstScope } from "../visitors/TstReduceExpressionVisi
  */
 export class ArrayBaseTypeDefinition extends TypeDefinition {
     constructor(runtime: TstRuntime, name: string, public elementType: TypeDefinition) {
-        super(runtime, name, "<native>");
+        super(runtime, name);
 
         this.astNode = {
             type: "class",

@@ -11,7 +11,7 @@ export class FunctionTypeDefinition extends TypeDefinition {
     parameterTypes: TypeDefinition[];
 
     constructor(runtime: TstRuntime, returnType: TypeDefinition, parameterTypes: TypeDefinition[]) {
-        super(runtime, getFunctionTypeName(returnType, parameterTypes), "<native>");
+        super(runtime, getFunctionTypeName(returnType, parameterTypes));
         this.returnType = returnType;
         this.parameterTypes = parameterTypes;
     }

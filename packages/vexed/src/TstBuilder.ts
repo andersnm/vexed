@@ -78,14 +78,14 @@ export class TstBuilder {
         return genericType;
     }
 
-    resolveProgram(visited: AstProgram) {
+    resolveProgram(visited: AstProgram): boolean {
 
         // Pass 1: Create new half-constructed types
         for (let programUnit of visited.programUnits) {
             if (isClass(programUnit)) {
                 let type = this.runtime.tryGetType(programUnit.name);
                 if (!type) {
-                    type = new TypeDefinition(this.runtime, programUnit.name, visited.fileName);
+                    type = new TypeDefinition(this.runtime, programUnit.name, programUnit.location);
                     this.runtime.types.push(type);
                 }
             }
@@ -106,7 +106,8 @@ export class TstBuilder {
 
                         if (unit.genericParameters) {
                             for (let genericParameter of unit.genericParameters) {
-                                this.collectType({ type: "identifier", typeName: genericParameter } as AstIdentifierType, programUnit, unit);
+                                // TODO: location in generic parameters, using method location for now
+                                this.collectType({ type: "identifier", typeName: genericParameter, location: unit.location } as AstIdentifierType, programUnit, unit);
                             }
                         }
 
@@ -147,40 +148,63 @@ export class TstBuilder {
 
                     type.parameters.push({
                         name: parameter.name,
-                        type: parameterType
+                        type: parameterType,
+                        location: parameter.location,
                     });
                 }
 
                 for (let unit of programUnit.units) {
                     if (isPropertyDefinition(unit)) {
                         const propertyTypeName = formatAstTypeName(unit.propertyType, programUnit, null);
-                        const propertyType = this.runtime.getType(propertyTypeName);
+                        let propertyType = this.runtime.tryGetType(propertyTypeName);
                         if (!propertyType) {
-                            throw new Error(`Could not find type ${unit.propertyType} for property ${unit.name} of type ${programUnit.name}`);
+                            this.runtime.error(`Could not find type ${propertyTypeName} for property ${programUnit.name}.${unit.name}`, unit.location);
+                            propertyType = this.runtime.getType("any");
                         }
 
                         type.properties.push({
                             modifier: unit.modifier,
                             name: unit.name,
                             type: propertyType,
+                            location: unit.location,
                         });
                     } else if (isMethodDeclaration(unit)) {
                         const returnTypeName = formatAstTypeName(unit.returnType, programUnit, unit);
-                        const returnType = this.runtime.getType(returnTypeName);
+                        let returnType = this.runtime.tryGetType(returnTypeName);
                         if (!returnType) {
-                            throw new Error(`Could not find type ${unit.returnType} for method ${unit.name} of type ${programUnit.name}`);
+                            this.runtime.error(`Could not find return type ${returnTypeName} for method ${programUnit.name}.${unit.name}`, unit.location);
+                            returnType = this.runtime.getType("any");
                         }
 
                         const genericParameters: TypeParameter[] = [];
                         if (unit.genericParameters) {
                             for (let genericParameter of unit.genericParameters) {
                                 const genericTypeName = formatAstTypeName({ type: "identifier", typeName: genericParameter } as AstIdentifierType, programUnit, unit);
-                                const genericType = this.runtime.getType(genericTypeName);
+                                const genericType = this.runtime.tryGetType(genericTypeName);
+                                if (!genericType) {
+                                    throw new Error("Internal error: Generic type not found after collection: " + genericTypeName);
+                                }
                                 genericParameters.push({
                                     name: genericParameter,
                                     type: genericType,
+                                    location: unit.location, // TODO: generic parameter location
                                 });
                             }
+                        }
+
+                        const parameters: TypeParameter[] = [];
+                        for (let param of unit.parameters) {
+                            const parameterTypeName = formatAstTypeName(param.type, programUnit, unit);
+                            let parameterType = this.runtime.tryGetType(parameterTypeName);
+                            if (!parameterType) {
+                                this.runtime.error(`Could not find type ${parameterTypeName} for parameter ${param.name} in method ${programUnit.name}.${unit.name}`, param.location);
+                                parameterType = this.runtime.getType("any");
+                            }
+                            parameters.push({
+                                name: param.name,
+                                type: parameterType,
+                                location: param.location,
+                            });
                         }
 
                         const typeMethod: TypeMethod = {
@@ -188,15 +212,9 @@ export class TstBuilder {
                             declaringType: type,
                             returnType: returnType,
                             genericParameters: genericParameters,
-                            parameters: unit.parameters.map(param => {
-                                const parameterTypeName = formatAstTypeName(param.type, programUnit, unit);
-                                const parameterType = this.runtime.getType(parameterTypeName);
-                                return {
-                                    name: param.name,
-                                    type: parameterType
-                                };
-                            }),
+                            parameters: parameters,
                             body: [], // assigned later
+                            location: unit.location,
                         }
 
                         type.methods.push(typeMethod);
@@ -212,6 +230,7 @@ export class TstBuilder {
                                 exprType: "unboundFunctionReference",
                                 method: typeMethod,
                             } as TstUnboundFunctionReferenceExpression,
+                            location: unit.location,
                         });
 
                     }
@@ -220,14 +239,16 @@ export class TstBuilder {
             }
         }
 
+        // Stop here if type resolution errors
+        if (this.runtime.scriptErrors.length > 0) {
+            return false;
+        }
+
         // Pass 3: Resolve symbols in initializers, extends-arguments and method bodies, AstExpression -> TstExpression
         for (let programUnit of visited.programUnits) {
                 // the properties in the class - derives from extends - only add explicit public/private, and we have their types now. but its not parsed yet
             if (isClass(programUnit)) {
                 const type = this.runtime.getType(programUnit.name);
-                if (!type) {
-                    throw new Error("Type should have been created in previous pass");
-                }
 
                 const visitor = new AstVisitor(null, this.runtime, type, type.parameters);
                 if (programUnit.extends && programUnit.extendsArguments) {
@@ -240,19 +261,13 @@ export class TstBuilder {
                         type.initializers.push({ name: unit.name, argument: visitor.resolveExpression(unit.argument) })
                     } else
                     if (isPropertyDefinition(unit)) {
-                        const propertyTypeName = formatAstTypeName(unit.propertyType, programUnit, null);
-                        const propertyType = this.runtime.getType(propertyTypeName);
-                        if (!propertyType) {
-                            throw new Error(`Could not find type ${unit.propertyType} for property ${unit.name} of type ${programUnit.name}`);
-                        }
+                        const typeProperty = type.properties.find(p => p.name === unit.name);
+                        if (!typeProperty) throw new Error("Internal error: Property not found: " + unit.name);
 
-                        const typeProperty = type.properties.find(p => p.name === unit.name)!;
                         typeProperty.initializer = unit.argument ? visitor.resolveExpression(unit.argument) : undefined;
                     } else if (isMethodDeclaration(unit)) {
                         const typeMethod = type.methods.find(m => m.name === unit.name);
-                        if (!typeMethod) {
-                            throw new Error(`Method ${unit.name} not found on type ${type.name}`);
-                        }
+                        if (!typeMethod) throw new Error("Internal error: Method not found: " + unit.name);
 
                         const methodVisitor = new AstVisitor(visitor, this.runtime, type, typeMethod.parameters);
 
@@ -264,5 +279,7 @@ export class TstBuilder {
                 }
             }
         }
+
+        return true;
     }
 }

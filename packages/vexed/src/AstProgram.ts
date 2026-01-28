@@ -216,7 +216,7 @@ export interface AstPropertyDefinition extends AstClassUnit {
 export interface AstClass extends AstProgramUnit {
     type: "class";
     name: string;
-    parameters: { name: string, type: AstType }[];
+    parameters: AstParameter[];
     extends?: string;
     extendsArguments?: AstExpression[];
     units: AstClassUnit[];

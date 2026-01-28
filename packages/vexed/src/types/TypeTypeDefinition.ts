@@ -6,7 +6,7 @@ import { AstPropertyDefinition } from "../AstProgram.js";
 
 export class TypeTypeDefinition extends TypeDefinition {
     constructor(runtime: TstRuntime) {
-        super(runtime, "Type", "<native>");
+        super(runtime, "Type");
 
         this.astNode = {
             type: "class",
@@ -42,7 +42,7 @@ export class TypeTypeDefinition extends TypeDefinition {
         if (propertyName === "scriptPath") {
             const type = instance[InstanceMeta] as TypeDefinition;
 
-            const scriptPath = path.dirname(type.fileName);
+            const scriptPath = type.location ? path.dirname(type.location.fileName) : ".";
             return { exprType: "instance", instance: this.runtime.createString(scriptPath) } as TstInstanceExpression;
         }
 

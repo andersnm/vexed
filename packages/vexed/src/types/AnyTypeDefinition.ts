@@ -5,7 +5,7 @@ import { TypeDefinition } from "../TstType.js";
 export class AnyTypeDefinition extends TypeDefinition {
 
     constructor(runtime: TstRuntime) {
-        super(runtime, "any", "<native>");
+        super(runtime, "any");
 
         this.astNode = {
             type: "class",

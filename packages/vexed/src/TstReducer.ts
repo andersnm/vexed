@@ -6,6 +6,7 @@ import { TstInstanceVisitor } from "./visitors/TstInstanceVisitor.js";
 import { TstRuntime } from "./TstRuntime.js";
 import { ArrayBaseTypeDefinition } from "./types/ArrayBaseTypeDefinition.js";
 import { FunctionTypeDefinition } from "./types/FunctionTypeDefinition.js";
+import { ScriptError } from "./ScriptError.js";
 
 export class TstReducer {
     constructor(private runtime: TstRuntime) { }
@@ -123,6 +124,10 @@ export class TstReducer {
 
         while (true) {
             this.reduceInstanceOnce(obj);
+
+            if (this.runtime.scriptErrors.length > 0) {
+                throw new ScriptError("Errors occurred during instance reduction", this.runtime.scriptErrors);
+            }
 
             const promiseExpressions = this.getPromisesFromRoot(obj);
             if (promiseExpressions.length === 0) {

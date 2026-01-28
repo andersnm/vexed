@@ -1,3 +1,4 @@
+import { AstLocation } from "./AstLocation.js";
 import { AstClass } from "./AstProgram.js";
 import { InstanceMeta, RuntimeMeta, TstExpression, TstInitializer, TstInstanceExpression, TstInstanceObject, TstScopedExpression, TstStatement, TstStatementExpression } from "./TstExpression.js";
 import { TstRuntime } from "./TstRuntime.js";
@@ -7,13 +8,14 @@ export interface TypeMember {
     modifier: string;
     name: string;
     type: TypeDefinition;
-    arrayType?: TypeDefinition;
     initializer?: TstExpression;
+    location?: AstLocation;
 }
 
 export interface TypeParameter {
     name: string;
     type: TypeDefinition;
+    location?: AstLocation;
 }
 
 export interface TypeMethod {
@@ -23,12 +25,12 @@ export interface TypeMethod {
     parameters: TypeParameter[];
     returnType: TypeDefinition;
     body: TstStatement[];
+    location?: AstLocation;
 }
 
 export class TypeDefinition {
     runtime: TstRuntime;
     name: string;
-    fileName: string;
     extends?: TypeDefinition;
     extendsArguments?: TstExpression[];
     parameters: TypeParameter[];
@@ -36,11 +38,12 @@ export class TypeDefinition {
     methods: TypeMethod[];
     initializers: TstInitializer[];  // TstVariable?? name+expr
     astNode?: AstClass;
+    location?: AstLocation; // TODO: Make constructor arg and update all types
 
-    constructor(runtime: TstRuntime, name: string, fileName: string) {
+    constructor(runtime: TstRuntime, name: string, location?: AstLocation) {
         this.runtime = runtime;
         this.name = name;
-        this.fileName = fileName;
+        this.location = location;
         this.parameters = [];
         this.properties = [];
         this.methods = [];

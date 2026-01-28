@@ -6,7 +6,7 @@ import { TypeDefinition } from "../TstType.js";
 
 export class StringTypeDefinition extends TypeDefinition {
     constructor(runtime: TstRuntime) {
-        super(runtime, "string", "<native>");
+        super(runtime, "string");
 
         this.astNode = {
             type: "class",

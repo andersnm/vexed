@@ -4,7 +4,7 @@ import { TypeDefinition } from "../TstType.js";
 
 export class BoolTypeDefinition extends TypeDefinition {
     constructor(runtime: TstRuntime) {
-        super(runtime, "bool", "<native>");
+        super(runtime, "bool");
 
         this.astNode = {
             type: "class",

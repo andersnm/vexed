@@ -15,21 +15,26 @@ import { TstReducer } from "./TstReducer.js";
 import { AstProgram } from "./AstProgram.js";
 import { FunctionTypeDefinition, getFunctionTypeName } from "./types/FunctionTypeDefinition.js";
 import { GenericUnresolvedTypeDefinition } from "./types/GenericUnresolvedTypeDefinition.js";
+import { ScriptError, ScriptErrorInfo } from "./ScriptError.js";
+import { AstLocation } from "./AstLocation.js";
+
+const nullLocation: AstLocation = { fileName: "<native>", line: 0, column: 0, startOffset: 0, endOffset: 0, image: "" };
 
 export class TstRuntime {
     verbose: boolean = false;
     maxSteps: number = 1000;
 
     types: TypeDefinition[] = [];
-    globalScope: TstScope = {
-        parent: null,
-        thisObject: null as any,
-        variables: [],
-        comment: "global",
-    };
+    globalScope: TstScope;
+    scriptErrors: ScriptErrorInfo[] = [];
 
     constructor() {
-
+        this.globalScope = {
+            parent: null,
+            thisObject: null as any,
+            variables: [],
+            comment: "global",
+        };
         const anyType = new AnyTypeDefinition(this);
         const types = [
             anyType,
@@ -340,5 +345,12 @@ export class TstRuntime {
 
         const builder = new TstBuilder(this);
         builder.resolveProgram(program);
+    }
+
+    error(message: string, location?: AstLocation) {
+        this.scriptErrors.push({
+            message,
+            location: location ?? nullLocation,
+        });
     }
 }
