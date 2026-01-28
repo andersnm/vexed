@@ -114,13 +114,19 @@ export class TstBuilder {
                         this.collectType(unit.returnType, programUnit, unit);
                         const returnTypeName = formatAstTypeName(unit.returnType, programUnit, unit);
 
-                        const returnType = this.runtime.getType(returnTypeName);
+                        let returnType = this.runtime.tryGetType(returnTypeName);
+                        if (!returnType) {
+                            returnType = this.runtime.getType("any");
+                        }
                         const parameterTypes: TypeDefinition[] = [];
                         for (let param of unit.parameters) {
                             this.collectType(param.type, programUnit, unit);
 
                             const parameterTypeName = formatAstTypeName(param.type, programUnit, unit);
-                            const parameterType = this.runtime.getType(parameterTypeName);
+                            let parameterType = this.runtime.tryGetType(parameterTypeName);
+                            if (!parameterType) {
+                                parameterType = this.runtime.getType("any");
+                            }
                             parameterTypes.push(parameterType);
                         }
 
