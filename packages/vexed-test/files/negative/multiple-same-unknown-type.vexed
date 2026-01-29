@@ -1,0 +1,7 @@
+class Main() {
+    public prop1: UnknownType;
+    public prop2: UnknownType;
+    testMethod(param: UnknownType): UnknownType {
+        return param;
+    }
+}

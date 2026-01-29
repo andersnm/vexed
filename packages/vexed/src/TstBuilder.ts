@@ -17,13 +17,26 @@ export class TstBuilder {
         this.runtime = runtime;
     }
 
+    private getOrCreatePoisonType(typeName: string): TypeDefinition {
+        let type = this.runtime.tryGetType(typeName);
+        if (!type) {
+            type = new PoisonTypeDefinition(this.runtime, typeName);
+            this.runtime.types.push(type);
+        }
+        return type;
+    }
+
     collectType(type: AstType, classDef: AstClass, method: AstMethodDeclaration | null) {
         const typeName = formatAstTypeName(type, classDef, method);
 
         if (isAstArrayType(type)) {
             this.collectType(type.arrayItemType, classDef, method);
             const elementTypeName = formatAstTypeName(type.arrayItemType, classDef, method);
-            const elementType = this.runtime.getType(elementTypeName);
+            let elementType = this.runtime.tryGetType(elementTypeName);
+            if (!elementType) {
+                // Element type doesn't exist, create poison type
+                elementType = this.getOrCreatePoisonType(elementTypeName);
+            }
 
             this.createArrayType(typeName, elementType);
         }
@@ -35,8 +48,19 @@ export class TstBuilder {
                 this.collectType(paramType, classDef, method);
             }
 
-            const returnType = this.runtime.getType(formatAstTypeName(type.functionReturnType, classDef, method));
-            const parameterTypes: TypeDefinition[] = type.functionParameters.map(paramType => this.runtime.getType(formatAstTypeName(paramType, classDef, method)));
+            let returnType = this.runtime.tryGetType(formatAstTypeName(type.functionReturnType, classDef, method));
+            if (!returnType) {
+                returnType = this.getOrCreatePoisonType(formatAstTypeName(type.functionReturnType, classDef, method));
+            }
+            
+            const parameterTypes: TypeDefinition[] = type.functionParameters.map(paramType => {
+                const paramTypeName = formatAstTypeName(paramType, classDef, method);
+                let paramTypeDefinition = this.runtime.tryGetType(paramTypeName);
+                if (!paramTypeDefinition) {
+                    paramTypeDefinition = this.getOrCreatePoisonType(paramTypeName);
+                }
+                return paramTypeDefinition;
+            });
             this.createFunctionType(parameterTypes, returnType);
         }
 
@@ -104,8 +128,7 @@ export class TstBuilder {
                     if (!baseType) {
                         this.runtime.error(`Could not find base type ${programUnit.extends} for class ${programUnit.name}`, programUnit.location);
                         // Create poison type for the missing base type
-                        const poisonType = new PoisonTypeDefinition(this.runtime, programUnit.extends);
-                        this.runtime.types.push(poisonType);
+                        this.getOrCreatePoisonType(programUnit.extends);
                     }
                 }
 
@@ -119,8 +142,7 @@ export class TstBuilder {
                         if (!propertyType) {
                             this.runtime.error(`Could not find type ${propertyTypeName} for property ${programUnit.name}.${unit.name}`, unit.location);
                             // Create poison type
-                            propertyType = new PoisonTypeDefinition(this.runtime, propertyTypeName);
-                            this.runtime.types.push(propertyType);
+                            this.getOrCreatePoisonType(propertyTypeName);
                         }
                     }
 
@@ -140,8 +162,7 @@ export class TstBuilder {
                         if (!returnType) {
                             this.runtime.error(`Could not find return type ${returnTypeName} for method ${programUnit.name}.${unit.name}`, unit.location);
                             // Create poison type
-                            returnType = new PoisonTypeDefinition(this.runtime, returnTypeName);
-                            this.runtime.types.push(returnType);
+                            returnType = this.getOrCreatePoisonType(returnTypeName);
                         }
                         const parameterTypes: TypeDefinition[] = [];
                         for (let param of unit.parameters) {
@@ -152,8 +173,7 @@ export class TstBuilder {
                             if (!parameterType) {
                                 this.runtime.error(`Could not find type ${parameterTypeName} for parameter ${param.name} in method ${programUnit.name}.${unit.name}`, param.location);
                                 // Create poison type
-                                parameterType = new PoisonTypeDefinition(this.runtime, parameterTypeName);
-                                this.runtime.types.push(parameterType);
+                                parameterType = this.getOrCreatePoisonType(parameterTypeName);
                             }
                             parameterTypes.push(parameterType);
                         }

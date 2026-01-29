@@ -60,3 +60,11 @@ test('Unknown extends type error', async () => {
     assert.equal(error.errors[0].location.line, 1);
     assert.equal(error.errors[0].location.column, 7);
 });
+
+test('Multiple references to same unknown type', async () => {
+    const { error } = await loadScriptExpectingError("./files/negative/multiple-same-unknown-type.vexed");
+    
+    // Should report multiple errors for the same unknown type used in different places
+    assert.ok(error.errors.length >= 1);
+    assert.match(error.errors[0].message, /Could not find type UnknownType/);
+});
