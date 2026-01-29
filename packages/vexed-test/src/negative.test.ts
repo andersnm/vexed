@@ -31,7 +31,7 @@ test('Unknown property type error', async () => {
     assert.equal(error.errors.length, 1);
     assert.match(error.errors[0].message, /Could not find type UnknownType for property Main.unknownTypeProp/);
     assert.equal(error.errors[0].location.line, 2);
-    assert.equal(error.errors[0].location.column, 12);
+    assert.equal(error.errors[0].location.column, 29);
 });
 
 test('Unknown return type error', async () => {
@@ -40,7 +40,7 @@ test('Unknown return type error', async () => {
     assert.equal(error.errors.length, 1);
     assert.match(error.errors[0].message, /Could not find return type UnknownReturnType for method Main.testMethod/);
     assert.equal(error.errors[0].location.line, 2);
-    assert.equal(error.errors[0].location.column, 5);
+    assert.equal(error.errors[0].location.column, 19);
 });
 
 test('Unknown parameter type error', async () => {
@@ -49,7 +49,7 @@ test('Unknown parameter type error', async () => {
     assert.equal(error.errors.length, 1);
     assert.match(error.errors[0].message, /Could not find type UnknownParamType for parameter param in method Main.testMethod/);
     assert.equal(error.errors[0].location.line, 2);
-    assert.equal(error.errors[0].location.column, 16);
+    assert.equal(error.errors[0].location.column, 23);
 });
 
 test('Unknown extends type error', async () => {
@@ -67,4 +67,13 @@ test('Multiple references to same unknown type', async () => {
     // Should report multiple errors for the same unknown type used in different places
     assert.ok(error.errors.length >= 1);
     assert.match(error.errors[0].message, /Could not find type UnknownType/);
+});
+
+test('Unknown array element type error', async () => {
+    const { error } = await loadScriptExpectingError("./files/negative/unknown-array-element-type.vexed");
+    
+    assert.equal(error.errors.length, 1);
+    assert.match(error.errors[0].message, /Could not find type UnknownType for property Main.arrayProp/);
+    assert.equal(error.errors[0].location.line, 2);
+    assert.equal(error.errors[0].location.column, 23);
 });

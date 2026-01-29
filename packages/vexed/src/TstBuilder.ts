@@ -26,50 +26,79 @@ export class TstBuilder {
         return type;
     }
 
-    collectType(type: AstType, classDef: AstClass, method: AstMethodDeclaration | null) {
+    collectType(type: AstType, classDef: AstClass, method: AstMethodDeclaration | null, context?: string): TypeDefinition | null {
         const typeName = formatAstTypeName(type, classDef, method);
 
         if (isAstArrayType(type)) {
-            this.collectType(type.arrayItemType, classDef, method);
-            const elementTypeName = formatAstTypeName(type.arrayItemType, classDef, method);
-            let elementType = this.runtime.tryGetType(elementTypeName);
+            const elementType = this.collectType(type.arrayItemType, classDef, method, context);
             if (!elementType) {
-                // Element type doesn't exist, create poison type
-                elementType = this.getOrCreatePoisonType(elementTypeName);
+                // Element type had errors, but we still create the array type with poison element
+                const elementTypeName = formatAstTypeName(type.arrayItemType, classDef, method);
+                const poisonElement = this.getOrCreatePoisonType(elementTypeName);
+                this.createArrayType(typeName, poisonElement);
+                return this.runtime.tryGetType(typeName);
             }
 
             this.createArrayType(typeName, elementType);
+            return this.runtime.tryGetType(typeName);
         }
 
         if (isAstFunctionType(type)) {
-            this.collectType(type.functionReturnType, classDef, method);
-
+            const returnType = this.collectType(type.functionReturnType, classDef, method, context);
+            
+            const parameterTypes: TypeDefinition[] = [];
+            let hasError = false;
+            
             for (let paramType of type.functionParameters) {
-                this.collectType(paramType, classDef, method);
-            }
-
-            let returnType = this.runtime.tryGetType(formatAstTypeName(type.functionReturnType, classDef, method));
-            if (!returnType) {
-                returnType = this.getOrCreatePoisonType(formatAstTypeName(type.functionReturnType, classDef, method));
+                const paramTypeDefinition = this.collectType(paramType, classDef, method, context);
+                if (!paramTypeDefinition) {
+                    hasError = true;
+                    // Use poison type for missing parameter
+                    const paramTypeName = formatAstTypeName(paramType, classDef, method);
+                    parameterTypes.push(this.getOrCreatePoisonType(paramTypeName));
+                } else {
+                    parameterTypes.push(paramTypeDefinition);
+                }
             }
             
-            const parameterTypes: TypeDefinition[] = type.functionParameters.map(paramType => {
-                const paramTypeName = formatAstTypeName(paramType, classDef, method);
-                let paramTypeDefinition = this.runtime.tryGetType(paramTypeName);
-                if (!paramTypeDefinition) {
-                    paramTypeDefinition = this.getOrCreatePoisonType(paramTypeName);
-                }
-                return paramTypeDefinition;
-            });
-            this.createFunctionType(parameterTypes, returnType);
+            const finalReturnType = returnType || this.getOrCreatePoisonType(formatAstTypeName(type.functionReturnType, classDef, method));
+            this.createFunctionType(parameterTypes, finalReturnType);
+            return this.runtime.tryGetType(getFunctionTypeName(finalReturnType, parameterTypes));
         }
 
         if (isAstIdentifierType(type)) {
             const methodGenericParameter = method?.genericParameters?.find(p => p === type.typeName);
             if (methodGenericParameter) {
                 this.createGenericUnresolvedType(typeName);
+                return this.runtime.tryGetType(typeName);
             }
+            
+            // Check if the type exists
+            const existingType = this.runtime.tryGetType(typeName);
+            if (!existingType) {
+                // Report error for missing type with context if provided
+                // Handle special formatting for "return type" context
+                let errorMessage: string;
+                if (context && context.includes('(return type')) {
+                    // Extract the method context
+                    const match = context.match(/\(return type for method ([^)]+)\)/);
+                    if (match) {
+                        errorMessage = `Could not find return type ${typeName} for method ${match[1]}`;
+                    } else {
+                        errorMessage = `Could not find type ${typeName}${context}`;
+                    }
+                } else {
+                    errorMessage = context ? `Could not find type ${typeName}${context}` : `Could not find type ${typeName}`;
+                }
+                this.runtime.error(errorMessage, type.location);
+                // Create and return poison type
+                return this.getOrCreatePoisonType(typeName);
+            }
+            
+            return existingType;
         }
+
+        return null;
     }
 
     createArrayType(arrayTypeName: string, elementType: TypeDefinition) {
@@ -134,16 +163,9 @@ export class TstBuilder {
 
                 for (let unit of programUnit.units) {
                     if (isPropertyDefinition(unit)) {
-                        this.collectType(unit.propertyType, programUnit, null);
-                        
-                        // Check property type and report error if not found
-                        const propertyTypeName = formatAstTypeName(unit.propertyType, programUnit, null);
-                        let propertyType = this.runtime.tryGetType(propertyTypeName);
-                        if (!propertyType) {
-                            this.runtime.error(`Could not find type ${propertyTypeName} for property ${programUnit.name}.${unit.name}`, unit.location);
-                            // Create poison type
-                            this.getOrCreatePoisonType(propertyTypeName);
-                        }
+                        // collectType now handles all error reporting
+                        const context = ` for property ${programUnit.name}.${unit.name}`;
+                        this.collectType(unit.propertyType, programUnit, null, context);
                     }
 
                     if (isMethodDeclaration(unit)) {
@@ -155,30 +177,22 @@ export class TstBuilder {
                             }
                         }
 
-                        this.collectType(unit.returnType, programUnit, unit);
-                        const returnTypeName = formatAstTypeName(unit.returnType, programUnit, unit);
-
-                        let returnType = this.runtime.tryGetType(returnTypeName);
-                        if (!returnType) {
-                            this.runtime.error(`Could not find return type ${returnTypeName} for method ${programUnit.name}.${unit.name}`, unit.location);
-                            // Create poison type
-                            returnType = this.getOrCreatePoisonType(returnTypeName);
-                        }
+                        // collectType now handles all error reporting for return and parameter types
+                        const returnType = this.collectType(unit.returnType, programUnit, unit, ` (return type for method ${programUnit.name}.${unit.name})`);
+                        
                         const parameterTypes: TypeDefinition[] = [];
                         for (let param of unit.parameters) {
-                            this.collectType(param.type, programUnit, unit);
-
-                            const parameterTypeName = formatAstTypeName(param.type, programUnit, unit);
-                            let parameterType = this.runtime.tryGetType(parameterTypeName);
-                            if (!parameterType) {
-                                this.runtime.error(`Could not find type ${parameterTypeName} for parameter ${param.name} in method ${programUnit.name}.${unit.name}`, param.location);
-                                // Create poison type
-                                parameterType = this.getOrCreatePoisonType(parameterTypeName);
+                            const paramContext = ` for parameter ${param.name} in method ${programUnit.name}.${unit.name}`;
+                            const paramType = this.collectType(param.type, programUnit, unit, paramContext);
+                            if (paramType) {
+                                parameterTypes.push(paramType);
                             }
-                            parameterTypes.push(parameterType);
                         }
-
-                        this.createFunctionType(parameterTypes, returnType);
+                        
+                        // Create function type for this method
+                        if (returnType && parameterTypes.length === unit.parameters.length) {
+                            this.createFunctionType(parameterTypes, returnType);
+                        }
                     }
                 }
             }
@@ -274,7 +288,10 @@ export class TstBuilder {
                         type.methods.push(typeMethod);
 
                         const functionTypeName = getFunctionTypeName(returnType, typeMethod.parameters.map(p => p.type));
-                        const functionType = this.runtime.getType(functionTypeName);
+                        const functionType = this.runtime.tryGetType(functionTypeName);
+                        if (!functionType) {
+                            throw new Error(`Internal error: Function type ${functionTypeName} not found after collection for method ${programUnit.name}.${unit.name}`);
+                        }
 
                         type.properties.push({
                             modifier: "public",
