@@ -47,12 +47,10 @@ export class TstBuilder {
             const returnType = this.collectType(type.functionReturnType, classDef, method, context);
             
             const parameterTypes: TypeDefinition[] = [];
-            let hasError = false;
             
             for (let paramType of type.functionParameters) {
                 const paramTypeDefinition = this.collectType(paramType, classDef, method, context);
                 if (!paramTypeDefinition) {
-                    hasError = true;
                     // Use poison type for missing parameter
                     const paramTypeName = formatAstTypeName(paramType, classDef, method);
                     parameterTypes.push(this.getOrCreatePoisonType(paramTypeName));
@@ -184,15 +182,21 @@ export class TstBuilder {
                         for (let param of unit.parameters) {
                             const paramContext = ` for parameter ${param.name} in method ${programUnit.name}.${unit.name}`;
                             const paramType = this.collectType(param.type, programUnit, unit, paramContext);
+                            // Always add to array (either real type or poison type)
                             if (paramType) {
                                 parameterTypes.push(paramType);
+                            } else {
+                                // This shouldn't happen as collectType always returns a type (real or poison)
+                                // But handle it defensively
+                                const paramTypeName = formatAstTypeName(param.type, programUnit, unit);
+                                parameterTypes.push(this.getOrCreatePoisonType(paramTypeName));
                             }
                         }
                         
                         // Create function type for this method
-                        if (returnType && parameterTypes.length === unit.parameters.length) {
-                            this.createFunctionType(parameterTypes, returnType);
-                        }
+                        // Both returnType and all parameterTypes should exist (real or poison)
+                        const finalReturnType = returnType || this.getOrCreatePoisonType(formatAstTypeName(unit.returnType, programUnit, unit));
+                        this.createFunctionType(parameterTypes, finalReturnType);
                     }
                 }
             }
