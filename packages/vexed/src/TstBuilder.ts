@@ -7,6 +7,7 @@ import { AstIdentifierType, AstType, isAstArrayType, isAstFunctionType, isAstIde
 import { FunctionTypeDefinition, getFunctionTypeName } from "./types/FunctionTypeDefinition.js";
 import { ArrayTypeDefinition } from "./types/ArrayBaseTypeDefinition.js";
 import { GenericUnresolvedTypeDefinition } from "./types/GenericUnresolvedTypeDefinition.js";
+import { PoisonTypeDefinition } from "./types/PoisonTypeDefinition.js";
 import { AstVisitor } from "./AstVisitor.js";
 
 export class TstBuilder {
@@ -97,9 +98,30 @@ export class TstBuilder {
             if (isClass(programUnit)) {
                 const type = this.runtime.getType(programUnit.name);
 
+                // Check extends type
+                if (programUnit.extends) {
+                    const baseType = this.runtime.tryGetType(programUnit.extends);
+                    if (!baseType) {
+                        this.runtime.error(`Could not find base type ${programUnit.extends} for class ${programUnit.name}`, programUnit.location);
+                        // Create poison type for the missing base type
+                        const poisonType = new PoisonTypeDefinition(this.runtime, programUnit.extends);
+                        this.runtime.types.push(poisonType);
+                    }
+                }
+
                 for (let unit of programUnit.units) {
                     if (isPropertyDefinition(unit)) {
                         this.collectType(unit.propertyType, programUnit, null);
+                        
+                        // Check property type and report error if not found
+                        const propertyTypeName = formatAstTypeName(unit.propertyType, programUnit, null);
+                        let propertyType = this.runtime.tryGetType(propertyTypeName);
+                        if (!propertyType) {
+                            this.runtime.error(`Could not find type ${propertyTypeName} for property ${programUnit.name}.${unit.name}`, unit.location);
+                            // Create poison type
+                            propertyType = new PoisonTypeDefinition(this.runtime, propertyTypeName);
+                            this.runtime.types.push(propertyType);
+                        }
                     }
 
                     if (isMethodDeclaration(unit)) {
@@ -116,7 +138,10 @@ export class TstBuilder {
 
                         let returnType = this.runtime.tryGetType(returnTypeName);
                         if (!returnType) {
-                            returnType = this.runtime.getType("any");
+                            this.runtime.error(`Could not find return type ${returnTypeName} for method ${programUnit.name}.${unit.name}`, unit.location);
+                            // Create poison type
+                            returnType = new PoisonTypeDefinition(this.runtime, returnTypeName);
+                            this.runtime.types.push(returnType);
                         }
                         const parameterTypes: TypeDefinition[] = [];
                         for (let param of unit.parameters) {
@@ -125,7 +150,10 @@ export class TstBuilder {
                             const parameterTypeName = formatAstTypeName(param.type, programUnit, unit);
                             let parameterType = this.runtime.tryGetType(parameterTypeName);
                             if (!parameterType) {
-                                parameterType = this.runtime.getType("any");
+                                this.runtime.error(`Could not find type ${parameterTypeName} for parameter ${param.name} in method ${programUnit.name}.${unit.name}`, param.location);
+                                // Create poison type
+                                parameterType = new PoisonTypeDefinition(this.runtime, parameterTypeName);
+                                this.runtime.types.push(parameterType);
                             }
                             parameterTypes.push(parameterType);
                         }
@@ -142,7 +170,10 @@ export class TstBuilder {
                 const type = this.runtime.getType(programUnit.name);
 
                 if (programUnit.extends) {
-                    const baseType = this.runtime.getType(programUnit.extends);
+                    const baseType = this.runtime.tryGetType(programUnit.extends);
+                    if (!baseType) {
+                        throw new Error(`Internal error: Base type ${programUnit.extends} not found after collection for class ${programUnit.name}`);
+                    }
 
                     type.extends = baseType;
                     // type.extendsArguments -> evaluate expressions after instance is constructed
@@ -164,8 +195,7 @@ export class TstBuilder {
                         const propertyTypeName = formatAstTypeName(unit.propertyType, programUnit, null);
                         let propertyType = this.runtime.tryGetType(propertyTypeName);
                         if (!propertyType) {
-                            this.runtime.error(`Could not find type ${propertyTypeName} for property ${programUnit.name}.${unit.name}`, unit.location);
-                            propertyType = this.runtime.getType("any");
+                            throw new Error(`Internal error: Property type ${propertyTypeName} not found after collection for property ${programUnit.name}.${unit.name}`);
                         }
 
                         type.properties.push({
@@ -178,8 +208,7 @@ export class TstBuilder {
                         const returnTypeName = formatAstTypeName(unit.returnType, programUnit, unit);
                         let returnType = this.runtime.tryGetType(returnTypeName);
                         if (!returnType) {
-                            this.runtime.error(`Could not find return type ${returnTypeName} for method ${programUnit.name}.${unit.name}`, unit.location);
-                            returnType = this.runtime.getType("any");
+                            throw new Error(`Internal error: Return type ${returnTypeName} not found after collection for method ${programUnit.name}.${unit.name}`);
                         }
 
                         const genericParameters: TypeParameter[] = [];
@@ -203,8 +232,7 @@ export class TstBuilder {
                             const parameterTypeName = formatAstTypeName(param.type, programUnit, unit);
                             let parameterType = this.runtime.tryGetType(parameterTypeName);
                             if (!parameterType) {
-                                this.runtime.error(`Could not find type ${parameterTypeName} for parameter ${param.name} in method ${programUnit.name}.${unit.name}`, param.location);
-                                parameterType = this.runtime.getType("any");
+                                throw new Error(`Internal error: Parameter type ${parameterTypeName} not found after collection for parameter ${param.name} in method ${programUnit.name}.${unit.name}`);
                             }
                             parameters.push({
                                 name: param.name,

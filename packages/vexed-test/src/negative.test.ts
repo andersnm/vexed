@@ -51,3 +51,12 @@ test('Unknown parameter type error', async () => {
     assert.equal(error.errors[0].location.line, 2);
     assert.equal(error.errors[0].location.column, 16);
 });
+
+test('Unknown extends type error', async () => {
+    const { error } = await loadScriptExpectingError("./files/negative/unknown-extends-type.vexed");
+    
+    assert.equal(error.errors.length, 1);
+    assert.match(error.errors[0].message, /Could not find base type UnknownBaseType for class Main/);
+    assert.equal(error.errors[0].location.line, 1);
+    assert.equal(error.errors[0].location.column, 7);
+});
