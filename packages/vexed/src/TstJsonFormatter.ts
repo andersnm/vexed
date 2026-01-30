@@ -1,4 +1,4 @@
-import { InstanceMeta, isInstanceExpression, isUnboundFunctionReferenceExpression, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstVariableExpression, TypeMeta } from "./TstExpression.js";
+import { InstanceMeta, isFunctionReferenceExpression, isInstanceExpression, isUnboundFunctionReferenceExpression, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstVariableExpression, TypeMeta } from "./TstExpression.js";
 import { TypeDefinition } from "./TstType.js";
 import { ArrayBaseTypeDefinition } from "./types/ArrayBaseTypeDefinition.js";
 
@@ -49,7 +49,7 @@ class TstJsonFormatter {
         for (let property of instanceType.properties) {
             const propertyName = property.name;
             const propExpr = instanceType.resolvePropertyExpression(obj, propertyName);
-            if (propExpr && isUnboundFunctionReferenceExpression(propExpr)) {
+            if (propExpr && (isUnboundFunctionReferenceExpression(propExpr) || isFunctionReferenceExpression(propExpr))) {
                 continue;
             }
 
