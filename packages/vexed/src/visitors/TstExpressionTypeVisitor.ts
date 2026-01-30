@@ -1,7 +1,8 @@
-import { TstBinaryExpression, TstDecimalLiteralExpression, TstExpression, TstFunctionCallExpression, TstFunctionReferenceExpression, TstInstanceExpression, TstMemberExpression, TstMissingInstanceExpression, TstNativeMemberExpression, TstNewArrayExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstUnboundFunctionReferenceExpression, TstVariableExpression, TypeMeta } from "../TstExpression.js";
+import { TstBinaryExpression, TstDecimalLiteralExpression, TstExpression, TstFunctionCallExpression, TstFunctionReferenceExpression, TstInstanceExpression, TstIntegerLiteralExpression, TstMemberExpression, TstMissingInstanceExpression, TstNativeMemberExpression, TstNewArrayExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstUnboundFunctionReferenceExpression, TstVariableExpression, TypeMeta } from "../TstExpression.js";
 import { TstRuntime } from "../TstRuntime.js";
 import { TypeDefinition } from "../TstType.js";
 import { FunctionTypeDefinition, getFunctionTypeName } from "../types/FunctionTypeDefinition.js";
+import { PoisonTypeDefinition } from "../types/PoisonTypeDefinition.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
 
 // Usage: Visit an expression, then check visitType for the resulting type. One-time use.
@@ -21,6 +22,11 @@ export class TstExpressionTypeVisitor extends TstReplaceVisitor {
         const objectType = this.visitType;
         if (!objectType) {
             throw new Error("Cannot get type of member expression");
+        }
+
+        if (objectType instanceof PoisonTypeDefinition) {
+            this.visitType = objectType;
+            return expr;
         }
 
         const typeProperty = objectType.getProperty(expr.property);
@@ -63,6 +69,11 @@ export class TstExpressionTypeVisitor extends TstReplaceVisitor {
 
     visitDecimalLiteral(expr: TstDecimalLiteralExpression): TstDecimalLiteralExpression {
         this.visitType = this.runtime.getType("decimal");
+        return expr;
+    }
+
+    visitIntegerLiteral(expr: TstIntegerLiteralExpression): TstIntegerLiteralExpression {
+        this.visitType = this.runtime.getType("int");
         return expr;
     }
 

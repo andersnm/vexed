@@ -1,0 +1,11 @@
+class Main() {
+    foo(): MissingType {
+        return 1;
+    }
+
+    bar(): int {
+        let x: MissingType = this.foo();
+        let dummy: any = x.doesntExistButShouldntError();
+        return 1;
+    }
+}

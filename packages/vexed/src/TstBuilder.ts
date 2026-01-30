@@ -7,6 +7,7 @@ import { AstIdentifierType, AstType, isAstArrayType, isAstFunctionType, isAstIde
 import { FunctionTypeDefinition, getFunctionTypeName } from "./types/FunctionTypeDefinition.js";
 import { ArrayTypeDefinition } from "./types/ArrayBaseTypeDefinition.js";
 import { GenericUnresolvedTypeDefinition } from "./types/GenericUnresolvedTypeDefinition.js";
+import { PoisonTypeDefinition } from "./types/PoisonTypeDefinition.js";
 import { AstVisitor } from "./AstVisitor.js";
 
 export class TstBuilder {
@@ -16,55 +17,70 @@ export class TstBuilder {
         this.runtime = runtime;
     }
 
-    collectType(type: AstType, classDef: AstClass, method: AstMethodDeclaration | null) {
+    collectType(type: AstType, classDef: AstClass, method: AstMethodDeclaration | null): TypeDefinition | null {
         const typeName = formatAstTypeName(type, classDef, method);
 
         if (isAstArrayType(type)) {
-            this.collectType(type.arrayItemType, classDef, method);
-            const elementTypeName = formatAstTypeName(type.arrayItemType, classDef, method);
-            const elementType = this.runtime.getType(elementTypeName);
+            let elementType = this.collectType(type.arrayItemType, classDef, method);
+            if (!elementType) {
+                return null;
+            }
 
-            this.createArrayType(typeName, elementType);
+            return this.createArrayType(typeName, elementType);
         }
 
         if (isAstFunctionType(type)) {
-            this.collectType(type.functionReturnType, classDef, method);
-
-            for (let paramType of type.functionParameters) {
-                this.collectType(paramType, classDef, method);
+            let returnType = this.collectType(type.functionReturnType, classDef, method);
+            if (!returnType) {
+                return null;
             }
 
-            const returnType = this.runtime.getType(formatAstTypeName(type.functionReturnType, classDef, method));
-            const parameterTypes: TypeDefinition[] = type.functionParameters.map(paramType => this.runtime.getType(formatAstTypeName(paramType, classDef, method)));
-            this.createFunctionType(parameterTypes, returnType);
+            const parameterTypes: TypeDefinition[] = [];
+            for (let paramType of type.functionParameters) {
+                const paramTypeDef = this.collectType(paramType, classDef, method);
+                if (!paramTypeDef) {
+                    return null;
+                }
+                parameterTypes.push(paramTypeDef);
+            }
+
+            return this.createFunctionType(parameterTypes, returnType);
         }
 
         if (isAstIdentifierType(type)) {
             const methodGenericParameter = method?.genericParameters?.find(p => p === type.typeName);
             if (methodGenericParameter) {
-                this.createGenericUnresolvedType(typeName);
+                return this.createGenericUnresolvedType(typeName);
             }
+
+            return this.runtime.tryGetType(typeName);
         }
+
+        throw new Error("Unsupported type kind in collectType: " + JSON.stringify(type));
     }
 
     createArrayType(arrayTypeName: string, elementType: TypeDefinition) {
-        if (this.runtime.tryGetType(arrayTypeName)) {
-            return;
+        const type = this.runtime.tryGetType(arrayTypeName);
+        if (type) {
+            return type;
         }
 
         const specializedArrayType = new ArrayTypeDefinition(this.runtime, arrayTypeName, elementType);
         this.runtime.registerTypes([specializedArrayType]);
+        return specializedArrayType;
     }
 
     createFunctionType(parameterTypes: TypeDefinition[], returnType: TypeDefinition) {
         const functionTypeName = getFunctionTypeName(returnType, parameterTypes);
-        if (this.runtime.tryGetType(functionTypeName)) {
-            return;
+        const type = this.runtime.tryGetType(functionTypeName);
+        if (type) {
+            return type;
         }
 
         // console.log("Creating function type: ", functionTypeName);
         const functionType = new FunctionTypeDefinition(this.runtime, returnType, parameterTypes);
         this.runtime.registerTypes([functionType]);
+        return functionType;
     }
 
     createGenericUnresolvedType(name: string): TypeDefinition {
@@ -76,6 +92,17 @@ export class TstBuilder {
         const genericType = new GenericUnresolvedTypeDefinition(this.runtime, name);
         this.runtime.registerTypes([genericType]);
         return genericType;
+    }
+
+    createPoisonType(name: string): TypeDefinition {
+        const type = this.runtime.tryGetType(name);
+        if (type) {
+            return type;
+        }
+
+        const poisonType = new PoisonTypeDefinition(this.runtime, name);
+        this.runtime.registerTypes([poisonType]);
+        return poisonType;
     }
 
     resolveProgram(visited: AstProgram): boolean {
@@ -97,9 +124,24 @@ export class TstBuilder {
             if (isClass(programUnit)) {
                 const type = this.runtime.getType(programUnit.name);
 
+                if (programUnit.extends) {
+                    let baseType = this.runtime.tryGetType(programUnit.extends);
+                    if (!baseType) {
+                        this.runtime.error(`Could not find base type ${programUnit.extends} for class ${programUnit.name}`, programUnit.location);
+                        baseType = this.createPoisonType(programUnit.extends);
+                    }
+
+                    type.extends = baseType;
+                    // type.extendsArguments -> evaluate expressions after instance is constructed
+                }
+
                 for (let unit of programUnit.units) {
                     if (isPropertyDefinition(unit)) {
-                        this.collectType(unit.propertyType, programUnit, null);
+                        if (!this.collectType(unit.propertyType, programUnit, null)) {
+                            const typeName = formatAstTypeName(unit.propertyType, programUnit, null);
+                            this.runtime.error(`Could not find type ${typeName} for property ${programUnit.name}.${unit.name}`, unit.location);
+                            this.createPoisonType(typeName);
+                        }
                     }
 
                     if (isMethodDeclaration(unit)) {
@@ -107,22 +149,34 @@ export class TstBuilder {
                         if (unit.genericParameters) {
                             for (let genericParameter of unit.genericParameters) {
                                 // TODO: location in generic parameters, using method location for now
-                                this.collectType({ type: "identifier", typeName: genericParameter, location: unit.location } as AstIdentifierType, programUnit, unit);
+                                const genericType = { type: "identifier", typeName: genericParameter, location: unit.location } as AstIdentifierType;
+                                if (!this.collectType(genericType, programUnit, unit)) {
+                                    this.runtime.error(`Could not resolve generic type parameter ${genericParameter} for method ${programUnit.name}.${unit.name}`, unit.location);
+                                    this.createPoisonType(formatAstTypeName(genericType, programUnit, unit));
+                                }
                             }
                         }
 
-                        this.collectType(unit.returnType, programUnit, unit);
-                        const returnTypeName = formatAstTypeName(unit.returnType, programUnit, unit);
+                        let returnType = this.collectType(unit.returnType, programUnit, unit);
+                        if (!returnType) {
+                            const typeName = formatAstTypeName(unit.returnType, programUnit, unit);
+                            this.runtime.error(`Could not find return type ${typeName} for method ${programUnit.name}.${unit.name}`, unit.location);
+                            returnType = this.createPoisonType(typeName);
+                        }
 
-                        const returnType = this.runtime.getType(returnTypeName);
                         const parameterTypes: TypeDefinition[] = [];
                         for (let param of unit.parameters) {
-                            this.collectType(param.type, programUnit, unit);
+                            let parameterType = this.collectType(param.type, programUnit, unit);
+                            if (!parameterType) {
+                                const typeName = formatAstTypeName(param.type, programUnit, unit);
+                                this.runtime.error(`Could not find type ${typeName} for parameter ${param.name} in method ${programUnit.name}.${unit.name}`, param.location);
+                                parameterType = this.createPoisonType(typeName);
+                            }
 
-                            const parameterTypeName = formatAstTypeName(param.type, programUnit, unit);
-                            const parameterType = this.runtime.getType(parameterTypeName);
                             parameterTypes.push(parameterType);
                         }
+
+                        // TODO?: if any component of the function is poisoned, create poison instead of function type!
 
                         this.createFunctionType(parameterTypes, returnType);
                     }
@@ -134,13 +188,6 @@ export class TstBuilder {
         for (let programUnit of visited.programUnits) {
             if (isClass(programUnit)) {
                 const type = this.runtime.getType(programUnit.name);
-
-                if (programUnit.extends) {
-                    const baseType = this.runtime.getType(programUnit.extends);
-
-                    type.extends = baseType;
-                    // type.extendsArguments -> evaluate expressions after instance is constructed
-                }
 
                 for (let parameter of programUnit.parameters) {
                     const parameterTypeName = formatAstTypeName(parameter.type, programUnit, null);
@@ -156,11 +203,7 @@ export class TstBuilder {
                 for (let unit of programUnit.units) {
                     if (isPropertyDefinition(unit)) {
                         const propertyTypeName = formatAstTypeName(unit.propertyType, programUnit, null);
-                        let propertyType = this.runtime.tryGetType(propertyTypeName);
-                        if (!propertyType) {
-                            this.runtime.error(`Could not find type ${propertyTypeName} for property ${programUnit.name}.${unit.name}`, unit.location);
-                            propertyType = this.runtime.getType("any");
-                        }
+                        const propertyType = this.runtime.getType(propertyTypeName);
 
                         type.properties.push({
                             modifier: unit.modifier,
@@ -170,20 +213,14 @@ export class TstBuilder {
                         });
                     } else if (isMethodDeclaration(unit)) {
                         const returnTypeName = formatAstTypeName(unit.returnType, programUnit, unit);
-                        let returnType = this.runtime.tryGetType(returnTypeName);
-                        if (!returnType) {
-                            this.runtime.error(`Could not find return type ${returnTypeName} for method ${programUnit.name}.${unit.name}`, unit.location);
-                            returnType = this.runtime.getType("any");
-                        }
+                        const returnType = this.runtime.getType(returnTypeName);
 
                         const genericParameters: TypeParameter[] = [];
                         if (unit.genericParameters) {
                             for (let genericParameter of unit.genericParameters) {
                                 const genericTypeName = formatAstTypeName({ type: "identifier", typeName: genericParameter } as AstIdentifierType, programUnit, unit);
-                                const genericType = this.runtime.tryGetType(genericTypeName);
-                                if (!genericType) {
-                                    throw new Error("Internal error: Generic type not found after collection: " + genericTypeName);
-                                }
+                                const genericType = this.runtime.getType(genericTypeName);
+
                                 genericParameters.push({
                                     name: genericParameter,
                                     type: genericType,
@@ -195,11 +232,7 @@ export class TstBuilder {
                         const parameters: TypeParameter[] = [];
                         for (let param of unit.parameters) {
                             const parameterTypeName = formatAstTypeName(param.type, programUnit, unit);
-                            let parameterType = this.runtime.tryGetType(parameterTypeName);
-                            if (!parameterType) {
-                                this.runtime.error(`Could not find type ${parameterTypeName} for parameter ${param.name} in method ${programUnit.name}.${unit.name}`, param.location);
-                                parameterType = this.runtime.getType("any");
-                            }
+                            const parameterType = this.runtime.getType(parameterTypeName);
                             parameters.push({
                                 name: param.name,
                                 type: parameterType,
@@ -237,11 +270,6 @@ export class TstBuilder {
                 }
 
             }
-        }
-
-        // Stop here if type resolution errors
-        if (this.runtime.scriptErrors.length > 0) {
-            return false;
         }
 
         // Pass 3: Resolve symbols in initializers, extends-arguments and method bodies, AstExpression -> TstExpression

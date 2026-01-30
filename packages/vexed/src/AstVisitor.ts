@@ -4,6 +4,7 @@ import { TypeDefinition, TypeMethod, TypeParameter } from "./TstType.js";
 import { TstRuntime } from "./TstRuntime.js";
 import { TstExpressionTypeVisitor } from "./visitors/TstExpressionTypeVisitor.js";
 import { FunctionTypeDefinition, getFunctionTypeName } from "./types/FunctionTypeDefinition.js";
+import { PoisonTypeDefinition } from "./types/PoisonTypeDefinition.js";
 
 // There is no visitor for Ast types, it is only traversed once during conversion to Tst types.
 
@@ -72,6 +73,10 @@ export class AstVisitor {
             const methodType = this.runtime.getExpressionType(callee);
             if (!methodType) {
                 throw new Error("Could not find type for function call callee");
+            }
+
+            if (methodType instanceof PoisonTypeDefinition) {
+                return callee;
             }
 
             if (!(methodType instanceof FunctionTypeDefinition)) {
@@ -206,6 +211,15 @@ export class AstVisitor {
             const varTypeName = formatAstTypeName(stmt.varType, classDef, method);
             const varType = this.runtime.getType(varTypeName);
 
+            let initializer: TstExpression | null = null;
+            if (stmt.initializer) {
+                initializer = this.resolveExpression(stmt.initializer);
+                const initializerType = this.runtime.getExpressionType(initializer);
+                if (initializerType && !this.runtime.isTypeAssignable(varType, initializerType)) {
+                    this.runtime.error(`Cannot assign type ${initializerType.name} to variable ${stmt.name} of type ${varType.name}`, stmt.location);
+                }
+            }
+
             this.scope.push({
                 name: stmt.name,
                 type: varType,
@@ -214,7 +228,7 @@ export class AstVisitor {
                 stmtType: "localVarDeclaration",
                 varType: varType,
                 name: stmt.name,
-                initializer: stmt.initializer ? this.resolveExpression(stmt.initializer) : null,
+                initializer: initializer,
             } as TstLocalVarDeclaration;
         } else if (isAstLocalVarAssignment(stmt)) {
             return {

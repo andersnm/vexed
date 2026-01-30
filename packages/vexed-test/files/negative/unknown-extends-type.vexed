@@ -1,0 +1,3 @@
+class Main() extends UnknownBaseType() {
+    public value: int = 42;
+}

@@ -1,4 +1,4 @@
-import { isBinaryExpression, isDecimalLiteral, isFunctionCall, isFunctionReferenceExpression, isIfStatement, isIndexExpression, isInstanceExpression, isLocalVarAssignment, isLocalVarDeclaration, isMemberExpression, isMissingInstanceExpression, isNativeMemberExpression, isNewArrayExpression, isNewExpression, isParameter, isPromiseExpression, isReturnStatement, isScopedExpression, isStatementExpression, isThisExpression, isUnaryExpression, isUnboundFunctionReferenceExpression, isVariableExpression, TstBinaryExpression, TstDecimalLiteralExpression, TstExpression, TstFunctionCallExpression, TstFunctionReferenceExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstMissingInstanceExpression, TstNativeMemberExpression, TstNewArrayExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstUnboundFunctionReferenceExpression, TstVariableExpression } from "../TstExpression.js";
+import { isBinaryExpression, isDecimalLiteral, isFunctionCall, isFunctionReferenceExpression, isIfStatement, isIndexExpression, isInstanceExpression, isIntegerLiteral, isLocalVarAssignment, isLocalVarDeclaration, isMemberExpression, isMissingInstanceExpression, isNativeMemberExpression, isNewArrayExpression, isNewExpression, isParameter, isPromiseExpression, isReturnStatement, isScopedExpression, isStatementExpression, isThisExpression, isUnaryExpression, isUnboundFunctionReferenceExpression, isVariableExpression, TstBinaryExpression, TstDecimalLiteralExpression, TstExpression, TstFunctionCallExpression, TstFunctionReferenceExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstIntegerLiteralExpression, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstMissingInstanceExpression, TstNativeMemberExpression, TstNewArrayExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstUnboundFunctionReferenceExpression, TstVariableExpression } from "../TstExpression.js";
 
 export class TstReplaceVisitor {
 
@@ -11,6 +11,9 @@ export class TstReplaceVisitor {
         }
         if (isDecimalLiteral(expr)) {
             return this.visitDecimalLiteral(expr);
+        }
+        if (isIntegerLiteral(expr)) {
+            return this.visitIntegerLiteral(expr);
         }
         if (isFunctionCall(expr)) {
             return this.visitFunctionCallExpression(expr);
@@ -77,6 +80,13 @@ export class TstReplaceVisitor {
             exprType: expr.exprType,
             value: expr.value,
         } as TstDecimalLiteralExpression;
+    }
+
+    visitIntegerLiteral(expr: TstIntegerLiteralExpression): TstExpression {
+        return {
+            exprType: expr.exprType,
+            value: expr.value,
+        } as TstIntegerLiteralExpression;
     }
 
     visitThisExpression(expr: TstThisExpression): TstExpression {

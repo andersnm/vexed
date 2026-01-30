@@ -15,6 +15,7 @@ import { TstReducer } from "./TstReducer.js";
 import { AstProgram } from "./AstProgram.js";
 import { FunctionTypeDefinition, getFunctionTypeName } from "./types/FunctionTypeDefinition.js";
 import { GenericUnresolvedTypeDefinition } from "./types/GenericUnresolvedTypeDefinition.js";
+import { PoisonTypeDefinition } from "./types/PoisonTypeDefinition.js";
 import { ScriptError, ScriptErrorInfo } from "./ScriptError.js";
 import { AstLocation } from "./AstLocation.js";
 
@@ -247,6 +248,10 @@ export class TstRuntime {
     isTypeAssignable(fromType: TypeDefinition | null, toType: TypeDefinition | null, bindings: Map<string, TypeDefinition> = new Map()): boolean {
 
         if (!fromType || !toType) return false;
+
+        if (fromType instanceof PoisonTypeDefinition || toType instanceof PoisonTypeDefinition) {
+            return true;
+        }
 
         if (fromType instanceof ArrayBaseTypeDefinition && toType instanceof ArrayBaseTypeDefinition) {
             return this.isTypeAssignable(fromType.elementType, toType.elementType, bindings);
