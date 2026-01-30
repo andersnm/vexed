@@ -1,0 +1,116 @@
+# Comprehensive poison type mega-test to ensure poison types don't create noise in error logs
+# This test should only report the initial missing type errors, not cascading errors
+
+class Main() {
+    # Test 1: Missing return type that propagates
+    methodWithMissingReturnType(): MissingReturnType {
+        return 1;
+    }
+
+    # Test 2: Missing parameter type
+    methodWithMissingParam(param: MissingParamType): int {
+        # param should be poison type, no error for using it
+        let x: any = param;
+        return 1;
+    }
+
+    # Test 3: Missing property type
+    public missingPropType: MissingPropertyType;
+
+    # Test 4: Comprehensive poison propagation test
+    testPoisonPropagation(): int {
+        # Call method returning poison type
+        let poisoned: MissingReturnType = this.methodWithMissingReturnType();
+        
+        # Member access on poison type - should not error
+        let memberAccess: any = poisoned.someProperty;
+        
+        # Method call on poison type - should not error
+        let methodCall: any = poisoned.someMethod();
+        
+        # Chained member access - should not error
+        let chainedAccess: any = poisoned.foo.bar.baz;
+        
+        # Chained method calls - should not error
+        let chainedCalls: any = poisoned.foo().bar().baz();
+        
+        # Mixed chaining - should not error
+        let mixedChain: any = poisoned.getProp().callMethod().accessProp;
+        
+        # Binary expressions with poison types - should not error
+        let arithAdd: any = poisoned + 1;
+        let arithSub: any = poisoned - 2;
+        let arithMul: any = 3 * poisoned;
+        let arithDiv: any = poisoned / 4;
+        
+        # Boolean binary expressions with poison types - should not error
+        let boolLess: any = poisoned < 5;
+        let boolGreater: any = poisoned > 6;
+        let boolLessEq: any = 7 <= poisoned;
+        let boolGreaterEq: any = 8 >= poisoned;
+        
+        # Unary expression with poison type - should not error
+        let unaryNeg: any = poisoned;
+        
+        # Assignment from poison to any - should not error
+        let assignToAny: any = poisoned;
+        
+        # Pass poison type as argument - should not error
+        let passAsArg: int = this.methodWithMissingParam(poisoned);
+        
+        # Access property that has poison type - should not error
+        let accessPoisonProp: any = this.missingPropType;
+        let accessPoisonPropMember: any = this.missingPropType.someField;
+        let callPoisonPropMethod: any = this.missingPropType.someMethod();
+        
+        return 1;
+    }
+
+    # Test 5: Multiple missing types in one method signature
+    multiMissingTypes(p1: MissingType1, p2: MissingType2): MissingType3 {
+        # All parameters and return are poison, should not cause cascading errors
+        let x: any = p1;
+        let y: any = p2;
+        let z: any = p1.field;
+        let w: any = p2.method();
+        
+        # Binary operations with poison parameters - should not error
+        let binOp: any = p1 + p2;
+        
+        return 1;
+    }
+
+    # Test 6: Missing type in array context
+    arrayWithMissingElement(): MissingArrayElement[] {
+        let dummy: int = 1;
+        return dummy;
+    }
+
+    testArrayPoison(): int {
+        let arr: MissingArrayElement[] = this.arrayWithMissingElement();
+        # Array operations on poison array should not error
+        let elem: any = arr[0];
+        let length: int = arr.length;
+        return 1;
+    }
+    
+    # Test 8: typeof on poison type
+    newPoisonTest(): int {
+        # typeof on poison type should return Type, not error
+        let poisoned: MissingReturnType = this.methodWithMissingReturnType();
+        let typeofPoison: Type = typeof poisoned;
+        
+        return 1;
+    }
+}
+
+# Test 7: Missing base class with empty constructor arguments
+class ChildWithMissingBase() extends MissingBaseClass() {
+    testInheritance(): int {
+        return 1;
+    }
+}
+
+
+
+
