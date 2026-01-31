@@ -117,3 +117,17 @@ test('Poison types mega-test', async () => {
             `${typeName} should be a PoisonTypeDefinition`);
     }
 });
+
+test('Missing parameter error', async () => {
+    const { error } = await loadScriptExpectingError("./files/negative/missing-parameter.vexed");
+
+    assert.equal(error.errors.length, 1);
+    assert.match(error.errors[0].message, /Unknown identifier y/);
+});
+
+test('Missing variable error', async () => {
+    const { error } = await loadScriptExpectingError("./files/negative/missing-variable.vexed");
+
+    assert.equal(error.errors.length, 1);
+    assert.match(error.errors[0].message, /Unknown identifier unknownVar/);
+});

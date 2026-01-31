@@ -1,4 +1,4 @@
-import { TstBinaryExpression, TstDecimalLiteralExpression, TstExpression, TstFunctionCallExpression, TstFunctionReferenceExpression, TstIndexExpression, TstInstanceExpression, TstIntegerLiteralExpression, TstMemberExpression, TstMissingInstanceExpression, TstNativeMemberExpression, TstNewArrayExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstUnboundFunctionReferenceExpression, TstVariableExpression, TypeMeta } from "../TstExpression.js";
+import { TstBinaryExpression, TstDecimalLiteralExpression, TstPoisonExpression, TstExpression, TstFunctionCallExpression, TstFunctionReferenceExpression, TstIndexExpression, TstInstanceExpression, TstIntegerLiteralExpression, TstMemberExpression, TstMissingInstanceExpression, TstNativeMemberExpression, TstNewArrayExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstUnboundFunctionReferenceExpression, TstVariableExpression, TypeMeta } from "../TstExpression.js";
 import { TstRuntime } from "../TstRuntime.js";
 import { TypeDefinition } from "../TstType.js";
 import { FunctionTypeDefinition, getFunctionTypeName } from "../types/FunctionTypeDefinition.js";
@@ -189,6 +189,11 @@ export class TstExpressionTypeVisitor extends TstReplaceVisitor {
 
     visitMissingInstanceExpression(expr: TstMissingInstanceExpression): TstExpression {
         this.visitType = expr.propertyType;
+        return expr;
+    }
+
+    visitPoisonExpression(expr: TstPoisonExpression): TstExpression {
+        this.visitType = expr.poisonType;
         return expr;
     }
 }

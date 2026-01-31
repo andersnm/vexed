@@ -115,7 +115,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
             return expr;
         }
 
-        throw new Error("Parameter not found: " + expr.name);
+        throw new Error(`Internal error: Parameter not found: ${expr.name}`);
     }
 
     visitVariableExpression(expr: TstVariableExpression): TstExpression {
@@ -130,7 +130,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
             return expr;
         }
 
-        throw new Error("Variable not found: " + expr.name);
+        throw new Error(`Internal error: Variable not found: ${expr.name}`);
     }
 
     visitThisExpression(expr: TstThisExpression): TstExpression {

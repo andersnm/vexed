@@ -86,6 +86,10 @@ export function isMissingInstanceExpression(expr: TstExpression): expr is TstMis
     return expr.exprType === "missingInstance";
 }
 
+export function isPoisonExpression(expr: TstExpression): expr is TstPoisonExpression {
+    return expr.exprType === "poison";
+}
+
 export function isIfStatement(stmt: TstStatement): stmt is TstIfStatement {
     return stmt.stmtType === "if";
 }
@@ -268,6 +272,12 @@ export interface TstMissingInstanceExpression extends TstExpression {
     instance: TstInstanceObject;
     propertyName: string;
     propertyType: TypeDefinition;
+}
+
+export interface TstPoisonExpression extends TstExpression {
+    exprType: "poison";
+    poisonType: TypeDefinition;
+    identifierName: string;
 }
 
 export interface TstStatement {
