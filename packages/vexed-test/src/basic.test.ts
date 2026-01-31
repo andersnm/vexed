@@ -309,3 +309,11 @@ test('Complex array operations in method body', async () => {
         output2: 2
     });
 });
+
+test('Inline array literal with indexing', async () => {
+    const json = await compileToJson("./files/array-literal-inline.vexed");
+    
+    assert.deepEqual(json, {
+        output: 2
+    });
+});

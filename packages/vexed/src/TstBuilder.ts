@@ -1,4 +1,4 @@
-import { AstClass, AstExpression, AstMethodDeclaration, AstProgram, AstStatement, formatAstTypeName, isAstArrayLiteral, isAstBinaryExpression, isAstBooleanLiteral, isAstDecimalLiteral, isAstFunctionCall, isAstIdentifier, isAstIfStatement, isAstIndexExpression, isAstIntegerLiteral, isAstLocalVarAssignment, isAstLocalVarDeclaration, isAstMember, isAstReturnStatement, isAstStringLiteral, isAstUnaryExpression, isClass, isMethodDeclaration, isPropertyDefinition, isPropertyStatement } from "./AstProgram.js";
+import { AstArrayLiteralExpression, AstClass, AstExpression, AstMethodDeclaration, AstProgram, AstStatement, formatAstTypeName, isAstArrayLiteral, isAstBinaryExpression, isAstBooleanLiteral, isAstDecimalLiteral, isAstFunctionCall, isAstIdentifier, isAstIfStatement, isAstIndexExpression, isAstIntegerLiteral, isAstLocalVarAssignment, isAstLocalVarDeclaration, isAstMember, isAstReturnStatement, isAstStringLiteral, isAstUnaryExpression, isClass, isMethodDeclaration, isPropertyDefinition, isPropertyStatement } from "./AstProgram.js";
 import { InstanceMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstFunctionReferenceExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstReturnStatement, TstStatement, TstThisExpression, TstUnaryExpression, TstUnboundFunctionReferenceExpression, TstVariable, TstVariableExpression } from "./TstExpression.js";
 import { TypeDefinition, TypeMethod, TypeParameter } from "./TstType.js";
 import { TstRuntime } from "./TstRuntime.js";
@@ -94,6 +94,67 @@ export class TstBuilder {
         return genericType;
     }
 
+    inferAndCollectArrayType(expr: AstArrayLiteralExpression): void {
+        if (expr.elements.length === 0) {
+            return; // Empty arrays handled elsewhere
+        }
+
+        const firstElement = expr.elements[0];
+        
+        // Recursively collect types for nested array literals
+        if (isAstArrayLiteral(firstElement)) {
+            this.inferAndCollectArrayType(firstElement);
+            
+            // Infer element type from first element
+            const elementType = this.inferArrayLiteralElementType(firstElement);
+            if (elementType) {
+                this.createArrayType(elementType.name + "[]", elementType);
+            }
+        } else {
+            // Simple array - infer element type from literal
+            const elementType = this.inferLiteralType(firstElement);
+            if (elementType) {
+                this.createArrayType(elementType.name + "[]", elementType);
+            }
+        }
+    }
+
+    inferArrayLiteralElementType(expr: AstArrayLiteralExpression): TypeDefinition | null {
+        if (expr.elements.length === 0) {
+            return null;
+        }
+
+        const firstElement = expr.elements[0];
+        if (isAstArrayLiteral(firstElement)) {
+            // Nested array: return the array type of the inner array
+            const innerType = this.inferArrayLiteralElementType(firstElement);
+            if (innerType) {
+                return this.runtime.tryGetType(innerType.name + "[]");
+            }
+        } else {
+            // Simple array: return array type of the literal elements
+            const literalType = this.inferLiteralType(firstElement);
+            if (literalType) {
+                return this.runtime.tryGetType(literalType.name + "[]");
+            }
+        }
+        
+        return null;
+    }
+
+    inferLiteralType(expr: AstExpression): TypeDefinition | null {
+        if (isAstIntegerLiteral(expr)) {
+            return this.runtime.tryGetType("int");
+        } else if (isAstStringLiteral(expr)) {
+            return this.runtime.tryGetType("string");
+        } else if (isAstBooleanLiteral(expr)) {
+            return this.runtime.tryGetType("bool");
+        } else if (isAstDecimalLiteral(expr)) {
+            return this.runtime.tryGetType("decimal");
+        }
+        return null;
+    }
+
     collectTypesFromStatement(stmt: AstStatement, classDef: AstClass, method: AstMethodDeclaration): void {
         if (isAstLocalVarDeclaration(stmt)) {
             this.collectType(stmt.varType, classDef, method);
@@ -119,6 +180,9 @@ export class TstBuilder {
 
     collectTypesFromExpression(expr: AstExpression, classDef: AstClass, method: AstMethodDeclaration): void {
         if (isAstArrayLiteral(expr)) {
+            // Infer and collect the array type
+            this.inferAndCollectArrayType(expr);
+            // Recursively process elements
             for (let element of expr.elements) {
                 this.collectTypesFromExpression(element, classDef, method);
             }
