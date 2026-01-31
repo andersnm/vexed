@@ -292,3 +292,11 @@ test('Boolean operators', async () => {
         complex2: true
     });
 });
+
+test('Array indexing in method body', async () => {
+    const json = await compileToJson("./files/array-method-index.vexed");
+    
+    assert.deepEqual(json, {
+        output: 1
+    });
+});
