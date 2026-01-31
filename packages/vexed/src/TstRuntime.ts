@@ -358,4 +358,15 @@ export class TstRuntime {
             location: location ?? nullLocation,
         });
     }
+
+    createPoisonType(name: string): TypeDefinition {
+        const type = this.tryGetType(name);
+        if (type) {
+            return type;
+        }
+
+        const poisonType = new PoisonTypeDefinition(this, name);
+        this.registerTypes([poisonType]);
+        return poisonType;
+    }
 }

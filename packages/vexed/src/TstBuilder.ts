@@ -94,17 +94,6 @@ export class TstBuilder {
         return genericType;
     }
 
-    createPoisonType(name: string): TypeDefinition {
-        const type = this.runtime.tryGetType(name);
-        if (type) {
-            return type;
-        }
-
-        const poisonType = new PoisonTypeDefinition(this.runtime, name);
-        this.runtime.registerTypes([poisonType]);
-        return poisonType;
-    }
-
     resolveProgram(visited: AstProgram): boolean {
 
         // Pass 1: Create new half-constructed types
@@ -128,7 +117,7 @@ export class TstBuilder {
                     let baseType = this.runtime.tryGetType(programUnit.extends);
                     if (!baseType) {
                         this.runtime.error(`Could not find base type ${programUnit.extends} for class ${programUnit.name}`, programUnit.location);
-                        baseType = this.createPoisonType(programUnit.extends);
+                        baseType = this.runtime.createPoisonType(programUnit.extends);
                     }
 
                     type.extends = baseType;
@@ -140,7 +129,7 @@ export class TstBuilder {
                         if (!this.collectType(unit.propertyType, programUnit, null)) {
                             const typeName = formatAstTypeName(unit.propertyType, programUnit, null);
                             this.runtime.error(`Could not find type ${typeName} for property ${programUnit.name}.${unit.name}`, unit.location);
-                            this.createPoisonType(typeName);
+                            this.runtime.createPoisonType(typeName);
                         }
                     }
 
@@ -152,7 +141,7 @@ export class TstBuilder {
                                 const genericType = { type: "identifier", typeName: genericParameter, location: unit.location } as AstIdentifierType;
                                 if (!this.collectType(genericType, programUnit, unit)) {
                                     this.runtime.error(`Could not resolve generic type parameter ${genericParameter} for method ${programUnit.name}.${unit.name}`, unit.location);
-                                    this.createPoisonType(formatAstTypeName(genericType, programUnit, unit));
+                                    this.runtime.createPoisonType(formatAstTypeName(genericType, programUnit, unit));
                                 }
                             }
                         }
@@ -161,7 +150,7 @@ export class TstBuilder {
                         if (!returnType) {
                             const typeName = formatAstTypeName(unit.returnType, programUnit, unit);
                             this.runtime.error(`Could not find return type ${typeName} for method ${programUnit.name}.${unit.name}`, unit.location);
-                            returnType = this.createPoisonType(typeName);
+                            returnType = this.runtime.createPoisonType(typeName);
                         }
 
                         const parameterTypes: TypeDefinition[] = [];
@@ -170,7 +159,7 @@ export class TstBuilder {
                             if (!parameterType) {
                                 const typeName = formatAstTypeName(param.type, programUnit, unit);
                                 this.runtime.error(`Could not find type ${typeName} for parameter ${param.name} in method ${programUnit.name}.${unit.name}`, param.location);
-                                parameterType = this.createPoisonType(typeName);
+                                parameterType = this.runtime.createPoisonType(typeName);
                             }
 
                             parameterTypes.push(parameterType);

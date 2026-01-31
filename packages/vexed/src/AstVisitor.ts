@@ -1,5 +1,5 @@
 import { AstClass, AstExpression, AstMethodDeclaration, AstProgram, AstStatement, formatAstTypeName, isAstArrayLiteral, isAstBinaryExpression, isAstBooleanLiteral, isAstDecimalLiteral, isAstFunctionCall, isAstIdentifier, isAstIfStatement, isAstIndexExpression, isAstIntegerLiteral, isAstLocalVarAssignment, isAstLocalVarDeclaration, isAstMember, isAstReturnStatement, isAstStringLiteral, isAstUnaryExpression, isClass, isMethodDeclaration, isPropertyDefinition, isPropertyStatement } from "./AstProgram.js";
-import { InstanceMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstFunctionReferenceExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNewArrayExpression, TstNewExpression, TstParameterExpression, TstReturnStatement, TstStatement, TstThisExpression, TstUnaryExpression, TstUnboundFunctionReferenceExpression, TstVariable, TstVariableExpression } from "./TstExpression.js";
+import { InstanceMeta, TstBinaryExpression, TstPoisonExpression, TstExpression, TstFunctionCallExpression, TstFunctionReferenceExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNewArrayExpression, TstNewExpression, TstParameterExpression, TstReturnStatement, TstStatement, TstThisExpression, TstUnaryExpression, TstUnboundFunctionReferenceExpression, TstVariable, TstVariableExpression } from "./TstExpression.js";
 import { TypeDefinition, TypeMethod, TypeParameter } from "./TstType.js";
 import { TstRuntime } from "./TstRuntime.js";
 import { TstExpressionTypeVisitor } from "./visitors/TstExpressionTypeVisitor.js";
@@ -138,7 +138,13 @@ export class AstVisitor {
                     return this.parent.resolveExpression(expr);
                 }
 
-                throw new Error("Unknown identifier " + expr.value)
+                this.runtime.error(`Unknown identifier ${expr.value}`, expr.location);
+                const poisonType = this.runtime.createPoisonType(`<MissingIdentifier:${expr.value}>`);
+                return {
+                    exprType: "poison",
+                    poisonType: poisonType,
+                    identifierName: expr.value,
+                } as TstPoisonExpression;
             }
         }
 

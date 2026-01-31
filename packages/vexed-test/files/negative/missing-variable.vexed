@@ -1,0 +1,6 @@
+class Main() {
+    testMethod(): int {
+        let x: int = 1;
+        return unknownVar;
+    }
+}
