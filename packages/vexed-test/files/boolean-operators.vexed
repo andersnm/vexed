@@ -1,0 +1,19 @@
+class Main() {
+  # Test basic boolean operators
+  public andTrue: bool = true && true;
+  public andFalse: bool = true && false;
+  public orTrue: bool = true || false;
+  public orFalse: bool = false || false;
+
+  # Test equality operators
+  public eqTrue: bool = 5 == 5;
+  public eqFalse: bool = 5 == 10;
+  public neqTrue: bool = 5 != 10;
+  public neqFalse: bool = 5 != 5;
+
+  # Test with comparisons
+  public num1: int = 5;
+  public num2: int = 10;
+  public complex1: bool = this.num1 < this.num2 && this.num2 > 0;
+  public complex2: bool = this.num1 > this.num2 || this.num1 == 5;
+}

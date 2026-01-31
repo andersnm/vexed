@@ -147,6 +147,14 @@ export class TypeDefinition {
                 return this.createValueExpression(leftValue > rightValue);
             case ">=":
                 return this.createValueExpression(leftValue >= rightValue);
+            case "==":
+                return this.createValueExpression(leftValue === rightValue);
+            case "!=":
+                return this.createValueExpression(leftValue !== rightValue);
+            case "&&":
+                return this.createValueExpression(leftValue && rightValue);
+            case "||":
+                return this.createValueExpression(leftValue || rightValue);
         }
 
         throw new Error("Operator " + operator + " not supported for type " + this.name);

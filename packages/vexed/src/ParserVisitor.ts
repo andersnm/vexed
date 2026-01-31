@@ -305,7 +305,10 @@ export function createVisitor(parser: ProgramParser, fileName: string) {
 
             const opsCount = (ctx.comparison?.length ?? 1) - 1;
             for (let i = 0; i < opsCount; i++) {
-                let operatorToken = ctx.EqualsEquals[i] || ctx.NotEquals[i];
+                let operatorToken = undefined;
+                if (ctx.EqualsEquals && ctx.EqualsEquals[i]) operatorToken = ctx.EqualsEquals[i];
+                else if (ctx.NotEquals && ctx.NotEquals[i]) operatorToken = ctx.NotEquals[i];
+
                 if (!operatorToken) {
                     throw new Error("Missing equality operator token");
                 }
