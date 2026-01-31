@@ -300,3 +300,12 @@ test('Array indexing in method body', async () => {
         output: 1
     });
 });
+
+test('Complex array operations in method body', async () => {
+    const json = await compileToJson("./files/array-method-complex.vexed");
+    
+    assert.deepEqual(json, {
+        output1: 1,
+        output2: 2
+    });
+});
