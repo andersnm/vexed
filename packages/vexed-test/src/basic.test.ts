@@ -292,3 +292,28 @@ test('Boolean operators', async () => {
         complex2: true
     });
 });
+
+test('Array indexing in method body', async () => {
+    const json = await compileToJson("./files/array-method-index.vexed");
+    
+    assert.deepEqual(json, {
+        output: 1
+    });
+});
+
+test('Complex array operations in method body', async () => {
+    const json = await compileToJson("./files/array-method-complex.vexed");
+    
+    assert.deepEqual(json, {
+        output1: 1,
+        output2: 2
+    });
+});
+
+test('Inline array literal with indexing', async () => {
+    const json = await compileToJson("./files/array-literal-inline.vexed");
+    
+    assert.deepEqual(json, {
+        output: 2
+    });
+});
