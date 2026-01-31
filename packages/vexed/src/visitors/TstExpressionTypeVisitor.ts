@@ -1,8 +1,9 @@
-import { TstBinaryExpression, TstDecimalLiteralExpression, TstExpression, TstFunctionCallExpression, TstFunctionReferenceExpression, TstInstanceExpression, TstIntegerLiteralExpression, TstMemberExpression, TstMissingInstanceExpression, TstNativeMemberExpression, TstNewArrayExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstUnboundFunctionReferenceExpression, TstVariableExpression, TypeMeta } from "../TstExpression.js";
+import { TstBinaryExpression, TstDecimalLiteralExpression, TstExpression, TstFunctionCallExpression, TstFunctionReferenceExpression, TstIndexExpression, TstInstanceExpression, TstIntegerLiteralExpression, TstMemberExpression, TstMissingInstanceExpression, TstNativeMemberExpression, TstNewArrayExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstUnboundFunctionReferenceExpression, TstVariableExpression, TypeMeta } from "../TstExpression.js";
 import { TstRuntime } from "../TstRuntime.js";
 import { TypeDefinition } from "../TstType.js";
 import { FunctionTypeDefinition, getFunctionTypeName } from "../types/FunctionTypeDefinition.js";
 import { PoisonTypeDefinition } from "../types/PoisonTypeDefinition.js";
+import { ArrayBaseTypeDefinition } from "../types/ArrayBaseTypeDefinition.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
 
 // Usage: Visit an expression, then check visitType for the resulting type. One-time use.
@@ -40,6 +41,27 @@ export class TstExpressionTypeVisitor extends TstReplaceVisitor {
         }
 
         return expr;
+    }
+
+    visitIndexExpression(expr: TstIndexExpression): TstExpression {
+        this.visit(expr.object);
+
+        const objectType = this.visitType;
+        if (!objectType) {
+            throw new Error("Cannot get type of index expression");
+        }
+
+        if (objectType instanceof PoisonTypeDefinition) {
+            this.visitType = objectType;
+            return expr;
+        }
+
+        if (objectType instanceof ArrayBaseTypeDefinition) {
+            this.visitType = objectType.elementType;
+            return expr;
+        }
+
+        throw new Error("Index expression on non-array type: " + objectType.name);
     }
 
     visitParameterExpression(expr: TstParameterExpression): TstExpression {
@@ -88,6 +110,16 @@ export class TstExpressionTypeVisitor extends TstReplaceVisitor {
 
         this.visit(expr.right);
         const rhsType = this.visitType;
+
+        if (lhsType instanceof PoisonTypeDefinition) {
+            this.visitType = lhsType;
+            return expr;
+        }
+
+        if (rhsType instanceof PoisonTypeDefinition) {
+            this.visitType = rhsType;
+            return expr;
+        }
 
         if (lhsType !== rhsType) {
             throw new Error("Binary expression must have same types on both sides");

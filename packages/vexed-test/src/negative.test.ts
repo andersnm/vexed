@@ -64,15 +64,56 @@ test('Unknown extends type error', async () => {
     assert.equal(error.errors[0].location.column, 7);
 });
 
-test('Poison return type propagates into call expression', async () => {
-    const { runtime, error } = await loadScriptExpectingError("./files/negative/unknown-return-propagation.vexed");
+test('Poison types mega-test', async () => {
+    const { runtime, error } = await loadScriptExpectingError("./files/negative/poison-mega-test.vexed");
 
-    // Should report only the missing return type of foo()
-    assert.equal(error.errors.length, 1);
-    assert.match(error.errors[0].message, /Could not find return type MissingType for method Main.foo/);
+    // Should report only the original missing type errors, not cascading errors
+    // Expected errors:
+    // - MissingReturnType for methodWithMissingReturnType
+    // - MissingParamType for methodWithMissingParam parameter
+    // - MissingPropertyType for missingPropType property
+    // - MissingType1, MissingType2, MissingType3 for multiMissingTypes method
+    // - MissingArrayElement[] for arrayWithMissingElement return type
+    // - MissingBaseClass for ChildWithMissingBase extends clause
+    
+    assert.equal(error.errors.length, 8, `Expected exactly 8 errors (missing types only), got ${error.errors.length}: ${error.errors.map(e => e.message).join(', ')}`);
+    
+    // Verify each expected error
+    const errorMessages = error.errors.map(e => e.message);
+    
+    assert.ok(errorMessages.some(msg => msg.includes("MissingReturnType") && msg.includes("methodWithMissingReturnType")), 
+        "Should report missing return type MissingReturnType");
+    assert.ok(errorMessages.some(msg => msg.includes("MissingParamType") && msg.includes("methodWithMissingParam")), 
+        "Should report missing parameter type MissingParamType");
+    assert.ok(errorMessages.some(msg => msg.includes("MissingPropertyType") && msg.includes("missingPropType")), 
+        "Should report missing property type MissingPropertyType");
+    assert.ok(errorMessages.some(msg => msg.includes("MissingType1")), 
+        "Should report missing parameter type MissingType1");
+    assert.ok(errorMessages.some(msg => msg.includes("MissingType2")), 
+        "Should report missing parameter type MissingType2");
+    assert.ok(errorMessages.some(msg => msg.includes("MissingType3")), 
+        "Should report missing return type MissingType3");
+    assert.ok(errorMessages.some(msg => msg.includes("MissingArrayElement")), 
+        "Should report missing array element type MissingArrayElement");
+    assert.ok(errorMessages.some(msg => msg.includes("MissingBaseClass")), 
+        "Should report missing base class MissingBaseClass");
 
-    // And the poison type should exist in the runtime
-    const poison = runtime.tryGetType("MissingType");
-    assert.ok(poison, "Poison type MissingType should be registered");
-    assert.equal(poison.constructor.name, "PoisonTypeDefinition");
+    // Verify all poison types are registered in runtime
+    const poisonTypes = [
+        "MissingReturnType",
+        "MissingParamType", 
+        "MissingPropertyType",
+        "MissingType1",
+        "MissingType2",
+        "MissingType3",
+        "MissingArrayElement[]",
+        "MissingBaseClass"
+    ];
+    
+    for (const typeName of poisonTypes) {
+        const poisonType = runtime.tryGetType(typeName);
+        assert.ok(poisonType, `Poison type ${typeName} should be registered`);
+        assert.equal(poisonType.constructor.name, "PoisonTypeDefinition", 
+            `${typeName} should be a PoisonTypeDefinition`);
+    }
 });
