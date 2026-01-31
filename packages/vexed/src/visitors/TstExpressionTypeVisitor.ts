@@ -125,6 +125,16 @@ export class TstExpressionTypeVisitor extends TstReplaceVisitor {
             throw new Error("Binary expression must have same types on both sides");
         }
 
+        // For comparison and logical operators, the result type is bool
+        if (expr.operator === "==" || expr.operator === "!=" ||
+            expr.operator === "<" || expr.operator === "<=" ||
+            expr.operator === ">" || expr.operator === ">=" ||
+            expr.operator === "&&" || expr.operator === "||") {
+            this.visitType = this.runtime.getType("bool");
+        }
+        // For other operators (+, -, *, /), the result type is the same as the operand types
+        // visitType is already set to rhsType which equals lhsType
+
         return expr;
     }
 

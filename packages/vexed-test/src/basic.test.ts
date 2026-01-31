@@ -273,3 +273,22 @@ test('Array literal with both direct values and parameters', async () => {
         result: ["test", "test2", "test3"]
     });
 });
+
+test('Boolean operators', async () => {
+    const json = await compileToJson("./files/boolean-operators.vexed");
+    
+    assert.deepEqual(json, {
+        andTrue: true,
+        andFalse: false,
+        orTrue: true,
+        orFalse: false,
+        eqTrue: true,
+        eqFalse: false,
+        neqTrue: true,
+        neqFalse: false,
+        num1: 5,
+        num2: 10,
+        complex1: true,
+        complex2: true
+    });
+});
