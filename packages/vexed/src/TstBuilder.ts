@@ -96,22 +96,19 @@ export class TstBuilder {
 
     inferAndCollectArrayType(expr: AstArrayLiteralExpression): void {
         if (expr.elements.length === 0) {
-            return; // Empty arrays handled elsewhere
+            return;
         }
 
         const firstElement = expr.elements[0];
         
-        // Recursively collect types for nested array literals
         if (isAstArrayLiteral(firstElement)) {
             this.inferAndCollectArrayType(firstElement);
             
-            // Infer element type from first element
             const elementType = this.inferArrayLiteralElementType(firstElement);
             if (elementType) {
                 this.createArrayType(elementType.name + "[]", elementType);
             }
         } else {
-            // Simple array - infer element type from literal
             const elementType = this.inferLiteralType(firstElement);
             if (elementType) {
                 this.createArrayType(elementType.name + "[]", elementType);
@@ -180,9 +177,7 @@ export class TstBuilder {
 
     collectTypesFromExpression(expr: AstExpression, classDef: AstClass, method: AstMethodDeclaration): void {
         if (isAstArrayLiteral(expr)) {
-            // Infer and collect the array type
             this.inferAndCollectArrayType(expr);
-            // Recursively process elements
             for (let element of expr.elements) {
                 this.collectTypesFromExpression(element, classDef, method);
             }
