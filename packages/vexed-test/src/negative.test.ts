@@ -131,3 +131,30 @@ test('Missing variable error', async () => {
     assert.equal(error.errors.length, 1);
     assert.match(error.errors[0].message, /Unknown identifier unknownVar/);
 });
+
+test('Incompatible return type error', async () => {
+    const { error } = await loadScriptExpectingError("./files/negative/incompatible-return-type.vexed");
+
+    assert.equal(error.errors.length, 1);
+    assert.match(error.errors[0].message, /Cannot return type string from method with return type int/);
+});
+
+test('Incompatible let initializer type error', async () => {
+    const { error } = await loadScriptExpectingError("./files/negative/incompatible-let-initializer-type.vexed");
+
+    assert.equal(error.errors.length, 1);
+    assert.match(error.errors[0].message, /Cannot assign type string to variable value of type int/);
+});
+
+test('Incompatible let assignment type error', async () => {
+    const { error } = await loadScriptExpectingError("./files/negative/incompatible-let-assignment-type.vexed");
+
+    assert.equal(error.errors.length, 1);
+    assert.match(error.errors[0].message, /Cannot assign type string to variable value of type int/);
+});
+
+test('Incompatible array index type error', async () => {
+    const { error } = await loadScriptExpectingError("./files/negative/incompatible-array-index.vexed");
+    assert.equal(error.errors.length, 1);
+    assert.match(error.errors[0].message, /Index expression must be of type int/);
+});

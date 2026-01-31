@@ -170,8 +170,20 @@ export class AstVisitor {
         }
 
         if (isAstIndexExpression(expr)) {
+            let indexExpr = this.resolveExpression(expr.index);
+
+            const indexType = this.runtime.getExpressionType(indexExpr);
+            if (indexType !== this.runtime.getType("int")) {
+                this.runtime.error("Index expression must be of type int", expr.index.location);
+
+                return {
+                    exprType: "poison",
+                    poisonType: this.runtime.createPoisonType("<InvalidIndexExpression>"),
+                    identifierName: "<InvalidIndexExpression>",
+                } as TstPoisonExpression;
+            }
+
             const objectExpr = this.resolveExpression(expr.object);
-            const indexExpr = this.resolveExpression(expr.index);
             return {
                 exprType: "index",
                 object: objectExpr,
@@ -202,9 +214,24 @@ export class AstVisitor {
 
     resolveStatement(classDef: AstClass, method: AstMethodDeclaration, stmt: AstStatement): TstStatement {
         if (isAstReturnStatement(stmt)) {
+            let returnExpression = this.resolveExpression(stmt.returnValue);
+            const returnExpressionType = this.runtime.getExpressionType(returnExpression);
+
+            const returnTypeName = formatAstTypeName(method.returnType, classDef, method);
+            const returnType = this.runtime.getType(returnTypeName);
+
+            if (!this.runtime.isTypeAssignable(returnType, returnExpressionType)) {
+                this.runtime.error(`Cannot return type ${returnExpressionType.name} from method with return type ${returnType.name}`, stmt.location);
+                returnExpression = {
+                    exprType: "poison",
+                    poisonType: this.runtime.createPoisonType(`<InvalidReturn:${method.name}>`),
+                    identifierName: method.name,
+                } as TstPoisonExpression;
+            }
+
             return {
                 stmtType: "return",
-                returnValue: this.resolveExpression(stmt.returnValue),
+                returnValue: returnExpression,
             } as TstReturnStatement;
         } else if (isAstIfStatement(stmt)) {
             return {
@@ -223,6 +250,11 @@ export class AstVisitor {
                 const initializerType = this.runtime.getExpressionType(initializer);
                 if (initializerType && !this.runtime.isTypeAssignable(varType, initializerType)) {
                     this.runtime.error(`Cannot assign type ${initializerType.name} to variable ${stmt.name} of type ${varType.name}`, stmt.location);
+                    initializer = {
+                        exprType: "poison",
+                        poisonType: this.runtime.createPoisonType(`<InvalidInitialization:${stmt.name}>`),
+                        identifierName: stmt.name,
+                    } as TstPoisonExpression;
                 }
             }
 
@@ -237,13 +269,29 @@ export class AstVisitor {
                 initializer: initializer,
             } as TstLocalVarDeclaration;
         } else if (isAstLocalVarAssignment(stmt)) {
+            const variable = this.scope.find(v => v.name === stmt.name);
+            if (!variable) {
+                throw new Error("Internal error: Variable not found: " + stmt.name);
+            }
+
+            let expr = this.resolveExpression(stmt.expr);
+            const exprType = this.runtime.getExpressionType(expr);
+            if (!this.runtime.isTypeAssignable(variable.type, exprType)) {
+                this.runtime.error(`Cannot assign type ${exprType.name} to variable ${stmt.name} of type ${variable.type.name}`, stmt.location);
+                expr = {
+                    exprType: "poison",
+                    poisonType: this.runtime.createPoisonType(`<InvalidAssignment:${variable.name}>`),
+                    identifierName: variable.name,
+                } as TstPoisonExpression;
+            }
+
             return {
                 stmtType: "localVarAssignment",
                 name: stmt.name,
-                expr: this.resolveExpression(stmt.expr),
+                expr: expr,
             } as TstLocalVarAssignment;
         }
 
-        throw new Error("Unknown statement type " + stmt.stmtType);
+        throw new Error("Internal error: Unknown statement type " + stmt.stmtType);
     }
 }

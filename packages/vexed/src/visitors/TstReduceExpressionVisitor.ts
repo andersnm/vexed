@@ -260,7 +260,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
             const instanceType = objectExpr.instance[TypeMeta];
             const indexType = indexExpr.instance[TypeMeta];
             if (indexType != this.runtime.getType("int")) {
-                throw new Error("Index expression must be of type int");
+                throw new Error("Internal error: Index expression must be of type int");
             }
 
             const indexValue = indexExpr.instance[InstanceMeta] as number;
@@ -309,9 +309,6 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         if (expr.operator === "typeof") {
             this.incrementReferenceCount(this.scope);
             const operandType = this.runtime.getExpressionType(expr.operand);
-            if (!operandType) {
-                throw new Error("Cannot resolve type of operand in typeof expression");
-            }
 
             this.reduceCount++;
 
@@ -324,7 +321,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
             } as TstInstanceExpression;
         }
 
-        throw new Error("Unsupported unary operator: " + expr.operator);
+        throw new Error("Internal error: Unary operator not implemented: " + expr.operator);
     }
 
     visitFunctionCallExpression(expr: TstFunctionCallExpression): TstExpression {
@@ -376,7 +373,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
 
         const methodScope = callee.target.instance[ScopeMeta].get(objectType);
         if (!methodScope) {
-            throw new Error("Method scope not found for method " + callee.method.name + " on type " + objectType.name);
+            throw new Error("Internal error: Method scope not found for method " + callee.method.name + " on type " + objectType.name);
         }
 
         const scope: TstScope = {
@@ -414,13 +411,14 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         if (stmts.length === 1 && isReturnStatement(stmts[0])) {
             this.reduceCount++;
 
+/*          // TODO: internal error
             const returnValue = stmts[0].returnValue;
             const returnValueType = this.runtime.getExpressionType(returnValue);
 
             if (!this.runtime.isTypeAssignable(returnValueType!, expr.returnType, new Map<string, TypeDefinition>())) {
                 throw new Error(`Return type mismatch in statement expression: expected ${expr.returnType.name}, got ${returnValueType ? returnValueType.name : "unknown"}`);
             }
-
+*/
             return stmts[0].returnValue;
         }
 
@@ -478,7 +476,7 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
         const expr = this.visit(stmt.expr);
         const variable = this.scope.variables.find(v => v.name === stmt.name);
         if (!variable) {
-            throw new Error("Variable not found: " + stmt.name);
+            throw new Error("Internal error: Variable not found: " + stmt.name);
         }
 
         variable.value = expr;

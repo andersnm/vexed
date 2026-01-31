@@ -1,0 +1,9 @@
+class Main() {
+    public arr: int[] = [1, 2, 3];
+    testMethod(): int {
+        let value: int = this.arr["not an int"];
+        return 0;
+    }
+
+    public x: int = this.testMethod();
+}
