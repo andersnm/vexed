@@ -1,11 +1,18 @@
 import { readFile } from "fs/promises";
-import { InstanceMeta, isInstanceExpression, TstExpression, TstInstanceExpression, TstInstanceObject, TstPromiseExpression } from "../TstExpression.js";
-import { TstRuntime } from "../TstRuntime.js";
-import { TypeDefinition, TypeMethod } from "../TstType.js";
-import { printExpression } from "../visitors/TstPrintVisitor.js";
-import { TstScope } from "../visitors/TstReduceExpressionVisitor.js";
-import { AstMethodDeclaration } from "../AstProgram.js";
-import { AstIdentifierType } from "../AstType.js";
+import { 
+    InstanceMeta, 
+    isInstanceExpression, 
+    TstExpression, 
+    TstInstanceExpression, 
+    TstPromiseExpression,
+    TstRuntime, 
+    TypeDefinition, 
+    TypeMethod, 
+    AstMethodDeclaration, 
+    AstIdentifierType,
+    printExpression,
+    TstScope
+} from "vexed";
 
 export class IoTypeDefinition extends TypeDefinition {
     constructor(runtime: TstRuntime) {

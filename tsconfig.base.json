@@ -8,7 +8,6 @@
     "moduleResolution": "nodenext",
     "module": "nodenext",
     "target": "ES2018",
-    "lib": ["es2018"],
-    "types": ["node"]
+    "lib": ["es2018"]
   }
 }

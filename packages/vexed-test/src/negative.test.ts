@@ -2,9 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { promises as fs } from "fs";
 import { TstRuntime, ScriptError } from 'vexed';
+import { registerNodeTypes } from 'vexed-nodejs';
 
 async function loadScriptExpectingError(fileName: string): Promise<{ runtime: TstRuntime, error: ScriptError }> {
     const runtime = new TstRuntime();
+    registerNodeTypes(runtime);
     const script = await fs.readFile(fileName, "utf-8");
     
     try {

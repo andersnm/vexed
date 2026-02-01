@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "vexed": "file:../vexed",
+    "vexed-nodejs": "file:../vexed-nodejs",
     "tslib": "^2.4.1"
   }
 }

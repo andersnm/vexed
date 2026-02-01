@@ -1,6 +1,7 @@
 import { promises as fs } from "fs";
 import { parseArgs } from "node:util";
 import { printObject, TstRuntime } from "vexed";
+import { registerNodeTypes } from "vexed-nodejs";
 
 // "ast" is a debug mode.
 
@@ -20,6 +21,7 @@ export async function astCommand(args: string[]) {
     const script = await fs.readFile(fileName, "utf-8");
 
     const runtime = new TstRuntime();
+    registerNodeTypes(runtime);
     runtime.verbose = values.verbose || false;
     runtime.maxSteps = values.steps ? parseInt(values.steps) : runtime.maxSteps;
 

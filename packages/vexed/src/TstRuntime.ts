@@ -9,7 +9,6 @@ import { IntTypeDefinition } from "./types/IntTypeDefinition.js";
 import { BoolTypeDefinition } from "./types/BoolTypeDefinition.js";
 import { ArrayBaseTypeDefinition, ArrayTypeDefinition } from "./types/ArrayBaseTypeDefinition.js";
 import { StringTypeDefinition } from "./types/StringTypeDefinition.js";
-import { IoTypeDefinition } from "./types/IoTypeDefinition.js";
 import { TypeTypeDefinition } from "./types/TypeTypeDefinition.js";
 import { TstReducer } from "./TstReducer.js";
 import { AstProgram } from "./AstProgram.js";
@@ -43,19 +42,9 @@ export class TstRuntime {
             new BoolTypeDefinition(this),
             new ArrayBaseTypeDefinition(this, "any[]", anyType),
             new StringTypeDefinition(this),
-            new IoTypeDefinition(this),
             new TypeTypeDefinition(this),
         ];
         this.registerTypes(types);
-
-        this.globalScope.variables.push({
-            name: "io",
-            value: {
-                exprType: "instance",
-                instance: this.getType("Io").createInstance([]),
-            } as TstInstanceExpression,
-            type: this.getType("Io"),
-        });
     }
 
     getType(name: string): TypeDefinition {
