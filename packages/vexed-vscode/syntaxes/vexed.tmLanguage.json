@@ -6,10 +6,13 @@
   "patterns": [
     { "include": "#comments" },
     { "include": "#class-declaration" },
+    { "include": "#method-declaration" },
     { "include": "#keywords" },
+    { "include": "#storage-modifiers" },
     { "include": "#booleans" },
     { "include": "#strings" },
     { "include": "#numbers" },
+    { "include": "#type-annotation" },
     { "include": "#function-call" },
     { "include": "#member-access" },
     { "include": "#operators" }
@@ -21,70 +24,225 @@
     },
     "class-declaration": {
       "name": "meta.class.vexed",
-      "begin": "^(\\s*)(class)(\\s+)([A-Za-z_][\\w:]*)",
+      "begin": "\\b(class)\\s+([A-Za-z_][\\w]*)",
       "beginCaptures": {
-        "2": { "name": "keyword.declaration.class.vexed" },
-        "4": { "name": "entity.name.type.class.vexed" }
+        "1": { "name": "storage.type.class.vexed" },
+        "2": { "name": "entity.name.type.class.vexed" }
       },
-      "end": "(?=\\{)",
+      "end": "(?<=\\})",
       "patterns": [
         {
-          "name": "keyword.declaration.extends.vexed",
-          "match": "(extends)(\\s+)([A-Za-z_][\\w:]*)",
+          "name": "meta.class.extends.vexed",
+          "match": "\\b(extends)\\s+([A-Za-z_][\\w]*)",
           "captures": {
-            "1": { "name": "keyword.control.inheritance.vexed" },
-            "3": { "name": "entity.other.inherited-class.vexed" }
+            "1": { "name": "storage.modifier.vexed" },
+            "2": { "name": "entity.other.inherited-class.vexed" }
           }
+        },
+        { "include": "#parameters" },
+        { "include": "#class-body" }
+      ]
+    },
+    "class-body": {
+      "begin": "\\{",
+      "end": "\\}",
+      "patterns": [
+        { "include": "#comments" },
+        { "include": "#method-declaration" },
+        { "include": "#property-definition" },
+        { "include": "#property-statement" }
+      ]
+    },
+    "method-declaration": {
+      "name": "meta.method.declaration.vexed",
+      "begin": "\\b([A-Za-z_][\\w]*)\\s*\\(",
+      "beginCaptures": {
+        "1": { "name": "entity.name.function.vexed" }
+      },
+      "end": "(?<=\\})",
+      "patterns": [
+        { "include": "#parameters" },
+        { "include": "#type-annotation" },
+        { "include": "#statement-block" }
+      ]
+    },
+    "property-definition": {
+      "name": "meta.property.definition.vexed",
+      "match": "\\b(public|private)\\s+([A-Za-z_][\\w]*)\\s*(:)\\s*([A-Za-z_][\\w]*(?:\\[\\])*)",
+      "captures": {
+        "1": { "name": "storage.modifier.vexed" },
+        "2": { "name": "variable.other.property.vexed" },
+        "3": { "name": "punctuation.separator.type.vexed" },
+        "4": { "name": "entity.name.type.vexed" }
+      }
+    },
+    "property-statement": {
+      "name": "meta.property.statement.vexed",
+      "match": "\\b([A-Za-z_][\\w]*)\\s*(=)",
+      "captures": {
+        "1": { "name": "variable.other.property.vexed" },
+        "2": { "name": "keyword.operator.assignment.vexed" }
+      }
+    },
+    "parameters": {
+      "begin": "\\(",
+      "end": "\\)",
+      "patterns": [
+        {
+          "match": "\\b([A-Za-z_][\\w]*)\\s*(:)\\s*([A-Za-z_][\\w]*(?:\\[\\])*)",
+          "captures": {
+            "1": { "name": "variable.parameter.vexed" },
+            "2": { "name": "punctuation.separator.type.vexed" },
+            "3": { "name": "entity.name.type.vexed" }
+          }
+        },
+        { "include": "#comments" },
+        { "include": "#expressions" }
+      ]
+    },
+    "statement-block": {
+      "begin": "\\{",
+      "end": "\\}",
+      "patterns": [
+        { "include": "#statements" }
+      ]
+    },
+    "statements": {
+      "patterns": [
+        { "include": "#comments" },
+        { "include": "#if-statement" },
+        { "include": "#return-statement" },
+        { "include": "#local-var-declaration" },
+        { "include": "#expressions" }
+      ]
+    },
+    "if-statement": {
+      "name": "meta.if-statement.vexed",
+      "begin": "\\b(if)\\s*\\(",
+      "beginCaptures": {
+        "1": { "name": "keyword.control.conditional.vexed" }
+      },
+      "end": "(?<=\\})",
+      "patterns": [
+        { "include": "#expressions" },
+        { "include": "#statement-block" },
+        {
+          "name": "keyword.control.conditional.vexed",
+          "match": "\\b(else)\\b"
         }
       ]
     },
+    "return-statement": {
+      "name": "meta.return-statement.vexed",
+      "match": "\\b(return)\\b",
+      "captures": {
+        "1": { "name": "keyword.control.flow.vexed" }
+      }
+    },
+    "local-var-declaration": {
+      "name": "meta.var-declaration.vexed",
+      "match": "\\b(let)\\s+([A-Za-z_][\\w]*)\\s*(:)\\s*([A-Za-z_][\\w]*(?:\\[\\])*)",
+      "captures": {
+        "1": { "name": "storage.type.vexed" },
+        "2": { "name": "variable.other.readwrite.vexed" },
+        "3": { "name": "punctuation.separator.type.vexed" },
+        "4": { "name": "entity.name.type.vexed" }
+      }
+    },
+    "type-annotation": {
+      "match": "(:)\\s*([A-Za-z_][\\w]*(?:\\[\\])*)",
+      "captures": {
+        "1": { "name": "punctuation.separator.type.vexed" },
+        "2": { "name": "entity.name.type.vexed" }
+      }
+    },
     "keywords": {
       "name": "keyword.control.vexed",
-      "match": "\\b(?:class|extends|public|private|if|else|return)\\b"
+      "match": "\\b(if|else|return)\\b"
+    },
+    "storage-modifiers": {
+      "name": "storage.modifier.vexed",
+      "match": "\\b(public|private|extends)\\b"
     },
     "booleans": {
       "name": "constant.language.boolean.vexed",
-      "match": "\\b(?:true|false)\\b"
+      "match": "\\b(true|false)\\b"
     },
     "strings": {
       "name": "string.quoted.double.vexed",
       "begin": "\"",
-      "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.vexed" } },
+      "beginCaptures": { 
+        "0": { "name": "punctuation.definition.string.begin.vexed" } 
+      },
       "end": "\"",
-      "endCaptures": { "0": { "name": "punctuation.definition.string.end.vexed" } },
+      "endCaptures": { 
+        "0": { "name": "punctuation.definition.string.end.vexed" } 
+      },
       "patterns": [
-        { "name": "constant.character.escape.vexed", "match": "\\\\." }
+        { 
+          "name": "constant.character.escape.vexed", 
+          "match": "\\\\(?:[\"\\\\/bfnrt]|u[0-9a-fA-F]{4})" 
+        }
       ]
     },
     "numbers": {
       "patterns": [
         {
-          "name": "constant.numeric.float.vexed",
-          "match": "(?<![A-Za-z_])(?!0[0-9])(?:[0-9]+\\.[0-9]+|\\.[0-9]+)(?![A-Za-z_])"
+          "name": "constant.numeric.decimal.vexed",
+          "match": "\\b(?:[0-9]+\\.[0-9]+|\\.[0-9]+)\\b"
         },
         {
           "name": "constant.numeric.integer.vexed",
-          "match": "(?<![A-Za-z_])(?:0|[1-9][0-9]*)(?![A-Za-z_])"
+          "match": "\\b(?:0|[1-9][0-9]*)\\b"
         }
       ]
     },
     "function-call": {
       "name": "meta.function-call.vexed",
-      "match": "([A-Za-z_][\\w:]*)(?=\\s*\\()",
+      "match": "\\b([A-Za-z_][\\w]*)\\s*(?=\\()",
       "captures": {
         "1": { "name": "entity.name.function.vexed" }
       }
     },
     "member-access": {
-      "name": "meta.member.access.vexed",
-      "match": "\\.([A-Za-z_][\\w:]*)",
+      "name": "meta.member-access.vexed",
+      "match": "(\\.)\\s*([A-Za-z_][\\w]*)",
       "captures": {
-        "1": { "name": "variable.other.member.vexed" }
+        "1": { "name": "punctuation.accessor.vexed" },
+        "2": { "name": "variable.other.property.vexed" }
       }
     },
     "operators": {
-      "name": "keyword.operator.vexed",
-      "match": "==|!=|<=|>=|<|>|\\|\\||&&|!|=|\\+|-|\\*|/"
+      "patterns": [
+        {
+          "name": "keyword.operator.logical.vexed",
+          "match": "\\|\\||&&|!"
+        },
+        {
+          "name": "keyword.operator.comparison.vexed",
+          "match": "==|!=|<=|>=|<|>"
+        },
+        {
+          "name": "keyword.operator.arithmetic.vexed",
+          "match": "\\+|-|\\*|/"
+        },
+        {
+          "name": "keyword.operator.assignment.vexed",
+          "match": "="
+        }
+      ]
+    },
+    "expressions": {
+      "patterns": [
+        { "include": "#comments" },
+        { "include": "#keywords" },
+        { "include": "#booleans" },
+        { "include": "#strings" },
+        { "include": "#numbers" },
+        { "include": "#function-call" },
+        { "include": "#member-access" },
+        { "include": "#operators" }
+      ]
     }
   },
   "foldingStartMarker": "\\{",

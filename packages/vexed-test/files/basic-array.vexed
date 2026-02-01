@@ -1,8 +1,8 @@
 class Main() {
-  public string[] strArray = [ "It's a string", "String, it is" ];
-  public string[][] strStrArray = [ [ "It's a string", "String, it is" ], [ "One", "Two", "Three" ] ];
-  public int[] intArray = [ 1, 2, 3 ];
-  public int[][] intIntArray = [ [ 1, 2, 3, 4, 5 ], [ 6, 7 ] ];
-  public bool[] boolArray = [ true, false, true, false ];
-  public bool[][] boolArray = [ [ true, false, true, false ], [ false, false, false ] ];
+  public strArray: string[] = [ "It's a string", "String, it is" ];
+  public strStrArray: string[][] = [ [ "It's a string", "String, it is" ], [ "One", "Two", "Three" ] ];
+  public intArray: int[] = [ 1, 1 + 1, 1 * 2 + 1 ];
+  public intIntArray: int[][] = [ [ 1, 2, 3, 4, 5 ], [ 6, 7 ] ];
+  public boolArray: bool[] = [ true, false, true, false ];
+  public boolArray2D: bool[][] = [ [ true, false, true, false ], [ false, false, false ] ];
 }

@@ -1,0 +1,7 @@
+class Main() {
+    public result: string[] = this.makeArray("test");
+
+    makeArray(s: string): string[] {
+        return [s, s + "2", s + "3"];
+    }
+}

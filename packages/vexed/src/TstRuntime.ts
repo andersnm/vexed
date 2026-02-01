@@ -1,263 +1,52 @@
-import { readFile } from "fs/promises";
-import path from "path";
-import { InstanceMeta, isInstanceExpression, RuntimeMeta, ScopeMeta, TstExpression, TstInstanceExpression, TstInstanceObject, TstPromiseExpression, TstScopedExpression, TstVariable, TypeMeta } from "./TstExpression.js";
-import { TypeDefinition, TypeMethod } from "./TstType.js";
+import { InstanceMeta, isFunctionReferenceExpression, isInstanceExpression, RuntimeMeta, ScopeMeta, TstExpression, TstFunctionReferenceExpression, TstInstanceExpression, TstInstanceObject, TstPromiseExpression, TstScopedExpression, TstVariable, TypeMeta } from "./TstExpression.js";
+import { TypeDefinition } from "./TstType.js";
 import { TstExpressionTypeVisitor } from "./visitors/TstExpressionTypeVisitor.js";
-import { printExpression } from "./visitors/TstPrintVisitor.js";
-import { TstReduceExpressionVisitor, TstScope } from "./visitors/TstReduceExpressionVisitor.js";
-import { TstReduceScopeVisitor } from "./visitors/TstReduceScopeVisitor.js";
-import { TstInstanceVisitor } from "./visitors/TstInstanceVisitor.js";
-import { TstReplaceVisitor } from "./visitors/TstReplaceVisitor.js";
+import { TstScope } from "./visitors/TstReduceExpressionVisitor.js";
 import { TstBuilder } from "./TstBuilder.js";
 import { Parser } from "./Parser.js";
+import { AnyTypeDefinition } from "./types/AnyTypeDefinition.js";
+import { IntTypeDefinition } from "./types/IntTypeDefinition.js";
+import { BoolTypeDefinition } from "./types/BoolTypeDefinition.js";
+import { ArrayBaseTypeDefinition, ArrayTypeDefinition } from "./types/ArrayBaseTypeDefinition.js";
+import { StringTypeDefinition } from "./types/StringTypeDefinition.js";
+import { IoTypeDefinition } from "./types/IoTypeDefinition.js";
+import { TypeTypeDefinition } from "./types/TypeTypeDefinition.js";
+import { TstReducer } from "./TstReducer.js";
+import { AstProgram } from "./AstProgram.js";
+import { FunctionTypeDefinition, getFunctionTypeName } from "./types/FunctionTypeDefinition.js";
+import { GenericUnresolvedTypeDefinition } from "./types/GenericUnresolvedTypeDefinition.js";
+import { PoisonTypeDefinition } from "./types/PoisonTypeDefinition.js";
+import { ScriptError, ScriptErrorInfo } from "./ScriptError.js";
+import { AstLocation } from "./AstLocation.js";
 
-class AnyTypeDefinition extends TypeDefinition {
-    constructor(runtime: TstRuntime) {
-        super(runtime, "any", "<native>");
-    }
-}
-
-class BoolTypeDefinition extends TypeDefinition {
-    constructor(runtime: TstRuntime) {
-        super(runtime, "bool", "<native>");
-    }
-
-    createInstance(args: TstExpression[]): TstInstanceObject {
-        return this.runtime.createInstance(this, args, false, true);
-    }
-}
-
-class StringTypeDefinition extends TypeDefinition {
-    constructor(runtime: TstRuntime) {
-        super(runtime, "string", "<native>");
-    }
-
-    initializeType() {
-        this.properties.push({
-            modifier: "public",
-            name: "length",
-            type: this.runtime.getType("int"),
-        });
-    }
-
-    createInstance(args: TstExpression[]): TstInstanceObject {
-        // console.log("[StringTypeDefinition] Creating instance of type", this.name);
-        return this.runtime.createInstance(this, args, "", true);
-    }
-
-    resolveProperty(instance: TstInstanceObject, propertyName: string): TstExpression | null {
-        // console.log("[StringTypeDefinition] Resolving", propertyName);
-        if (propertyName === "length") {
-            const stringValue = instance[InstanceMeta] as string;
-            return { exprType: "instance", instance: this.runtime.createInt(stringValue.length) } as TstInstanceExpression;
-        }
-
-        return null;
-    }
-}
-
-class IntTypeDefinition extends TypeDefinition {
-    constructor(runtime: TstRuntime) {
-        super(runtime, "int", "<native>");
-    }
-
-    initializeType() {}
-
-    createInstance(args: TstExpression[]): TstInstanceObject {
-        // console.log("[IntTypeDefinition] Creating instance of type", this.name);
-        return this.runtime.createInstance(this, args, 0, true);
-    }
-}
-
-/**
- * NOTE: ArrayBaseTypeDefinition serves two purposes:
- * - When instantiated directly, corresponds to the Tst "any[]" type. This is the Tst base class of all array types.
- * - As the base class for ArrayTypeDefinition, which is used for types like string[].
- */
-class ArrayBaseTypeDefinition extends TypeDefinition {
-    constructor(runtime: TstRuntime, name: string) {
-        super(runtime, name, "<native>");
-    }
-
-    initializeType() {
-        this.properties.push({
-            modifier: "public",
-            name: "length",
-            type: this.runtime.getType("int"),
-        });
-    }
-
-    createInstance(args: TstExpression[]): TstInstanceObject {
-        // console.log("[ArrayBaseTypeDefinition] Creating instance of type", this.name);
-        return this.runtime.createInstance(this, args, []);
-    }
-
-    resolveProperty(instance: TstInstanceObject, propertyName: string): TstExpression | null {
-        // console.log("[ArrayBaseTypeDefinition] Resolving", propertyName);
-        if (propertyName === "length") {
-            const arrayValue = instance[InstanceMeta] as any[];
-            return { exprType: "instance", instance: this.runtime.createInt(arrayValue.length) } as TstInstanceExpression;
-        }
-
-        return null;
-    }
-
-    resolveIndex(instance: TstInstanceObject, index: number): TstExpression | null {
-        const arrayValue = instance[InstanceMeta] as any[];
-        return arrayValue[index] || null;
-    }
-}
-
-export class ArrayTypeDefinition extends ArrayBaseTypeDefinition {
-    constructor(runtime: TstRuntime, name: string) {
-        super(runtime, name);
-    }
-
-    initializeType() {
-        // Do not call super.initializeType(). It adds
-        this.extends = this.runtime.getType("any[]");
-    }
-}
-
-class TypeTypeDefinition extends TypeDefinition {
-    constructor(runtime: TstRuntime) {
-        super(runtime, "Type", "<native>");
-    }
-
-    initializeType(): void {
-        this.properties.push({
-            modifier: "public",
-            name: "name",
-            type: this.runtime.getType("string"),
-        });
-
-        this.properties.push({
-            modifier: "public",
-            name: "scriptPath",
-            type: this.runtime.getType("string"),
-        });
-    }
-
-    resolveProperty(instance: TstInstanceObject, propertyName: string): TstExpression | null {
-        if (propertyName === "name") {
-            const type = instance[InstanceMeta] as TypeDefinition;
-            return { exprType: "instance", instance: this.runtime.createString(type.name) } as TstInstanceExpression;
-        }
-
-        if (propertyName === "scriptPath") {
-            const type = instance[InstanceMeta] as TypeDefinition;
-
-            const scriptPath = path.dirname(type.fileName);
-            return { exprType: "instance", instance: this.runtime.createString(scriptPath) } as TstInstanceExpression;
-        }
-
-        throw new Error("Property not implemented: " + propertyName);
-    }
-}
-
-class IoTypeDefinition extends TypeDefinition {
-    constructor(runtime: TstRuntime) {
-        super(runtime, "Io", "<native>");
-    }
-
-    initializeType(): void {
-        this.methods.push({
-            name: "print",
-            declaringType: this,
-            parameters: [
-                { name: "message", type: this.runtime.getType("any") },
-            ],
-            returnType: this.runtime.getType("any"),
-            body: [],
-        });
-
-        this.methods.push({
-            name: "readTextFile",
-            declaringType: this,
-            parameters: [
-                { name: "path", type: this.runtime.getType("string") },
-            ],
-            returnType: this.runtime.getType("string"),
-            body: [],
-        });
-    }
-
-    callFunction(method: TypeMethod, scope: TstScope): TstExpression | null {
-        if (method.name === "print") {
-            const messageVar = scope.variables.find(v => v.name === "message");
-            if (!messageVar) {
-                throw new Error("Io.print: message parameter not found");
-            }
-
-            const messageExpr = messageVar.value;
-            const message = printExpression(messageExpr);
-            console.log("Io.print: " + message);
-
-            return {
-                exprType: "instance",
-                instance: this.runtime.createInt(0)
-            } as TstExpression;
-        }
-
-        if (method.name === "readTextFile") {
-            const pathVar = scope.variables.find(v => v.name === "path");
-            if (!pathVar) {
-                throw new Error("Io.readTextFile: path parameter not found");
-            }
-
-            const pathExpr = pathVar.value;
-            if (!isInstanceExpression(pathExpr)) {
-                return null; // Signals to caller that we cannot proceed yet
-            }
-
-            const path = pathExpr.instance[InstanceMeta];
-
-            return {
-                exprType: "promise",
-                promiseType: this.runtime.getType("string"),
-                promise: new Promise(async (resolve, reject) => {
-                    try {
-                        const str = await readFile(path, "utf-8");
-                        resolve({
-                            exprType: "instance",
-                            instance: this.runtime.createString(str)
-                        } as TstInstanceExpression);
-                    } catch (err) {
-                        reject(err);
-                    }
-                })
-            } as TstPromiseExpression;
-        }
-
-        throw new Error("Method not implemented: " + method.name);
-    }
-}
+const nullLocation: AstLocation = { fileName: "<native>", line: 0, column: 0, startOffset: 0, endOffset: 0, image: "" };
 
 export class TstRuntime {
     verbose: boolean = false;
     maxSteps: number = 1000;
 
     types: TypeDefinition[] = [];
-    globalScope: TstScope = {
-        parent: null,
-        thisObject: null as any,
-        variables: [],
-        comment: "global",
-    };
+    globalScope: TstScope;
+    scriptErrors: ScriptErrorInfo[] = [];
 
     constructor() {
-        this.types.push(new AnyTypeDefinition(this));
-        this.types.push(new IntTypeDefinition(this));
-        this.types.push(new BoolTypeDefinition(this));
-        this.types.push(new ArrayBaseTypeDefinition(this, "any[]"));
-        this.types.push(new StringTypeDefinition(this));
-        // this.types.push(new ArrayTypeDefinition(this, "string[]"));
-        this.types.push(new IoTypeDefinition(this));
-        this.types.push(new TypeTypeDefinition(this));
-
-        for (let type of this.types) {
-            type.initializeType();
-        }
+        this.globalScope = {
+            parent: null,
+            thisObject: null as any,
+            variables: [],
+            comment: "global",
+        };
+        const anyType = new AnyTypeDefinition(this);
+        const types = [
+            anyType,
+            new IntTypeDefinition(this),
+            new BoolTypeDefinition(this),
+            new ArrayBaseTypeDefinition(this, "any[]", anyType),
+            new StringTypeDefinition(this),
+            new IoTypeDefinition(this),
+            new TypeTypeDefinition(this),
+        ];
+        this.registerTypes(types);
 
         this.globalScope.variables.push({
             name: "io",
@@ -283,8 +72,8 @@ export class TstRuntime {
         return type || null;
     }
 
-    getExpressionType(expr: TstExpression, thisType: TypeDefinition): TypeDefinition | null {
-        const visitor = new TstExpressionTypeVisitor(this, thisType);
+    getExpressionType(expr: TstExpression): TypeDefinition {
+        const visitor = new TstExpressionTypeVisitor(this);
         visitor.visit(expr);
         return visitor.visitType;
     }
@@ -344,50 +133,6 @@ export class TstRuntime {
         }
     }
 
-    findArrayType(visitor: TstExpressionTypeVisitor, elements: TstExpression[]): TypeDefinition | null {
-        let type: TypeDefinition | null = null;
-        // TODO: allow common base type
-        for (let element of elements) {
-            visitor.visit(element);
-
-            if (!type) {
-                type = visitor.visitType;
-            }
-
-            if (type !== visitor.visitType) {
-                throw new Error("Array elements must be of the same type");
-            }
-        }
-
-        if (!type) {
-            // Empty arrays should be handled explicitly earlier
-            throw new Error("Cannot determine array element type for empty array");
-        }
-
-        const arrayTypeName = type.name + "[]";
-        return this.getType(arrayTypeName);
-    }
-
-    createArrayType(name: string) {
-        if (this.tryGetType(name)) {
-            return;
-        }
-
-        const arrayItemType = name.substring(0, name.length - 2);
-
-        if (!this.tryGetType(arrayItemType)) {
-            if (arrayItemType.endsWith("[]")) {
-                this.createArrayType(arrayItemType);
-            } else {
-                throw new Error("Could not find array item type: " + arrayItemType);
-            }
-        }
-
-        const specializedArrayType = new ArrayTypeDefinition(this, name)!;
-        specializedArrayType.initializeType();
-        this.types.push(specializedArrayType);
-    }
-
     createInstance(type: TypeDefinition, args: TstExpression[], userData: any = null, sealed: boolean = false): TstInstanceObject {
         const obj: TstInstanceObject = { 
             [TypeMeta]: type,
@@ -400,17 +145,105 @@ export class TstRuntime {
         return obj;
     }
 
-    isTypeAssignable(fromType: TypeDefinition | null, toType: TypeDefinition | null): boolean {
+    inferBindings(expected: TypeDefinition, actual: TypeDefinition, out: Map<string, TypeDefinition>): boolean {
+
+        // inferBindings returns false if there is an inference conflict, otherwise true.
+
+        if (actual instanceof GenericUnresolvedTypeDefinition) {
+            // Cannot infer from an unresolved actual type
+            // If this happens, the the type originator site should resolve it (e.g function return types)
+            throw new Error("Cannot infer from unresolved actual type: " + actual.name);
+        }
+
+        // Case 1: expected is a generic placeholder
+        if (expected instanceof GenericUnresolvedTypeDefinition) {
+            const name = expected.name;
+            const existing = out.get(name);
+
+            if (!existing) {
+                out.set(name, actual);
+                return true;
+            }
+
+            // Must agree with previous inference
+            return existing === actual;
+        }
+
+        // Case 2: both are arrays
+        if (expected instanceof ArrayBaseTypeDefinition && actual instanceof ArrayBaseTypeDefinition) {
+            return this.inferBindings(expected.elementType, actual.elementType, out);
+        }
+
+        // Case 3: both are function types
+        if (expected instanceof FunctionTypeDefinition && actual instanceof FunctionTypeDefinition) {
+
+            if (!this.inferBindings(expected.returnType, actual.returnType, out)) {
+                return false;
+            }
+
+            if (expected.parameterTypes.length !== actual.parameterTypes.length) {
+                return false;
+            }
+
+            for (let i = 0; i < expected.parameterTypes.length; i++) {
+                if (!this.inferBindings(expected.parameterTypes[i], actual.parameterTypes[i], out)) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        // Inference done
+        return true;
+    }
+
+    isTypeAssignable(fromType: TypeDefinition | null, toType: TypeDefinition | null, bindings: Map<string, TypeDefinition> = new Map()): boolean {
+
         if (!fromType || !toType) return false;
 
-        // Handle array types
-        const anyArrayType = this.getType("any[]");
-        if (fromType.extends === anyArrayType && toType.extends === anyArrayType) {
-            const fromElementName = fromType.name.substring(0, fromType.name.length - 2);
-            const toElementName = toType.name.substring(0, toType.name.length - 2);
-            const fromElementType = this.tryGetType(fromElementName);
-            const toElementType = this.tryGetType(toElementName);
-            return this.isTypeAssignable(fromElementType, toElementType);
+        if (fromType instanceof PoisonTypeDefinition || toType instanceof PoisonTypeDefinition) {
+            return true;
+        }
+
+        if (fromType instanceof ArrayBaseTypeDefinition && toType instanceof ArrayBaseTypeDefinition) {
+            return this.isTypeAssignable(fromType.elementType, toType.elementType, bindings);
+        }
+
+        if (toType instanceof GenericUnresolvedTypeDefinition) {
+            const bindingType = bindings.get(toType.name);
+            if (!bindingType) {
+                throw new Error("Unbound generic type: " + toType.name);
+            }
+            toType = bindingType;
+        }
+
+        if (fromType instanceof GenericUnresolvedTypeDefinition) {
+            const bindingType = bindings.get(fromType.name);
+            if (!bindingType) {
+                throw new Error("Unbound generic type: " + fromType.name);
+            }
+            fromType = bindingType;
+        }
+
+        if (fromType instanceof FunctionTypeDefinition && toType instanceof FunctionTypeDefinition) {
+            if (!this.isTypeAssignable(fromType.returnType, toType.returnType, bindings)) {
+                return false;
+            }
+
+            if (fromType.parameterTypes.length !== toType.parameterTypes.length) {
+                return false;
+            }
+
+            for (let i = 0; i < fromType.parameterTypes.length; i++) {
+                const fromParamType = fromType.parameterTypes[i];
+                const toParamType = toType.parameterTypes[i];
+                if (!this.isTypeAssignable(fromParamType, toParamType, bindings)) {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         // Handle class inheritance
@@ -427,141 +260,9 @@ export class TstRuntime {
         return fromType === toType;
     }
 
-    reduceInstanceProperties(reducer: TstReduceExpressionVisitor, obj: TstInstanceObject, scopeType: TypeDefinition): boolean {
-
-        let sealable = true;
-
-        if (scopeType.extends) {
-            sealable &&= this.reduceInstanceProperties(reducer, obj, scopeType.extends);
-        }
-
-        for (let propertyDeclaration of scopeType.properties) {
-            const propertyExpression = scopeType.resolveProperty(obj, propertyDeclaration.name);
-            if (!propertyExpression) {
-                continue;
-            }
-
-            const reduced = reducer.visit(propertyExpression);
-
-            // Check if types match
-            const reducedType = this.getExpressionType(reduced, obj[TypeMeta]);
-            if (!this.isTypeAssignable(reducedType, propertyDeclaration.type)) {
-                throw new Error(`Type mismatch when reducing property ${propertyDeclaration.name} of type ${propertyDeclaration.type.name}, got ${reducedType?.name || "unknown"}`);
-            }
-
-            sealable &&= isInstanceExpression(reduced) && reduced.instance[RuntimeMeta].sealed;
-
-            obj[propertyDeclaration.name] = reduced;
-        }
-
-        // console.log("Promises: ", reducer.promiseExpressions);
-        return sealable;
-    }
-
-    visitInstanceProperties(visitor: TstReplaceVisitor, obj: TstInstanceObject, scopeType: TypeDefinition) {
-        if (scopeType.extends) {
-            this.visitInstanceProperties(visitor, obj, scopeType.extends);
-        }
-
-        for (let propertyDeclaration of scopeType.properties) {
-            // TODO: why not resolveProperty - visit native results? need resolveProperty deep true/false?
-            if (!obj[propertyDeclaration.name]) {
-                continue;
-            }
-            visitor.visit(obj[propertyDeclaration.name]);
-        }
-    }
-
-    getInstancesFromRoot(obj: TstInstanceObject): TstInstanceObject[] {
-        const instanceVisitor = new TstInstanceVisitor(this);
-        instanceVisitor.visited.add(obj);
-        this.visitInstanceProperties(instanceVisitor, obj, obj[TypeMeta]);
-        return [ ... instanceVisitor.visited];
-    }
-
-    reduceArrayElements(reducer: TstReduceExpressionVisitor, instance: TstInstanceObject): boolean {
-        let sealable = true;
-        const array = instance[InstanceMeta] as TstExpression[];
-
-        for (let i = 0; i < array.length; i++) {
-            const element = array[i];
-            const reduced = reducer.visit(element);
-            sealable &&= isInstanceExpression(reduced) && reduced.instance[RuntimeMeta].sealed;
-            array[i] = reduced;
-        }
-
-        return sealable;
-    }
-
     async reduceInstance(obj: TstInstanceObject) {
-        let counter = 0;
-        let promiseExpressions: TstPromiseExpression[] = [];
-        while (true) {
-            if (this.verbose) console.log("[TstRuntime] Reduction iteration", counter);
-
-            const instances = this.getInstancesFromRoot(obj);
-
-            let reduceCount = 0;
-
-            for (let instance of instances) {
-
-                if (instance[RuntimeMeta].sealed) {
-                    continue;
-                }
-
-                const instanceType = instance[TypeMeta];
-
-                const reducer = new TstReduceExpressionVisitor(this, this.globalScope);
-                const scopeReducer = new TstReduceScopeVisitor(this);
-
-                this.visitInstanceProperties(scopeReducer, instance, instanceType);
-
-                let sealable = this.reduceInstanceProperties(reducer, instance, instanceType);
-
-                if (instanceType.name.endsWith("[]")) {
-                    sealable &&= this.reduceArrayElements(reducer, instance)
-                }
-
-                if (sealable && !instance[RuntimeMeta].sealed) {
-                    // console.log("[TstRuntime] Sealing " + instanceType.name, instanceType.sealedInstance);
-                    instance[RuntimeMeta].sealed = true;
-                    instanceType.sealedInstance(instance);
-                }
-
-                reduceCount += reducer.reduceCount;
-                reduceCount += scopeReducer.reduceCount;
-                promiseExpressions.push(...reducer.promiseExpressions);
-                promiseExpressions.push(...scopeReducer.promiseExpressions);
-            }
-
-            if (reduceCount === 0) {
-                break;
-            }
-
-            counter++;
-            if (counter > this.maxSteps) {
-                throw new Error("Too many reduction iterations, possible infinite loop");
-            }
-        }
-
-        if (promiseExpressions.length === 0) {
-            return;
-        }
-
-        const promises = promiseExpressions.map(pe => new Promise(async (resolve) => {
-            try {
-                pe.promiseValue = await pe.promise;
-            } catch (err) {
-                pe.promiseError = err as Error;
-            }
-
-            resolve(null);
-        }));
-
-        await Promise.all(promises);
-
-        // reduce again with resolved promises
-        await this.reduceInstance(obj);
+        const reducer = new TstReducer(this);
+        await reducer.reduceInstance(obj);
     }
 
     createInt(value: number): TstInstanceObject {
@@ -590,5 +291,46 @@ export class TstRuntime {
         const program = parser.parse(script, fileName);
         const resolver = new TstBuilder(this);
         resolver.resolveProgram(program);
+    }
+
+    registerTypes(types: TypeDefinition[]) {
+        this.types.push(...types);
+
+        const program = {
+            fileName: "<native>",
+            programUnits: types.filter(t => t.astNode).map(t => t.astNode),
+        } as AstProgram;
+
+        const builder = new TstBuilder(this);
+        builder.resolveProgram(program);
+    }
+
+    error(message: string, location?: AstLocation) {
+        this.scriptErrors.push({
+            message,
+            location: location ?? nullLocation,
+        });
+    }
+
+    createPoisonType(name: string): TypeDefinition {
+        const type = this.tryGetType(name);
+        if (type) {
+            return type;
+        }
+
+        const poisonType = new PoisonTypeDefinition(this, name);
+        this.registerTypes([poisonType]);
+        return poisonType;
+    }
+
+    createArrayType(arrayTypeName: string, elementType: TypeDefinition) {
+        const type = this.tryGetType(arrayTypeName);
+        if (type) {
+            return type;
+        }
+
+        const specializedArrayType = new ArrayTypeDefinition(this, arrayTypeName, elementType);
+        this.registerTypes([specializedArrayType]);
+        return specializedArrayType;
     }
 }

@@ -10,6 +10,10 @@ export function isDecimalLiteral(expr: TstExpression): expr is TstDecimalLiteral
     return expr.exprType === "decimalLiteral";
 }
 
+export function isIntegerLiteral(expr: TstExpression): expr is TstIntegerLiteralExpression {
+    return expr.exprType === "integerLiteral";
+}
+
 export function isParameter(expr: TstExpression): expr is TstParameterExpression {
     return expr.exprType === "parameter";
 }
@@ -22,8 +26,20 @@ export function isNewExpression(expr: TstExpression): expr is TstNewExpression {
     return expr.exprType === "new";
 }
 
+export function isNewArrayExpression(expr: TstExpression): expr is TstNewArrayExpression {
+    return expr.exprType === "newArray";
+}
+
 export function isFunctionCall(expr: TstExpression): expr is TstFunctionCallExpression {
     return expr.exprType === "functionCall";
+}
+
+export function isFunctionReferenceExpression(expr: TstExpression): expr is TstFunctionReferenceExpression {
+    return expr.exprType === "functionReference";
+}
+
+export function isUnboundFunctionReferenceExpression(expr: TstExpression): expr is TstUnboundFunctionReferenceExpression {
+    return expr.exprType === "unboundFunctionReference";
 }
 
 export function isScopedExpression(expr: TstExpression): expr is TstScopedExpression {
@@ -68,6 +84,10 @@ export function isNativeMemberExpression(expr: TstExpression): expr is TstNative
 
 export function isMissingInstanceExpression(expr: TstExpression): expr is TstMissingInstanceExpression {
     return expr.exprType === "missingInstance";
+}
+
+export function isPoisonExpression(expr: TstExpression): expr is TstPoisonExpression {
+    return expr.exprType === "poison";
 }
 
 export function isIfStatement(stmt: TstStatement): stmt is TstIfStatement {
@@ -122,6 +142,11 @@ export interface TstDecimalLiteralExpression extends TstExpression {
     value: number;
 }
 
+export interface TstIntegerLiteralExpression extends TstExpression {
+    exprType: "integerLiteral";
+    value: number;
+}
+
 export interface TstParameterExpression extends TstExpression {
     exprType: "parameter";
     name: string;
@@ -140,11 +165,29 @@ export interface TstNewExpression extends TstExpression {
     args: TstExpression[];
 }
 
+export interface TstNewArrayExpression extends TstExpression {
+    exprType: "newArray";
+    arrayType: TypeDefinition;
+    elements: TstExpression[];
+}
+
 export interface TstFunctionCallExpression extends TstExpression {
     exprType: "functionCall";
-    method: TypeMethod;
-    object: TstExpression;
+    returnType: TypeDefinition;
+    callee: TstExpression;
     args: TstExpression[];
+    genericBindings: Map<string, TypeDefinition>;
+}
+
+export interface TstFunctionReferenceExpression extends TstExpression {
+    exprType: "functionReference";
+    target: TstExpression;
+    method: TypeMethod;
+}
+
+export interface TstUnboundFunctionReferenceExpression extends TstExpression {
+    exprType: "unboundFunctionReference";
+    method: TypeMethod;
 }
 
 export interface TstStatementExpression extends TstExpression {
@@ -188,6 +231,7 @@ export interface TstMemberExpression extends TstExpression {
 
 export interface TstThisExpression extends TstExpression {
     exprType: "this";
+    type: TypeDefinition;
 }
 
 export interface TstBinaryExpression extends TstExpression {
@@ -228,6 +272,12 @@ export interface TstMissingInstanceExpression extends TstExpression {
     instance: TstInstanceObject;
     propertyName: string;
     propertyType: TypeDefinition;
+}
+
+export interface TstPoisonExpression extends TstExpression {
+    exprType: "poison";
+    poisonType: TypeDefinition;
+    identifierName: string;
 }
 
 export interface TstStatement {

@@ -1,0 +1,14 @@
+# Test implicit type collection in nested array map method
+
+class Main() {
+  testNestedArray(): string {
+    # .map() returns string[]
+    return [ [ 1, 2 ], [ 3, 4 ] ][0].map(this.mapper)[1];
+  }
+
+  mapper(value: int): string {
+    return "string";
+  }
+
+  public output: string = this.testNestedArray();
+}

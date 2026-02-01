@@ -1,0 +1,6 @@
+class Main() {
+    testMethod(): int {
+        let value: int = "not an int";
+        return 0;
+    }
+}

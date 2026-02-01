@@ -15,7 +15,6 @@
   },
   "dependencies": {
     "vexed": "file:../vexed",
-    "vexed-digitalocean": "file:../vexed-digitalocean",
     "tslib": "^2.4.1"
   }
 }

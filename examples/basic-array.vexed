@@ -1,11 +1,11 @@
-class Base(int num, string newthing) {
-  public int baseNumber = num;
-  public string[] fest = [ "Anders", "var", "her", newthing ];
-  public string[][] fest2 = [ [ "Anders", "var", "her" ], ["and", "me"] ];
-  public int[][] fest3 = [ [ 1,2,3,4 ], [9999] ];
+class Base(num: int, newthing: string) {
+  public baseNumber: int = num;
+  public fest: string[] = [ "Anders", "var", "her", newthing ];
+  public fest2: string[][] = [ [ "Anders", "var", "her" ], ["and", "me"] ];
+  public fest3: int[][] = [ [ 1,2,3,4 ], [9999] ];
 }
 
 class Main() extends Base(this.test2, this.test) {
-  public string test = "Anders";
-  public int test2 = 123 + 1;
+  public test: string = "Anders";
+  public test2: int = 123 + 1;
 }

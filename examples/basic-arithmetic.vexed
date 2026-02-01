@@ -1,37 +1,37 @@
 class Helper() {
-  int mipikus() {
+  mipikus(): int {
     # return "string";
   }
 }
 
-class Yolo(int tall) {
-  public int kake = tall;
+class Yolo(tall: int) {
+  public kake: int = tall;
 
   # Should this be permitted??? yes it should
-  #int doYoContructor(int ly) {
+  #int doYoContructor(ly: int) {
   #  return tall + ly;
   #}
 }
 
 class Main() extends Yolo(77) {
-  private Helper helper = Helper();
+  private helper: Helper = Helper();
 
-  public string testStringAdd = "string1" + "string2";
-  public string testStringAdd2 = "stringX" + this.testStringAdd;
+  public testStringAdd: string = "string1" + "string2";
+  public testStringAdd2: string = "stringX" + this.testStringAdd;
 
-  public int testIntAdd = 1 + 2;
-  public int testIntAdd2 = 1 + this.testIntAdd;
-  public int testIntMultiply = 4 * 6;
-  public int testIntDivide = 8 / 2;
-  public bool joll = 3 > 2;
+  public testIntAdd: int = 1 + 2;
+  public testIntAdd2: int = 1 + this.testIntAdd;
+  public testIntMultiply: int = 4 * 6;
+  public testIntDivide: int = 8 / 2;
+  public joll: bool = 3 > 2;
 
-  int pes(int kake) {
-    int www = 9;
+  pes(kake: int): int {
+    const www: int = 9;
     # www = www + 1;
     return kake + www + 2;
   }
 
-  int hei(int sjekk) {
+  hei(sjekk: int): int {
     if (sjekk > 10) {
       return 42;
     } else {
@@ -39,6 +39,6 @@ class Main() extends Yolo(77) {
     }
   }
 
-  public int hallo = this.hei(this.testIntAdd);
-  # public string sjupp = this.helper.mikipus();
+  public hallo: int = this.hei(this.testIntAdd);
+  # public sjupp: string = this.helper.mikipus();
 }

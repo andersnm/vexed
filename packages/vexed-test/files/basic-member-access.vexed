@@ -1,14 +1,14 @@
 class Base() {
-  public string baseStr = "String, it is";
-  public int baseInt = 321;
-  public bool baseBool = true;
-  public string[] baseStrArray = [ "It's a string", "String, it is" ];
+  public baseStr: string = "String, it is";
+  public baseInt: int = 321;
+  public baseBool: bool = true;
+  public baseStrArray: string[] = [ "It's a string", "String, it is" ];
 }
 
 class Main() extends Base() {
-  public string[] mainStrArray = this.baseStrArray;
-  public int mainStrArrayLength = this.mainStrArray.length;
-  public int mainInt = this.baseInt;  
-  public string mainString = this.baseStr;
-  public int mainStringLength = this.mainString.length;
+  public mainStrArray: string[] = this.baseStrArray;
+  public mainStrArrayLength: int = this.mainStrArray.length;
+  public mainInt: int = this.baseInt;  
+  public mainString: string = this.baseStr;
+  public mainStringLength: int = this.mainString.length;
 }

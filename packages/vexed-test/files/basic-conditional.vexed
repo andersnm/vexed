@@ -1,12 +1,12 @@
 class Main() {
-  public int mainNum1 = 1;
-  public int mainNum2 = 2;
-  public bool isGreater = this.mainNum1 > this.mainNum2;
-  public bool isLess = this.mainNum1 < this.mainNum2;
-  public int num1 = this.getNum(2);
-  public int num2 = this.getNum(200);
+  public mainNum1: int = 1;
+  public mainNum2: int = 2;
+  public isGreater: bool = this.mainNum1 > this.mainNum2;
+  public isLess: bool = this.mainNum1 < this.mainNum2;
+  public num1: int = this.getNum(2);
+  public num2: int = this.getNum(200);
 
-  int getNum(int a) {
+  getNum(a: int): int {
     if (a < 10) {
       return 1;
     } else {

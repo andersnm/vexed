@@ -1,5 +1,6 @@
-import { InstanceMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNativeMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstVariableExpression, TypeMeta } from "../TstExpression.js";
+import { InstanceMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstFunctionReferenceExpression, TstIfStatement, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNativeMemberExpression, TstNewArrayExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstReturnStatement, TstScopedExpression, TstStatement, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstVariableExpression, TypeMeta } from "../TstExpression.js";
 import { TypeDefinition } from "../TstType.js";
+import { ArrayBaseTypeDefinition } from "../types/ArrayBaseTypeDefinition.js";
 import { TstScope } from "./TstReduceExpressionVisitor.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
 
@@ -34,11 +35,6 @@ export const printObject = (obj: TstInstanceObject) => {
     return printer.output.join("");
 }
 
-function isTstArrayInstance(obj: TstInstanceObject): boolean {
-    const typeDef = obj[TypeMeta];
-    return typeDef.name.endsWith("[]");
-}
-
 function getPropertyNames(scopeType: TypeDefinition, propertyNames: string[]) {
     if (scopeType.extends) {
         getPropertyNames(scopeType.extends, propertyNames);
@@ -69,7 +65,7 @@ export class TstPrintVisitor extends TstReplaceVisitor {
 
         const instanceType = obj[TypeMeta];
 
-        if (isTstArrayInstance(obj)) {
+        if (instanceType instanceof ArrayBaseTypeDefinition) {
             this.output.push("[");
             const arrayValue = obj[InstanceMeta] as TstExpression[];
             this.printExpressionList(arrayValue);
@@ -145,6 +141,17 @@ export class TstPrintVisitor extends TstReplaceVisitor {
         this.output.push(")");
     }
 
+    visitNullExpression(expr: TstExpression): TstExpression {
+        this.output.push("null");
+        return expr;
+    }
+
+    visitUnaryExpression(expr: TstUnaryExpression): TstExpression {
+        this.output.push(expr.operator);
+        this.visit(expr.operand);
+        return expr;
+    }
+
     visitMemberExpression(expr: TstMemberExpression): TstExpression {
         this.visit(expr.object);
         this.output.push("." + expr.property);
@@ -157,11 +164,16 @@ export class TstPrintVisitor extends TstReplaceVisitor {
     }
 
     visitFunctionCallExpression(expr: TstFunctionCallExpression): TstExpression {
-        this.visit(expr.object);
-        this.output.push(".");
-        this.output.push(expr.method.name + "(");
+        this.visit(expr.callee);
+        this.output.push("(");
         this.printExpressionList(expr.args);
         this.output.push(")");
+        return expr;
+    }
+
+    visitFunctionReferenceExpression(expr: TstFunctionReferenceExpression): TstExpression {
+        this.visit(expr.target);
+        this.output.push(".#" + expr.method.name);
         return expr;
     }
 
@@ -205,6 +217,11 @@ export class TstPrintVisitor extends TstReplaceVisitor {
         return expr;
     }
 
+    visitNewArrayExpression(expr: TstNewArrayExpression): TstExpression {
+        this.output.push("new " + expr.arrayType.name + " [...]");
+        return expr;
+    }
+
     visitParameterExpression(expr: TstParameterExpression): TstExpression {
         this.output.push("$" + expr.name);
         return expr;
@@ -231,7 +248,7 @@ export class TstPrintVisitor extends TstReplaceVisitor {
     }
 
     visitStatementExpression(expr: TstStatementExpression): TstExpression {
-        this.output.push("{\n");
+        this.output.push("<stmt>{\n");
         this.indent();
         expr.statements.forEach((stmt) => {
             this.printIndent();
