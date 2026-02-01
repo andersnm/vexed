@@ -2,9 +2,11 @@ import test, { mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { promises as fs } from "fs";
 import { InstanceMeta, isInstanceExpression, isParameter, isScopedExpression, printJsonObject, ScriptError, TstInstanceObject, TstRuntime, TypeDefinition, TypeMeta } from 'vexed';
+import { registerNodeTypes } from 'vexed-nodejs';
 
 async function compileToJson(fileName: string) {
     const runtime = new TstRuntime();
+    registerNodeTypes(runtime);
     try {
         const script = await fs.readFile(fileName, "utf-8");
         runtime.loadScript(script, fileName);

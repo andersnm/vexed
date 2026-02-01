@@ -2,6 +2,7 @@ import { promises as fs } from "fs";
 import { parseArgs } from "node:util";
 import { printJsonObject, printObject, TstInstanceObject, TstRuntime } from "vexed";
 import { ScriptError } from "vexed/dist/ScriptError.js";
+import { registerNodeTypes } from "vexed-nodejs";
 
 // "json" is a general-purpose "Vexed Configuration Language" mode.
 // Evaluates plain Vexed scripts without any provider types nor remote state.
@@ -23,6 +24,7 @@ export async function jsonCommand(args: string[]) {
     const script = await fs.readFile(fileName, "utf-8");
 
     const runtime = new TstRuntime();
+    registerNodeTypes(runtime);
     runtime.verbose = values.verbose || false;
 
     let instance: TstInstanceObject | null = null;

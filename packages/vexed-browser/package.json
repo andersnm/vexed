@@ -1,0 +1,16 @@
+{
+  "name": "vexed-browser",
+  "version": "0.0.1",
+  "private": false,
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "main": "./dist/index.js",
+  "source": "./src/index.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "vexed": "file:../vexed",
+    "tslib": "^2.4.1"
+  }
+}
