@@ -74,10 +74,14 @@ export class AstVisitor {
                         exprType: "new", 
                         type: typeIfNewExpression, 
                         args: expr.args.map(arg => this.resolveExpression(arg)),
-                        properties: properties
+                        properties: properties,
                     } as TstNewExpression;
                 }
                 // If not a type, fall through to handle as a function-typed variable
+            }
+
+            if (expr.properties !== undefined) {
+                this.runtime.error("Unexpected '{' after function call.", expr.location);
             }
 
             const callee = this.resolveExpression(expr.callee);

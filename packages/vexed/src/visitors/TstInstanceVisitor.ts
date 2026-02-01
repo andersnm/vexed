@@ -2,6 +2,7 @@ import { TstInstanceExpression, TstExpression, TstInstanceObject, TypeMeta, Inst
 import { TstRuntime } from "../TstRuntime.js";
 import { TypeDefinition } from "../TstType.js";
 import { ArrayBaseTypeDefinition } from "../types/ArrayBaseTypeDefinition.js";
+import { PoisonTypeDefinition } from "../types/PoisonTypeDefinition.js";
 import { printScope } from "./TstPrintVisitor.js";
 import { TstScope } from "./TstReduceExpressionVisitor.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
@@ -22,6 +23,11 @@ export class TstInstanceVisitor extends TstReplaceVisitor {
         this.visited.add(expr.instance);
 
         const instanceType = expr.instance[TypeMeta];
+
+        if (instanceType instanceof PoisonTypeDefinition) {
+            return expr;
+        }
+
         const scope = expr.instance[ScopeMeta].get(instanceType)!;
         this.visitScopeConstructorArguments(expr.instance, scope, instanceType);
 
