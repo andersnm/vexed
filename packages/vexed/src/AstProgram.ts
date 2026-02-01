@@ -116,6 +116,7 @@ export interface AstFunctionCallExpression extends AstExpression {
     exprType: "functionCall";
     callee: AstExpression;
     args: AstExpression[];
+    properties?: AstPropertyStatement[];
 }
 
 export interface AstMemberExpression extends AstExpression {

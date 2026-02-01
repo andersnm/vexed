@@ -66,7 +66,16 @@ export class AstVisitor {
                 const functionName = expr.callee.value;
                 const typeIfNewExpression = this.runtime.tryGetType(functionName);
                 if (typeIfNewExpression) {
-                    return { exprType: "new", type: typeIfNewExpression, args: expr.args.map(arg => this.resolveExpression(arg)) } as TstNewExpression;
+                    const properties = expr.properties ? expr.properties.map(prop => ({
+                        name: prop.name,
+                        argument: this.resolveExpression(prop.argument)
+                    })) : undefined;
+                    return { 
+                        exprType: "new", 
+                        type: typeIfNewExpression, 
+                        args: expr.args.map(arg => this.resolveExpression(arg)),
+                        properties: properties
+                    } as TstNewExpression;
                 }
                 // If not a type, fall through to handle as a function-typed variable
             }

@@ -194,6 +194,10 @@ export class TstReplaceVisitor {
             exprType: expr.exprType,
             type: expr.type,
             args: expr.args.map(arg => this.visit(arg)),
+            properties: expr.properties?.map(prop => ({
+                name: prop.name,
+                argument: this.visit(prop.argument)
+            })),
         } as TstNewExpression;
     }
 

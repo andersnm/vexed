@@ -320,3 +320,66 @@ test("Implicit type collection inside if statement block", async () => {
         output: 0
     });
 });
+
+test("Instance literals", async () => {
+    const json = await compileToJson("./files/instance-literal.vexed");
+    assert.deepEqual(json, {
+        config: {
+            name: "Config Name",
+            ip: "1.0.0.120",
+            defValue: "test"
+        }
+    });
+});
+
+test("Instance literals comprehensive", async () => {
+    const json = await compileToJson("./files/instance-literal-comprehensive.vexed");
+    assert.deepEqual(json, {
+        simpleConfig: {
+            name: "Simple Config",
+            ip: "127.0.0.1",
+            port: 8080,
+            defValue: "default",
+            data: {
+                name: "test",
+                value: 42
+            }
+        },
+        nestedLiteral: {
+            name: "Nested Literal",
+            ip: "192.168.1.1",
+            port: 9000,
+            defValue: "nested",
+            data: {
+                name: "Overridden Name",
+                value: 200
+            }
+        },
+        configWithExpression: {
+            name: "With Expression",
+            ip: "10.0.0.1",
+            port: 3000,
+            defValue: "expression",
+            data: {
+                name: "expr",
+                value: 3001
+            }
+        }
+    });
+});
+
+test("Instance literals with inheritance", async () => {
+    const json = await compileToJson("./files/instance-literal-inheritance.vexed");
+    assert.deepEqual(json, {
+        base: {
+            baseValue: 100,
+            baseName: "Base Instance"
+        },
+        derived: {
+            baseValue: 200,
+            baseName: "Derived Base Name",
+            derivedValue: 300,
+            derivedName: "Derived Name"
+        }
+    });
+});

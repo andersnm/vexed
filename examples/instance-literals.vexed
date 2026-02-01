@@ -1,0 +1,44 @@
+# Example: Class Instance Literals
+#
+# Instance literals allow you to initialize class properties
+# immediately after creating an instance, similar to C# object initializers.
+
+class Server(port: int) {
+    public name: string;
+    public host: string;
+    public port: int = port;
+    public ssl: bool;
+}
+
+class Database(connectionString: string) {
+    public connectionString: string = connectionString;
+    public maxConnections: int;
+    public timeout: int;
+}
+
+class Config() {
+    public appName: string = "MyApp";
+    public version: string = "1.0.0";
+    
+    # Simple instance literal
+    public webServer: Server = Server(8080) {
+        name = "Production Server";
+        host = "api.example.com";
+        ssl = true;
+    };
+    
+    # Nested instance literal
+    public database: Database = Database("postgres://localhost:5432/mydb") {
+        maxConnections = 100;
+        timeout = 30;
+    };
+}
+
+class Main() extends Config() {
+    # Instance literals work with inheritance
+    public devServer: Server = Server(3000) {
+        name = "Development Server";
+        host = "localhost";
+        ssl = false;
+    };
+}

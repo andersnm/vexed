@@ -1,0 +1,44 @@
+# Test class instance literals with nested instances and expressions
+
+class Data(name: string, value: int) {
+    public name: string = name;
+    public value: int = value;
+}
+
+class Config(defValue: string) {
+    public name: string;
+    public ip: string;
+    public port: int;
+    public defValue: string = defValue; 
+    public data: Data;
+}
+
+class Main() {
+   public simpleConfig: Config = Config("default") {
+     name = "Simple Config";
+     ip = "127.0.0.1";
+     port = 8080;
+     data = Data("test", 42);
+   };
+
+   public nestedLiteral: Config = Config("nested") {
+     name = "Nested Literal";
+     ip = "192.168.1.1";
+     port = 9000;
+     data = Data("nested", 100) {
+       name = "Overridden Name";
+       value = 200;
+     };
+   };
+
+   getValue(): int {
+     return 3000;
+   }
+
+   public configWithExpression: Config = Config("expression") {
+     name = "With Expression";
+     ip = "10.0.0.1";
+     port = this.getValue();
+     data = Data("expr", this.getValue() + 1);
+   };
+}

@@ -420,6 +420,7 @@ export class ProgramParser extends CstParser {
     this.CONSUME(LParen);
     this.OPTION(() => this.SUBRULE(this.expressionList));
     this.CONSUME(RParen);
+    this.OPTION2(() => this.SUBRULE(this.instanceLiteral));
   });
 
   indexSuffix = this.RULE("indexSuffix", () => {
@@ -440,5 +441,11 @@ export class ProgramParser extends CstParser {
     });
 
     this.CONSUME(RBracket);
+  });
+
+  instanceLiteral = this.RULE("instanceLiteral", () => {
+    this.CONSUME(LCurly);
+    this.MANY(() => this.SUBRULE(this.propertyStatement));
+    this.CONSUME(RCurly);
   });
 }
