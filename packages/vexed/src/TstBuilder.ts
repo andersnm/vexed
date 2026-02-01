@@ -20,13 +20,19 @@ export class TstBuilder {
     collectType(type: AstType, classDef: AstClass, method: AstMethodDeclaration | null): TypeDefinition | null {
         const typeName = formatAstTypeName(type, classDef, method);
 
+        // Check if the type already exists - handles f.ex "MissingType[]" when "MissingType" is missing.
+        const existingType = this.runtime.tryGetType(typeName);
+        if (existingType) {
+            return existingType;
+        }
+
         if (isAstArrayType(type)) {
             let elementType = this.collectType(type.arrayItemType, classDef, method);
             if (!elementType) {
                 return null;
             }
 
-            return this.createArrayType(typeName, elementType);
+            return this.runtime.createArrayType(typeName, elementType);
         }
 
         if (isAstFunctionType(type)) {
@@ -59,17 +65,6 @@ export class TstBuilder {
         throw new Error("Unsupported type kind in collectType: " + JSON.stringify(type));
     }
 
-    createArrayType(arrayTypeName: string, elementType: TypeDefinition) {
-        const type = this.runtime.tryGetType(arrayTypeName);
-        if (type) {
-            return type;
-        }
-
-        const specializedArrayType = new ArrayTypeDefinition(this.runtime, arrayTypeName, elementType);
-        this.runtime.registerTypes([specializedArrayType]);
-        return specializedArrayType;
-    }
-
     createFunctionType(parameterTypes: TypeDefinition[], returnType: TypeDefinition) {
         const functionTypeName = getFunctionTypeName(returnType, parameterTypes);
         const type = this.runtime.tryGetType(functionTypeName);
@@ -94,6 +89,29 @@ export class TstBuilder {
         return genericType;
     }
 
+    collectStatementTypes(stmt: AstStatement, classDef: AstClass, method: AstMethodDeclaration | null): void {
+        if (isAstIfStatement(stmt)) {
+            for (let s of stmt.thenBlock) {
+                this.collectStatementTypes(s, classDef, method);
+            }
+            if (stmt.elseBlock) {
+                for (let s of stmt.elseBlock) {
+                    this.collectStatementTypes(s, classDef, method);
+                }
+            }
+            return;
+        }
+
+        if (isAstLocalVarDeclaration(stmt)) {
+            if (!this.collectType(stmt.varType, classDef, method)) {
+                const varTypeName = formatAstTypeName(stmt.varType, classDef, method);
+                this.runtime.error(`Could not find local variable ${stmt.name} type ${varTypeName} in ${classDef.name}.${method?.name}`, stmt.location);
+                this.runtime.createPoisonType(varTypeName);
+            }
+            return;
+        }
+    }
+
     resolveProgram(visited: AstProgram): boolean {
 
         // Pass 1: Create new half-constructed types
@@ -108,7 +126,7 @@ export class TstBuilder {
         }
 
         // Pass 1.5: Collect array and function types
-        // TODO: Also collect from array literals f.ex "([[1,2],[3,4]])[0]" requires int[][] internally
+        // NOTE: Implicit types for literals - f.ex "([[1,2],[3,4]])[0]" uses int[][] internally - are collected later.
         for (let programUnit of visited.programUnits) {
             if (isClass(programUnit)) {
                 const type = this.runtime.getType(programUnit.name);
@@ -168,6 +186,11 @@ export class TstBuilder {
                         // TODO?: if any component of the function is poisoned, create poison instead of function type!
 
                         this.createFunctionType(parameterTypes, returnType);
+
+                        // Catch type errors and collect explicitly referenced array/function types from statements
+                        for (let stmt of unit.statementList) {
+                            this.collectStatementTypes(stmt, programUnit, unit);
+                        }
                     }
                 }
             }

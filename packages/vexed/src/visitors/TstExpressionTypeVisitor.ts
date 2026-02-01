@@ -148,15 +148,7 @@ export class TstExpressionTypeVisitor extends TstReplaceVisitor {
     }
 
     visitFunctionCallExpression(expr: TstFunctionCallExpression): TstExpression {
-        this.visit(expr.callee);
-
-        // callee must resolve a function signature type
-        if (!(this.visitType instanceof FunctionTypeDefinition)) {
-            console.log(expr);
-            throw new Error("Callee is not a function type: " + (this.visitType?.name || "unknown"));
-        }
-
-        this.visitType = this.runtime.constructGenericType(this.visitType.returnType, expr.genericBindings);
+        this.visitType = expr.returnType;
         return expr;
     }
 

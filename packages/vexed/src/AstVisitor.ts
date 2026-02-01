@@ -5,6 +5,8 @@ import { TstRuntime } from "./TstRuntime.js";
 import { TstExpressionTypeVisitor } from "./visitors/TstExpressionTypeVisitor.js";
 import { FunctionTypeDefinition, getFunctionTypeName } from "./types/FunctionTypeDefinition.js";
 import { PoisonTypeDefinition } from "./types/PoisonTypeDefinition.js";
+import { ArrayBaseTypeDefinition } from "./types/ArrayBaseTypeDefinition.js";
+import { GenericUnresolvedTypeDefinition } from "./types/GenericUnresolvedTypeDefinition.js";
 
 // There is no visitor for Ast types, it is only traversed once during conversion to Tst types.
 
@@ -101,7 +103,7 @@ export class AstVisitor {
                 }
             }
 
-            const returnType = this.runtime.constructGenericType(methodType.returnType, genericBindings);
+            const returnType = this.constructGenericType(methodType.returnType, genericBindings);
 
             return {
                 exprType: "functionCall", 
@@ -154,8 +156,7 @@ export class AstVisitor {
 
         if (isAstArrayLiteral(expr)) {
             const elements = expr.elements.map(e => this.resolveExpression(e));
-            const visitor = new TstExpressionTypeVisitor(this.runtime);
-            const arrayType = this.runtime.findArrayType(visitor, elements);
+            const arrayType = this.inferArrayType(elements);
             if (!arrayType) {
                 throw new Error("Could not determine array type for elements");
             }
@@ -293,5 +294,56 @@ export class AstVisitor {
         }
 
         throw new Error("Internal error: Unknown statement type " + stmt.stmtType);
+    }
+
+    inferArrayType(elements: TstExpression[]): TypeDefinition | null {
+        let type: TypeDefinition | null = null;
+        // TODO: allow common base type
+        for (let element of elements) {
+            const elementType = this.runtime.getExpressionType(element);
+            if (!type) {
+                type = elementType;
+                continue;
+            }
+
+            if (type !== elementType) {
+                throw new Error("Array elements must be of the same type");
+            }
+        }
+
+        if (!type) {
+            // Empty arrays should be handled explicitly earlier
+            throw new Error("Cannot determine array element type for empty array");
+        }
+
+        // Implicitly inferred array literal types are not collected during the static pass and must be created.
+        // F.ex "([[1,2],[3,4]])[0]"
+        const arrayTypeName = type.name + "[]";
+        return this.runtime.createArrayType(arrayTypeName, type);
+    }
+
+    constructGenericType(inputType: TypeDefinition, bindings: Map<string, TypeDefinition>): TypeDefinition {
+        if (bindings.size === 0) {
+            return inputType;
+        }
+
+        if (inputType instanceof ArrayBaseTypeDefinition) {
+            const genericElementType = inputType.elementType;
+            const elementType = this.constructGenericType(genericElementType, bindings);
+            // Implicitly inferred specialized generic array return types are not collected during the static pass and must be created.
+            // F.ex the return type of array .map() is T[]
+            return this.runtime.createArrayType(elementType.name + "[]", elementType);
+        }
+
+        if (inputType instanceof GenericUnresolvedTypeDefinition) {
+            const binding = bindings.get(inputType.name);
+            if (!binding) {
+                throw new Error("Cannot resolve generic type: " + inputType.name);
+            }
+
+            return binding;
+        }
+
+        return inputType;
     }
 }

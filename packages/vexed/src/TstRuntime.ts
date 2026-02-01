@@ -133,30 +133,6 @@ export class TstRuntime {
         }
     }
 
-    findArrayType(visitor: TstExpressionTypeVisitor, elements: TstExpression[]): TypeDefinition | null {
-        let type: TypeDefinition | null = null;
-        // TODO: allow common base type
-        for (let element of elements) {
-            visitor.visit(element);
-
-            if (!type) {
-                type = visitor.visitType;
-            }
-
-            if (type !== visitor.visitType) {
-                throw new Error("Array elements must be of the same type");
-            }
-        }
-
-        if (!type) {
-            // Empty arrays should be handled explicitly earlier
-            throw new Error("Cannot determine array element type for empty array");
-        }
-
-        const arrayTypeName = type.name + "[]";
-        return this.getType(arrayTypeName);
-    }
-
     createInstance(type: TypeDefinition, args: TstExpression[], userData: any = null, sealed: boolean = false): TstInstanceObject {
         const obj: TstInstanceObject = { 
             [TypeMeta]: type,
@@ -167,29 +143,6 @@ export class TstRuntime {
 
         this.setupInstanceScope(obj, type, args);
         return obj;
-    }
-
-    constructGenericType(inputType: TypeDefinition, bindings: Map<string, TypeDefinition>): TypeDefinition {
-        if (bindings.size === 0) {
-            return inputType;
-        }
-
-        if (inputType instanceof ArrayBaseTypeDefinition) {
-            const genericElementType = inputType.elementType;
-            const elementType = this.constructGenericType(genericElementType, bindings);
-            return this.getType(elementType.name + "[]");
-        }
-
-        if (inputType instanceof GenericUnresolvedTypeDefinition) {
-            const binding = bindings.get(inputType.name);
-            if (!binding) {
-                throw new Error("Cannot resolve generic type: " + inputType.name);
-            }
-
-            return binding;
-        }
-
-        return inputType;
     }
 
     inferBindings(expected: TypeDefinition, actual: TypeDefinition, out: Map<string, TypeDefinition>): boolean {
@@ -368,5 +321,16 @@ export class TstRuntime {
         const poisonType = new PoisonTypeDefinition(this, name);
         this.registerTypes([poisonType]);
         return poisonType;
+    }
+
+    createArrayType(arrayTypeName: string, elementType: TypeDefinition) {
+        const type = this.tryGetType(arrayTypeName);
+        if (type) {
+            return type;
+        }
+
+        const specializedArrayType = new ArrayTypeDefinition(this, arrayTypeName, elementType);
+        this.registerTypes([specializedArrayType]);
+        return specializedArrayType;
     }
 }

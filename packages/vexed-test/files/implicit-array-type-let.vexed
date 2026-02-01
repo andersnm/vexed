@@ -1,0 +1,10 @@
+# Test implicit type collection in method variable declaration
+
+class Main() {
+  testMethod(i: int): int {
+    let x: int[] = [ 1, 2, 3 ];
+    return x[i];
+  }
+
+  public output: int = this.testMethod(0);
+}

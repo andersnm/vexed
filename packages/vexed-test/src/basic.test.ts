@@ -292,3 +292,31 @@ test('Boolean operators', async () => {
         complex2: true
     });
 });
+
+test("Implicit array type in variable declaration", async () => {
+    const json = await compileToJson("./files/implicit-array-type-let.vexed");
+    assert.deepEqual(json, {
+        output: 1
+    });
+});
+
+test("Implicit nested array type in return value", async () => {
+    const json = await compileToJson("./files/implicit-array-type-nested.vexed");
+    assert.deepEqual(json, {
+        output: 2
+    });
+});
+
+test("Implicit array type in nested array map method", async () => {
+    const json = await compileToJson("./files/implicit-array-type-map.vexed");
+    assert.deepEqual(json, {
+        output: "string"
+    });
+});
+
+test("Implicit type collection inside if statement block", async () => {
+    const json = await compileToJson("./files/implicit-array-type-if.vexed");
+    assert.deepEqual(json, {
+        output: 0
+    });
+});
