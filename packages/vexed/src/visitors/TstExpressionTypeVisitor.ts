@@ -1,16 +1,20 @@
-import { TstBinaryExpression, TstDecimalLiteralExpression, TstExpression, TstFunctionCallExpression, TstInstanceExpression, TstMemberExpression, TstMissingInstanceExpression, TstNativeMemberExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstScopedExpression, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstVariable, TstVariableExpression, TypeMeta } from "../TstExpression.js";
+import { TstBinaryExpression, TstDecimalLiteralExpression, TstPoisonExpression, TstExpression, TstFunctionCallExpression, TstFunctionReferenceExpression, TstIndexExpression, TstInstanceExpression, TstIntegerLiteralExpression, TstMemberExpression, TstMissingInstanceExpression, TstNativeMemberExpression, TstNewArrayExpression, TstNewExpression, TstParameterExpression, TstPromiseExpression, TstStatementExpression, TstThisExpression, TstUnaryExpression, TstUnboundFunctionReferenceExpression, TstVariableExpression, TypeMeta } from "../TstExpression.js";
 import { TstRuntime } from "../TstRuntime.js";
 import { TypeDefinition } from "../TstType.js";
+import { FunctionTypeDefinition, getFunctionTypeName } from "../types/FunctionTypeDefinition.js";
+import { PoisonTypeDefinition } from "../types/PoisonTypeDefinition.js";
+import { ArrayBaseTypeDefinition } from "../types/ArrayBaseTypeDefinition.js";
 import { TstReplaceVisitor } from "./TstReplaceVisitor.js";
 
 // Usage: Visit an expression, then check visitType for the resulting type. One-time use.
 
 export class TstExpressionTypeVisitor extends TstReplaceVisitor {
 
-    visitType: TypeDefinition | null = null;
+    visitType: TypeDefinition;
 
-    constructor(private runtime: TstRuntime, private thisType: TypeDefinition) {
+    constructor(private runtime: TstRuntime) {
         super();
+        this.visitType = runtime.getType("any");
     }
 
     visitMemberExpression(expr: TstMemberExpression): TstExpression {
@@ -21,12 +25,43 @@ export class TstExpressionTypeVisitor extends TstReplaceVisitor {
             throw new Error("Cannot get type of member expression");
         }
 
-        this.visitType = objectType.getProperty(expr.property)?.type || null;
+        if (objectType instanceof PoisonTypeDefinition) {
+            this.visitType = objectType;
+            return expr;
+        }
+
+        const typeProperty = objectType.getProperty(expr.property);
+        if (!typeProperty) {
+            throw new Error(expr.property + " is not a member of " + objectType.name);
+        }
+
+        this.visitType = typeProperty.type;
         if (!this.visitType) {
             throw new Error(expr.property + " is not a member of " + objectType.name);
         }
 
         return expr;
+    }
+
+    visitIndexExpression(expr: TstIndexExpression): TstExpression {
+        this.visit(expr.object);
+
+        const objectType = this.visitType;
+        if (!objectType) {
+            throw new Error("Cannot get type of index expression");
+        }
+
+        if (objectType instanceof PoisonTypeDefinition) {
+            this.visitType = objectType;
+            return expr;
+        }
+
+        if (objectType instanceof ArrayBaseTypeDefinition) {
+            this.visitType = objectType.elementType;
+            return expr;
+        }
+
+        throw new Error("Index expression on non-array type: " + objectType.name);
     }
 
     visitParameterExpression(expr: TstParameterExpression): TstExpression {
@@ -40,7 +75,7 @@ export class TstExpressionTypeVisitor extends TstReplaceVisitor {
     }
 
     visitThisExpression(expr: TstThisExpression): TstExpression {
-        this.visitType = this.thisType;
+        this.visitType = expr.type;
         return expr;
     }
 
@@ -49,8 +84,18 @@ export class TstExpressionTypeVisitor extends TstReplaceVisitor {
         return expr;
     }
 
+    visitNewArrayExpression(expr: TstNewArrayExpression): TstExpression {
+        this.visitType = expr.arrayType;
+        return expr;
+    }
+
     visitDecimalLiteral(expr: TstDecimalLiteralExpression): TstDecimalLiteralExpression {
         this.visitType = this.runtime.getType("decimal");
+        return expr;
+    }
+
+    visitIntegerLiteral(expr: TstIntegerLiteralExpression): TstIntegerLiteralExpression {
+        this.visitType = this.runtime.getType("int");
         return expr;
     }
 
@@ -66,9 +111,29 @@ export class TstExpressionTypeVisitor extends TstReplaceVisitor {
         this.visit(expr.right);
         const rhsType = this.visitType;
 
+        if (lhsType instanceof PoisonTypeDefinition) {
+            this.visitType = lhsType;
+            return expr;
+        }
+
+        if (rhsType instanceof PoisonTypeDefinition) {
+            this.visitType = rhsType;
+            return expr;
+        }
+
         if (lhsType !== rhsType) {
             throw new Error("Binary expression must have same types on both sides");
         }
+
+        // For comparison and logical operators, the result type is bool
+        if (expr.operator === "==" || expr.operator === "!=" ||
+            expr.operator === "<" || expr.operator === "<=" ||
+            expr.operator === ">" || expr.operator === ">=" ||
+            expr.operator === "&&" || expr.operator === "||") {
+            this.visitType = this.runtime.getType("bool");
+        }
+        // For other operators (+, -, *, /), the result type is the same as the operand types
+        // visitType is already set to rhsType which equals lhsType
 
         return expr;
     }
@@ -83,7 +148,19 @@ export class TstExpressionTypeVisitor extends TstReplaceVisitor {
     }
 
     visitFunctionCallExpression(expr: TstFunctionCallExpression): TstExpression {
-        this.visitType = expr.method.returnType;
+        this.visitType = expr.returnType;
+        return expr;
+    }
+
+    visitFunctionReferenceExpression(expr: TstFunctionReferenceExpression): TstExpression {
+        const functionTypeName = getFunctionTypeName(expr.method.returnType, expr.method.parameters.map(p => p.type));
+        this.visitType = this.runtime.getType(functionTypeName);
+        return expr;
+    }
+
+    visitUnboundFunctionReferenceExpression(expr: TstUnboundFunctionReferenceExpression): TstExpression {
+        const functionTypeName = getFunctionTypeName(expr.method.returnType, expr.method.parameters.map(p => p.type));
+        this.visitType = this.runtime.getType(functionTypeName);
         return expr;
     }
 
@@ -104,6 +181,11 @@ export class TstExpressionTypeVisitor extends TstReplaceVisitor {
 
     visitMissingInstanceExpression(expr: TstMissingInstanceExpression): TstExpression {
         this.visitType = expr.propertyType;
+        return expr;
+    }
+
+    visitPoisonExpression(expr: TstPoisonExpression): TstExpression {
+        this.visitType = expr.poisonType;
         return expr;
     }
 }

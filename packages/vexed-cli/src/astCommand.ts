@@ -1,7 +1,6 @@
 import { promises as fs } from "fs";
 import { parseArgs } from "node:util";
 import { printObject, TstRuntime } from "vexed";
-import { registerDigitalOcean } from "./digitalocean.js";
 
 // "ast" is a debug mode.
 
@@ -24,8 +23,6 @@ export async function astCommand(args: string[]) {
     runtime.verbose = values.verbose || false;
     runtime.maxSteps = values.steps ? parseInt(values.steps) : runtime.maxSteps;
 
-    registerDigitalOcean(runtime);
-
     runtime.loadScript(script, fileName);
 
     const main = runtime.getType("Main");
@@ -33,7 +30,7 @@ export async function astCommand(args: string[]) {
         throw new Error("No Main class found");
     }
 
-    const instance = main.createInstance([])!;
+    const instance = main.createInstance([]);
 
     if (values.verbose) console.log("Created main instance: ", printObject(instance));
 

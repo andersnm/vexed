@@ -1,0 +1,9 @@
+# Test implicit type collection in return statement nested array access
+
+class Main() {
+  testNestedArray(): int {
+    return [ [ 1, 2 ], [ 3, 4 ] ][0][1];
+  }
+
+  public output: int = this.testNestedArray();
+}

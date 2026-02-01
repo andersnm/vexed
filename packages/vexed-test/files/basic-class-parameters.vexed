@@ -1,19 +1,19 @@
-class Base(string strValue, int intValue, bool boolValue) {
-  public string baseStr = strValue;
-  public int baseNum = intValue;
-  public bool baseBool = boolValue;
+class Base(strValue: string, intValue: int, boolValue: bool) {
+  public baseStr: string = strValue;
+  public baseNum: int = intValue;
+  public baseBool: bool = boolValue;
 }
 
-class Sidecar(Base baseObj) {
-  public string sidecarStr = baseObj.baseStr;
-  public int sidecarNum = baseObj.baseNum;
-  public bool sidecarBool = baseObj.baseBool;
+class Sidecar(baseObj: Base) {
+  public sidecarStr: string = baseObj.baseStr;
+  public sidecarNum: int = baseObj.baseNum;
+  public sidecarBool: bool = baseObj.baseBool;
 }
 
 class Main() extends Base("String, it is", 321, true) {
-  public string mainStr = "It's a string";
-  public int mainNum = 123;
-  public bool mainBool = true;
-  public Base mainBase = Base(this.mainStr, this.mainNum, this.mainBool);
-  public Sidecar mainSidecar = Sidecar(this.mainBase);
+  public mainStr: string = "It's a string";
+  public mainNum: int = 123;
+  public mainBool: bool = true;
+  public mainBase: Base = Base(this.mainStr, this.mainNum, this.mainBool);
+  public mainSidecar: Sidecar = Sidecar(this.mainBase);
 }

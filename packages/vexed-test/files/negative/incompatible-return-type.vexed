@@ -1,0 +1,5 @@
+class Main() {
+    testMethod(): int {
+        return "not an int";
+    }
+}

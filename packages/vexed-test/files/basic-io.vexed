@@ -1,14 +1,14 @@
 class Main() {
-  public string fileName = (typeof this).scriptPath + "/" + "textfile.txt";
-  public string content = io.readTextFile(this.getFileName());
-  public string warped = this.testAsyncParam(this.content);
+  public fileName: string = (typeof this).scriptPath + "/" + "textfile.txt";
+  public content: string = io.readTextFile(this.getFileName());
+  public warped: string = this.testAsyncParam(this.content);
 
-  string testAsyncParam(string asynced) {
-    any tmp = io.print(asynced); # Prints "Promise<string>"
+  testAsyncParam(asynced: string): string {
+    let tmp: any = io.print(asynced); # Prints "Promise<string>"
     return asynced;
   }
 
-  string getFileName() {
+  getFileName(): string {
     return this.fileName;
   }
 }

@@ -1,0 +1,21 @@
+class Main() {
+    public simpleArray: string[] = this.makeSimpleArray("hello");
+    public nestedArray: string[] = this.makeNestedArray("nested");
+    public multiParamArray: string[] = this.makeTwoParamArray("one", "two");
+    
+    makeSimpleArray(s: string): string[] {
+        return [s, s + "2", s + "3"];
+    }
+
+    makeNestedArray(prefix: string): string[] {
+        return [prefix + this.suffix(), prefix + this.suffix() + "2"];
+    }
+
+    makeTwoParamArray(a: string, b: string): string[] {
+        return [a, b, a + b];
+    }
+
+    suffix(): string {
+        return "_suffix";
+    }
+}

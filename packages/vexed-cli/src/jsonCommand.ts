@@ -1,7 +1,7 @@
 import { promises as fs } from "fs";
 import { parseArgs } from "node:util";
-import { printJsonObject, printObject, TstRuntime } from "vexed";
-import { registerDigitalOcean } from "./digitalocean.js";
+import { printJsonObject, printObject, TstInstanceObject, TstRuntime } from "vexed";
+import { ScriptError } from "vexed/dist/ScriptError.js";
 
 // "json" is a general-purpose "Vexed Configuration Language" mode.
 // Evaluates plain Vexed scripts without any provider types nor remote state.
@@ -25,21 +25,37 @@ export async function jsonCommand(args: string[]) {
     const runtime = new TstRuntime();
     runtime.verbose = values.verbose || false;
 
-    registerDigitalOcean(runtime);
+    let instance: TstInstanceObject | null = null;
+    try {
+        runtime.loadScript(script, fileName);
 
-    runtime.loadScript(script, fileName);
+        const main = runtime.tryGetType("Main");
+        if (!main) {
+            throw new ScriptError("Type error", [ { message: "Main class entrypoint not found", location: { fileName, line: 1, column: 1, startOffset: 0, endOffset: 0, image: "" }}]);
+        }
 
-    const main = runtime.getType("Main");
-    if (!main) {
-        throw new Error("No Main class found");
+        instance = main.createInstance([]);
+
+        if (values.verbose) console.log("Created main instance: ", printObject(instance));
+
+        await runtime.reduceInstance(instance);
+    } catch (err) {
+        if (err instanceof ScriptError) {
+            for (const error of err.errors) {
+                console.error(`${error.location.fileName}:${error.location.line}:${error.location.column} - error: ${error.message}`);
+            }
+
+            if (!instance || !values.force) {
+                return 1;
+            }
+
+        } else {
+            throw err;
+        }
     }
-
-    const instance = main.createInstance([])!;
-
-    if (values.verbose) console.log("Created main instance: ", printObject(instance));
-
-    await runtime.reduceInstance(instance);
 
     const jsonOutput = printJsonObject(instance, values.force || false);
     console.log(JSON.stringify(jsonOutput, null, 2));
+
+    return 0;
 }

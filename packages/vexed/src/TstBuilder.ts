@@ -1,210 +1,14 @@
-import { AstExpression, AstProgram, AstStatement, isAstArrayLiteral, isAstBinaryExpression, isAstBooleanLiteral, isAstDecimalLiteral, isAstFunctionCall, isAstIdentifier, isAstIfStatement, isAstIndexExpression, isAstIntegerLiteral, isAstLocalVarAssignment, isAstLocalVarDeclaration, isAstMember, isAstReturnStatement, isAstStringLiteral, isAstUnaryExpression, isClass, isMethodDeclaration, isPropertyDefinition, isPropertyStatement } from "./AstProgram.js";
-import { InstanceMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstReturnStatement, TstStatement, TstThisExpression, TstUnaryExpression, TstVariable, TstVariableExpression } from "./TstExpression.js";
-import { TypeDefinition, TypeParameter } from "./TstType.js";
+import { AstClass, AstExpression, AstMethodDeclaration, AstProgram, AstStatement, formatAstTypeName, isAstArrayLiteral, isAstBinaryExpression, isAstBooleanLiteral, isAstDecimalLiteral, isAstFunctionCall, isAstIdentifier, isAstIfStatement, isAstIndexExpression, isAstIntegerLiteral, isAstLocalVarAssignment, isAstLocalVarDeclaration, isAstMember, isAstReturnStatement, isAstStringLiteral, isAstUnaryExpression, isClass, isMethodDeclaration, isPropertyDefinition, isPropertyStatement } from "./AstProgram.js";
+import { InstanceMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstFunctionReferenceExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstReturnStatement, TstStatement, TstThisExpression, TstUnaryExpression, TstUnboundFunctionReferenceExpression, TstVariable, TstVariableExpression } from "./TstExpression.js";
+import { TypeDefinition, TypeMethod, TypeParameter } from "./TstType.js";
 import { TstRuntime } from "./TstRuntime.js";
 import { TstExpressionTypeVisitor } from "./visitors/TstExpressionTypeVisitor.js";
-
-// There is no visitor for Ast types, it is only traversed once during conversion to Tst types.
-
-class AstVisitor {
-    parent: AstVisitor|null;
-    runtime: TstRuntime;
-    thisType: TypeDefinition;
-    parameters: TypeParameter[];
-    scope: TypeParameter[] = []; // local variables
-
-    constructor(parent: AstVisitor|null, runtime: TstRuntime, thisType: TypeDefinition, parameters: TypeParameter[]) {
-        this.parent = parent;
-        this.runtime = runtime;
-        this.thisType = thisType;
-        this.parameters = parameters;
-    }
-
-    resolveExpression(expr: AstExpression): TstExpression {
-        if (isAstStringLiteral(expr)) {
-            const stringType = this.runtime.getType("string");
-            const stringObject = stringType.createInstance([]);
-            stringObject[InstanceMeta] = expr.value;
-
-            return {
-                exprType: "instance",
-                instance: stringObject
-            } as TstInstanceExpression;
-        }
-
-        if (isAstIntegerLiteral(expr)) {
-            return {
-                exprType: "instance",
-                instance: this.runtime.createInt(parseInt(expr.value))
-            } as TstInstanceExpression;
-        }
-
-        if (isAstDecimalLiteral(expr)) {
-            const decimalType = this.runtime.getType("decimal");
-            const decimalObject = decimalType.createInstance([]);
-            decimalObject[InstanceMeta] = parseFloat(expr.value);
-            return {
-                exprType: "instance",
-                instance: decimalObject
-            } as TstInstanceExpression;
-        }
-
-        if (isAstBooleanLiteral(expr)) {
-            return {
-                exprType: "instance",
-                instance: this.runtime.createBool(expr.value)
-            } as TstInstanceExpression;
-        }
-
-        if (isAstFunctionCall(expr)) {
-            if (isAstIdentifier(expr.callee)) {
-                const functionName = expr.callee.value;
-                const typeIfNewExpression = this.runtime.getType(functionName);
-                if (!typeIfNewExpression) {
-                    throw new Error("Unknown type: " + functionName);
-                }
-
-                return { exprType: "new", type: typeIfNewExpression, args: expr.args.map(arg => this.resolveExpression(arg)) } as TstNewExpression;
-            }
-
-            if (isAstMember(expr.callee)) {
-                const functionName = expr.callee.property;
-                const object = this.resolveExpression(expr.callee.object) as TstMemberExpression;
-                const calleeType = this.runtime.getExpressionType(object, this.thisType);
-                if (!calleeType) {
-                    throw new Error(`Could not find type for member ${functionName}`);
-                }
-
-                const method = calleeType.getMethod(functionName);
-                if (!method) {
-                    throw new Error(`Method ${functionName} not found on type ${calleeType.name}`);
-                }
-
-                // TODO: unwrap to StatementExpression here?? and embed parameter expressions - may be too early
-                return { exprType: "functionCall", object, method, args: expr.args.map(arg => this.resolveExpression(arg)) } as TstFunctionCallExpression;
-            }
-
-            throw new Error("Function calls not implemented yet: " + expr.callee + " " + expr.callee.exprType);
-        }
-
-        if (isAstIdentifier(expr)) {
-            // Classify all identifiers as parameter, type, function, variable
-
-            if (expr.value === "this") {
-                return { exprType: "this" } as TstThisExpression;
-            } else {
-                const pi = this.parameters.find(p => p.name == expr.value);
-                if (pi) {
-                    return { exprType: "parameter", name: expr.value, type: pi.type } as TstParameterExpression;
-                }
-
-                const vi = this.scope.find(v => v.name === expr.value);
-                if (vi) {
-                    return { exprType: "variable", name: expr.value, type: vi.type } as TstVariableExpression;
-                }
-
-                const gi = this.runtime.globalScope.variables.find(v => v.name === expr.value);
-                if (gi) {
-                    const giType = this.runtime.getExpressionType(gi.value, this.thisType);
-                    return { exprType: "variable", name: expr.value, type: giType } as TstVariableExpression;
-                }
-
-                if (this.parent) {
-                    return this.parent.resolveExpression(expr);
-                }
-
-                throw new Error("Unknown identifier " + expr.value)
-            }
-        }
-
-        if (isAstMember(expr)) {
-            return { exprType: "member", object: this.resolveExpression(expr.object), property: expr.property } as TstMemberExpression;
-        }
-
-        if (isAstArrayLiteral(expr)) {
-            const elements = expr.elements.map(e => this.resolveExpression(e));
-            const visitor = new TstExpressionTypeVisitor(this.runtime, this.thisType)
-            const arrayType = this.runtime.findArrayType(visitor, elements);
-            if (!arrayType) {
-                throw new Error("Could not determine array type for elements");
-            }
-
-            // console.log("Literal array constructed at resolve time with type", arrayType?.name || "unknown");
-            const arrayInstance = arrayType.createInstance([]);
-            arrayInstance![InstanceMeta].push(...elements);
-
-            return {
-                exprType: "instance",
-                instance: arrayInstance
-            } as TstInstanceExpression;
-        }
-
-        if (isAstIndexExpression(expr)) {
-            const objectExpr = this.resolveExpression(expr.object);
-            const indexExpr = this.resolveExpression(expr.index);
-            return {
-                exprType: "index",
-                object: objectExpr,
-                index: indexExpr
-            } as TstIndexExpression;
-        }
-
-        if (isAstBinaryExpression(expr)) {
-            return {
-                exprType: "binary",
-                left: this.resolveExpression(expr.lhs),
-                right: this.resolveExpression(expr.rhs),
-                operator: expr.operator
-            } as TstBinaryExpression;
-        }
-
-        if (isAstUnaryExpression(expr)) {
-            // can resolve typeof with type instance directly
-            return {
-                exprType: "unary",
-                operator: expr.operator,
-                operand: this.resolveExpression(expr.operand),
-            } as TstUnaryExpression;
-        }
-
-        throw new Error(`Unsupported expression type ${expr.exprType} in TstBuilder`);
-    }
-
-    resolveStatement(stmt: AstStatement): TstStatement {
-        if (isAstReturnStatement(stmt)) {
-            return {
-                stmtType: "return",
-                returnValue: this.resolveExpression(stmt.returnValue),
-            } as TstReturnStatement;
-        } else if (isAstIfStatement(stmt)) {
-            return {
-                stmtType: "if",
-                condition: this.resolveExpression(stmt.condition),
-                then: stmt.thenBlock.map(s => this.resolveStatement(s)),
-                else: stmt.elseBlock ? stmt.elseBlock.map(s => this.resolveStatement(s)) : null
-            } as TstIfStatement;
-        } else if (isAstLocalVarDeclaration(stmt)) {
-            this.scope.push({
-                name: stmt.name,
-                type: this.runtime.getType(stmt.varType)
-            });
-            return {
-                stmtType: "localVarDeclaration",
-                varType: this.runtime.getType(stmt.varType),
-                name: stmt.name,
-                initializer: stmt.initializer ? this.resolveExpression(stmt.initializer) : null,
-            } as TstLocalVarDeclaration;
-        } else if (isAstLocalVarAssignment(stmt)) {
-            return {
-                stmtType: "localVarAssignment",
-                name: stmt.name,
-                expr: this.resolveExpression(stmt.expr),
-            } as TstLocalVarAssignment;
-        }
-
-        throw new Error("Unknown statement type " + stmt.stmtType);
-    }
-}
+import { AstIdentifierType, AstType, isAstArrayType, isAstFunctionType, isAstIdentifierType } from "./AstType.js";
+import { FunctionTypeDefinition, getFunctionTypeName } from "./types/FunctionTypeDefinition.js";
+import { ArrayTypeDefinition } from "./types/ArrayBaseTypeDefinition.js";
+import { GenericUnresolvedTypeDefinition } from "./types/GenericUnresolvedTypeDefinition.js";
+import { PoisonTypeDefinition } from "./types/PoisonTypeDefinition.js";
+import { AstVisitor } from "./AstVisitor.js";
 
 export class TstBuilder {
     private runtime: TstRuntime;
@@ -213,27 +17,179 @@ export class TstBuilder {
         this.runtime = runtime;
     }
 
-    resolveProgram(visited: AstProgram) {
+    collectType(type: AstType, classDef: AstClass, method: AstMethodDeclaration | null): TypeDefinition | null {
+        const typeName = formatAstTypeName(type, classDef, method);
+
+        // Check if the type already exists - handles f.ex "MissingType[]" when "MissingType" is missing.
+        const existingType = this.runtime.tryGetType(typeName);
+        if (existingType) {
+            return existingType;
+        }
+
+        if (isAstArrayType(type)) {
+            let elementType = this.collectType(type.arrayItemType, classDef, method);
+            if (!elementType) {
+                return null;
+            }
+
+            return this.runtime.createArrayType(typeName, elementType);
+        }
+
+        if (isAstFunctionType(type)) {
+            let returnType = this.collectType(type.functionReturnType, classDef, method);
+            if (!returnType) {
+                return null;
+            }
+
+            const parameterTypes: TypeDefinition[] = [];
+            for (let paramType of type.functionParameters) {
+                const paramTypeDef = this.collectType(paramType, classDef, method);
+                if (!paramTypeDef) {
+                    return null;
+                }
+                parameterTypes.push(paramTypeDef);
+            }
+
+            return this.createFunctionType(parameterTypes, returnType);
+        }
+
+        if (isAstIdentifierType(type)) {
+            const methodGenericParameter = method?.genericParameters?.find(p => p === type.typeName);
+            if (methodGenericParameter) {
+                return this.createGenericUnresolvedType(typeName);
+            }
+
+            return this.runtime.tryGetType(typeName);
+        }
+
+        throw new Error("Unsupported type kind in collectType: " + JSON.stringify(type));
+    }
+
+    createFunctionType(parameterTypes: TypeDefinition[], returnType: TypeDefinition) {
+        const functionTypeName = getFunctionTypeName(returnType, parameterTypes);
+        const type = this.runtime.tryGetType(functionTypeName);
+        if (type) {
+            return type;
+        }
+
+        // console.log("Creating function type: ", functionTypeName);
+        const functionType = new FunctionTypeDefinition(this.runtime, returnType, parameterTypes);
+        this.runtime.registerTypes([functionType]);
+        return functionType;
+    }
+
+    createGenericUnresolvedType(name: string): TypeDefinition {
+        const type = this.runtime.tryGetType(name);
+        if (type) {
+            return type;
+        }
+
+        const genericType = new GenericUnresolvedTypeDefinition(this.runtime, name);
+        this.runtime.registerTypes([genericType]);
+        return genericType;
+    }
+
+    collectStatementTypes(stmt: AstStatement, classDef: AstClass, method: AstMethodDeclaration | null): void {
+        if (isAstIfStatement(stmt)) {
+            for (let s of stmt.thenBlock) {
+                this.collectStatementTypes(s, classDef, method);
+            }
+            if (stmt.elseBlock) {
+                for (let s of stmt.elseBlock) {
+                    this.collectStatementTypes(s, classDef, method);
+                }
+            }
+            return;
+        }
+
+        if (isAstLocalVarDeclaration(stmt)) {
+            if (!this.collectType(stmt.varType, classDef, method)) {
+                const varTypeName = formatAstTypeName(stmt.varType, classDef, method);
+                this.runtime.error(`Could not find local variable ${stmt.name} type ${varTypeName} in ${classDef.name}.${method?.name}`, stmt.location);
+                this.runtime.createPoisonType(varTypeName);
+            }
+            return;
+        }
+    }
+
+    resolveProgram(visited: AstProgram): boolean {
 
         // Pass 1: Create new half-constructed types
         for (let programUnit of visited.programUnits) {
             if (isClass(programUnit)) {
                 let type = this.runtime.tryGetType(programUnit.name);
                 if (!type) {
-                    type = new TypeDefinition(this.runtime, programUnit.name, visited.fileName);
+                    type = new TypeDefinition(this.runtime, programUnit.name, programUnit.location);
                     this.runtime.types.push(type);
                 }
             }
         }
 
-        // Pass 1.5: Collect array types
-        // TODO: Also collect from array literals f.ex "([[1,2],[3,4]])[0]" requires int[][] internally
+        // Pass 1.5: Collect array and function types
+        // NOTE: Implicit types for literals - f.ex "([[1,2],[3,4]])[0]" uses int[][] internally - are collected later.
         for (let programUnit of visited.programUnits) {
             if (isClass(programUnit)) {
+                const type = this.runtime.getType(programUnit.name);
+
+                if (programUnit.extends) {
+                    let baseType = this.runtime.tryGetType(programUnit.extends);
+                    if (!baseType) {
+                        this.runtime.error(`Could not find base type ${programUnit.extends} for class ${programUnit.name}`, programUnit.location);
+                        baseType = this.runtime.createPoisonType(programUnit.extends);
+                    }
+
+                    type.extends = baseType;
+                    // type.extendsArguments -> evaluate expressions after instance is constructed
+                }
+
                 for (let unit of programUnit.units) {
                     if (isPropertyDefinition(unit)) {
-                        if (unit.propertyType.endsWith("[]")) {
-                            this.runtime.createArrayType(unit.propertyType);
+                        if (!this.collectType(unit.propertyType, programUnit, null)) {
+                            const typeName = formatAstTypeName(unit.propertyType, programUnit, null);
+                            this.runtime.error(`Could not find type ${typeName} for property ${programUnit.name}.${unit.name}`, unit.location);
+                            this.runtime.createPoisonType(typeName);
+                        }
+                    }
+
+                    if (isMethodDeclaration(unit)) {
+
+                        if (unit.genericParameters) {
+                            for (let genericParameter of unit.genericParameters) {
+                                // TODO: location in generic parameters, using method location for now
+                                const genericType = { type: "identifier", typeName: genericParameter, location: unit.location } as AstIdentifierType;
+                                if (!this.collectType(genericType, programUnit, unit)) {
+                                    this.runtime.error(`Could not resolve generic type parameter ${genericParameter} for method ${programUnit.name}.${unit.name}`, unit.location);
+                                    this.runtime.createPoisonType(formatAstTypeName(genericType, programUnit, unit));
+                                }
+                            }
+                        }
+
+                        let returnType = this.collectType(unit.returnType, programUnit, unit);
+                        if (!returnType) {
+                            const typeName = formatAstTypeName(unit.returnType, programUnit, unit);
+                            this.runtime.error(`Could not find return type ${typeName} for method ${programUnit.name}.${unit.name}`, unit.location);
+                            returnType = this.runtime.createPoisonType(typeName);
+                        }
+
+                        const parameterTypes: TypeDefinition[] = [];
+                        for (let param of unit.parameters) {
+                            let parameterType = this.collectType(param.type, programUnit, unit);
+                            if (!parameterType) {
+                                const typeName = formatAstTypeName(param.type, programUnit, unit);
+                                this.runtime.error(`Could not find type ${typeName} for parameter ${param.name} in method ${programUnit.name}.${unit.name}`, param.location);
+                                parameterType = this.runtime.createPoisonType(typeName);
+                            }
+
+                            parameterTypes.push(parameterType);
+                        }
+
+                        // TODO?: if any component of the function is poisoned, create poison instead of function type!
+
+                        this.createFunctionType(parameterTypes, returnType);
+
+                        // Catch type errors and collect explicitly referenced array/function types from statements
+                        for (let stmt of unit.statementList) {
+                            this.collectStatementTypes(stmt, programUnit, unit);
                         }
                     }
                 }
@@ -245,39 +201,83 @@ export class TstBuilder {
             if (isClass(programUnit)) {
                 const type = this.runtime.getType(programUnit.name);
 
-                if (programUnit.extends) {
-                    const baseType = this.runtime.getType(programUnit.extends);
-
-                    type.extends = baseType;
-                    // type.extendsArguments -> evaluate expressions after instance is constructed
-                }
-
                 for (let parameter of programUnit.parameters) {
-                    const parameterType = this.runtime.getType(parameter.type);
+                    const parameterTypeName = formatAstTypeName(parameter.type, programUnit, null);
+                    const parameterType = this.runtime.getType(parameterTypeName);
 
                     type.parameters.push({
                         name: parameter.name,
-                        type: parameterType
+                        type: parameterType,
+                        location: parameter.location,
                     });
                 }
 
                 for (let unit of programUnit.units) {
-                    if (isMethodDeclaration(unit)) {
-                        const methodType = this.runtime.getType(unit.returnType);
-                        if (!methodType) {
-                            throw new Error(`Could not find type ${unit.returnType} for method ${unit.name} of type ${programUnit.name}`);
+                    if (isPropertyDefinition(unit)) {
+                        const propertyTypeName = formatAstTypeName(unit.propertyType, programUnit, null);
+                        const propertyType = this.runtime.getType(propertyTypeName);
+
+                        type.properties.push({
+                            modifier: unit.modifier,
+                            name: unit.name,
+                            type: propertyType,
+                            location: unit.location,
+                        });
+                    } else if (isMethodDeclaration(unit)) {
+                        const returnTypeName = formatAstTypeName(unit.returnType, programUnit, unit);
+                        const returnType = this.runtime.getType(returnTypeName);
+
+                        const genericParameters: TypeParameter[] = [];
+                        if (unit.genericParameters) {
+                            for (let genericParameter of unit.genericParameters) {
+                                const genericTypeName = formatAstTypeName({ type: "identifier", typeName: genericParameter } as AstIdentifierType, programUnit, unit);
+                                const genericType = this.runtime.getType(genericTypeName);
+
+                                genericParameters.push({
+                                    name: genericParameter,
+                                    type: genericType,
+                                    location: unit.location, // TODO: generic parameter location
+                                });
+                            }
                         }
 
-                        type.methods.push({
+                        const parameters: TypeParameter[] = [];
+                        for (let param of unit.parameters) {
+                            const parameterTypeName = formatAstTypeName(param.type, programUnit, unit);
+                            const parameterType = this.runtime.getType(parameterTypeName);
+                            parameters.push({
+                                name: param.name,
+                                type: parameterType,
+                                location: param.location,
+                            });
+                        }
+
+                        const typeMethod: TypeMethod = {
                             name: unit.name,
                             declaringType: type,
-                            returnType: methodType,
-                            parameters: unit.parameters.map(param => ({
-                                name: param.name,
-                                type: this.runtime.getType(param.type)
-                            })),
+                            returnType: returnType,
+                            genericParameters: genericParameters,
+                            parameters: parameters,
                             body: [], // assigned later
+                            location: unit.location,
+                        }
+
+                        type.methods.push(typeMethod);
+
+                        const functionTypeName = getFunctionTypeName(returnType, typeMethod.parameters.map(p => p.type));
+                        const functionType = this.runtime.getType(functionTypeName);
+
+                        type.properties.push({
+                            modifier: "public",
+                            name: unit.name,
+                            type: functionType,
+                            initializer: {
+                                exprType: "unboundFunctionReference",
+                                method: typeMethod,
+                            } as TstUnboundFunctionReferenceExpression,
+                            location: unit.location,
                         });
+
                     }
                 }
 
@@ -289,11 +289,8 @@ export class TstBuilder {
                 // the properties in the class - derives from extends - only add explicit public/private, and we have their types now. but its not parsed yet
             if (isClass(programUnit)) {
                 const type = this.runtime.getType(programUnit.name);
-                if (!type) {
-                    throw new Error("Type should have been created in previous pass");
-                }
 
-                const visitor  = new AstVisitor(null, this.runtime, type, type.parameters);
+                const visitor = new AstVisitor(null, this.runtime, type, type.parameters);
                 if (programUnit.extends && programUnit.extendsArguments) {
                     type.extendsArguments = programUnit.extendsArguments.map(arg => visitor.resolveExpression(arg));
                 }
@@ -304,32 +301,25 @@ export class TstBuilder {
                         type.initializers.push({ name: unit.name, argument: visitor.resolveExpression(unit.argument) })
                     } else
                     if (isPropertyDefinition(unit)) {
-                        const propertyType = this.runtime.getType(unit.propertyType);
-                        if (!propertyType) {
-                            throw new Error(`Could not find type ${unit.propertyType} for property ${unit.name} of type ${programUnit.name}`);
-                        }
+                        const typeProperty = type.properties.find(p => p.name === unit.name);
+                        if (!typeProperty) throw new Error("Internal error: Property not found: " + unit.name);
 
-                        type.properties.push({
-                            modifier: unit.modifier,
-                            name: unit.name,
-                            type: propertyType,
-                            initializer: unit.argument ? visitor.resolveExpression(unit.argument) : undefined,
-                        });
+                        typeProperty.initializer = unit.argument ? visitor.resolveExpression(unit.argument) : undefined;
                     } else if (isMethodDeclaration(unit)) {
                         const typeMethod = type.methods.find(m => m.name === unit.name);
-                        if (!typeMethod) {
-                            throw new Error(`Method ${unit.name} not found on type ${type.name}`);
-                        }
+                        if (!typeMethod) throw new Error("Internal error: Method not found: " + unit.name);
 
                         const methodVisitor = new AstVisitor(visitor, this.runtime, type, typeMethod.parameters);
 
                         for (let astStmt of unit.statementList) {
-                            const stmt = methodVisitor.resolveStatement(astStmt);
+                            const stmt = methodVisitor.resolveStatement(programUnit, unit, astStmt);
                             typeMethod.body.push(stmt);
                         }
                     }
                 }
             }
         }
+
+        return true;
     }
 }

@@ -1,3 +1,5 @@
+import { AstLocation } from "./AstLocation.js";
+import { AstType, isAstArrayType, isAstFunctionType, isAstIdentifierType } from "./AstType.js";
 
 export function isClass(programUnit: AstProgramUnit): programUnit is AstClass {
     return programUnit.type === "class";
@@ -77,51 +79,52 @@ export function isAstLocalVarAssignment(expr: AstStatement): expr is AstLocalVar
 
 export interface AstExpression {
     exprType: string;
+    location: AstLocation;
 }
 
-export interface AstIdentifierExpression {
+export interface AstIdentifierExpression extends AstExpression {
     exprType: "identifier";
     value: string;
 }
 
-export interface AstStringLiteralExpression {
+export interface AstStringLiteralExpression extends AstExpression {
     exprType: "stringLiteral";
     value: string;
 }
 
-export interface AstIntegerLiteralExpression {
+export interface AstIntegerLiteralExpression extends AstExpression {
     exprType: "integerLiteral";
     value: string;
 }
 
-export interface AstDecimalLiteralExpression {
+export interface AstDecimalLiteralExpression extends AstExpression {
     exprType: "decimalLiteral";
     value: string;
 }
 
-export interface AstBooleanLiteralExpression {
+export interface AstBooleanLiteralExpression extends AstExpression {
     exprType: "booleanLiteral";
     value: boolean;
 }
 
-export interface AstArrayLiteralExpression {
+export interface AstArrayLiteralExpression extends AstExpression {
     exprType: "arrayLiteral";
     elements: AstExpression[];
 }
 
-export interface AstFunctionCallExpression {
+export interface AstFunctionCallExpression extends AstExpression {
     exprType: "functionCall";
     callee: AstExpression;
     args: AstExpression[];
 }
 
-export interface AstMemberExpression {
+export interface AstMemberExpression extends AstExpression {
     exprType: "member";
     object: AstExpression;
     property: string;
 }
 
-export interface AstIndexExpression {
+export interface AstIndexExpression extends AstExpression{
     exprType: "index";
     object: AstExpression;
     index: AstExpression;
@@ -142,32 +145,37 @@ export interface AstUnaryExpression extends AstExpression {
 
 export interface AstParameter {
     name: string;
-    type: string;
+    type: AstType;
+    location?: AstLocation;
 }
 
 export interface AstClassUnit {
     type: "methodDeclaration" | "propertyStatement" | "propertyDefinition";
+    location?: AstLocation;
 }
 
 export interface AstProgramUnit {
     type: "class";
+    location?: AstLocation;
 }
 
 export interface AstMethodDeclaration extends AstClassUnit {
     type: "methodDeclaration";
     name: string;
-    returnType: string;
+    genericParameters?: string[];
+    returnType: AstType;
     parameters: AstParameter[];
     statementList: AstStatement[];
 }
 
 export interface AstStatement {
     stmtType: "if" | "return" | "localVarDeclaration" | "localVarAssignment";
+    location: AstLocation;
 }
 
 export interface AstLocalVarDeclaration extends AstStatement {
     stmtType: "localVarDeclaration";
-    varType: string;
+    varType: AstType;
     name: string;
     initializer: AstExpression | null;
 }
@@ -201,14 +209,14 @@ export interface AstPropertyDefinition extends AstClassUnit {
     type: "propertyDefinition";
     modifier: string;
     name: string;
-    propertyType: string;
-    argument: AstExpression;
+    propertyType: AstType;
+    argument: AstExpression | null;
 }
 
 export interface AstClass extends AstProgramUnit {
     type: "class";
     name: string;
-    parameters: { name: string, type: string }[];
+    parameters: AstParameter[];
     extends?: string;
     extendsArguments?: AstExpression[];
     units: AstClassUnit[];
@@ -219,10 +227,25 @@ export interface AstProgram {
     programUnits: AstProgramUnit[];
 }
 
-export interface AstLocation {
-    line: number;
-    column: number;
-    startOffset: number;
-    endOffset: number;
-    image: string;
+export function formatAstTypeName(ref: AstType, classDef: AstClass, method: AstMethodDeclaration | null): string {
+    if (isAstIdentifierType(ref)) {
+        const methodGenericParameter = method?.genericParameters?.find(p => p === ref.typeName);
+        if (methodGenericParameter) {
+            return classDef.name + "~" + method!.name + "~" + methodGenericParameter;
+        }
+
+        return ref.typeName;
+    }
+
+    if (isAstArrayType(ref)) {
+        return formatAstTypeName(ref.arrayItemType, classDef, method) + "[]";
+    }
+
+    if (isAstFunctionType(ref)) {
+        const returnType = formatAstTypeName(ref.functionReturnType, classDef, method);
+        const parameterTypes = ref.functionParameters.map(p => formatAstTypeName(p, classDef, method)).join(",");
+        return returnType + "(" + parameterTypes + ")";
+    }
+
+    throw new Error("Unknown NativeTypeRef type: " + ref.type);
 }

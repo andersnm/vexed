@@ -3,14 +3,15 @@ import { createToken, CstParser, Lexer } from "chevrotain";
 const Comment = createToken({ name: "Comment", pattern: /#.*/,  group: Lexer.SKIPPED });
 const WhiteSpace = createToken({ name: "WhiteSpace", pattern: /\s+/, group: Lexer.SKIPPED });
 
-const ClassKeyword = createToken({ name: "Class", pattern: /class/ });
-const ExtendsKeyword = createToken({ name: "Extends", pattern: /extends/ });
-const PublicKeyword = createToken({ name: "Public", pattern: /public/ });
-const PrivateKeyword = createToken({ name: "Private", pattern: /private/ });
-const IfKeyword = createToken({ name: "If", pattern: /if/ });
-const ElseKeyword = createToken({ name: "Else", pattern: /else/ });
-const ReturnKeyword = createToken({ name: "Return", pattern: /return/ });
-const TypeofKeyword = createToken({ name: "Typeof", pattern: /typeof/ });
+const ClassKeyword = createToken({ name: "Class", pattern: /class\b/ });
+const ExtendsKeyword = createToken({ name: "Extends", pattern: /extends\b/ });
+const PublicKeyword = createToken({ name: "Public", pattern: /public\b/ });
+const PrivateKeyword = createToken({ name: "Private", pattern: /private\b/ });
+const LetKeyword = createToken({ name: "Let", pattern: /let\b/ });
+const IfKeyword = createToken({ name: "If", pattern: /if\b/ });
+const ElseKeyword = createToken({ name: "Else", pattern: /else\b/ });
+const ReturnKeyword = createToken({ name: "Return", pattern: /return\b/ });
+const TypeofKeyword = createToken({ name: "Typeof", pattern: /typeof\b/ });
 
 const LCurly = createToken({ name: "LCurly", pattern: /{/ });
 const RCurly = createToken({ name: "RCurly", pattern: /}/ });
@@ -21,6 +22,7 @@ const RBracket = createToken({ name: "RBracket", pattern: /\]/ });
 const Comma = createToken({ name: "Comma", pattern: /,/ });
 const Semi = createToken({ name: "Semi", pattern: /;/ });
 const Dot = createToken({ name: "Dot", pattern: /\./ });
+const Colon = createToken({ name: "Colon", pattern: /:/ });
 const Equal = createToken({ name: "Equal", pattern: /=/ });
 
 const Plus = createToken({ name: "Plus", pattern: /\+/ });
@@ -38,7 +40,7 @@ const LessThanOrEqual = createToken({ name: "LessThanOrEqual", pattern: /<=/ });
 const GreaterThan = createToken({ name: "GreaterThan", pattern: />/ });
 const GreaterThanOrEqual = createToken({ name: "GreaterThanOrEqual", pattern: />=/ });
 
-const Identifier = createToken({ name: "Identifier", pattern: /[a-zA-Z_][a-zA-Z0-9_:]*/ });
+const Identifier = createToken({ name: "Identifier", pattern: /[a-zA-Z_][a-zA-Z0-9_]*/ });
 const StringLiteral = createToken({ name: "StringLiteral", pattern: /"(?:[^"\\\0-\x1F\x7F]|\\(?:["\\\/bfnrt]|u[0-9a-fA-F]{4}))*"/ });
 const BooleanLiteral = createToken({ name: "BooleanLiteral", pattern: /true|false/ });
 const IntegerLiteral = createToken({ name: "IntegerLiteral", pattern: /[0-9]+/ });
@@ -46,8 +48,8 @@ const DecimalLiteral = createToken({ name: "DecimalLiteral", pattern: /(?:[0-9]+
 
 export const allTokens = [
   Comment, WhiteSpace,
-  ClassKeyword, ExtendsKeyword, PublicKeyword, PrivateKeyword, IfKeyword, ElseKeyword, ReturnKeyword, TypeofKeyword,
-  LBracket, RBracket, LCurly, RCurly, LParen, RParen, Dot, Comma, Semi, 
+  ClassKeyword, ExtendsKeyword, PublicKeyword, PrivateKeyword, LetKeyword, IfKeyword, ElseKeyword, ReturnKeyword, TypeofKeyword,
+  LBracket, RBracket, LCurly, RCurly, LParen, RParen, Dot, Comma, Colon, Semi, 
   Or, And, EqualsEquals, NotEquals, LessThanOrEqual, LessThan, GreaterThanOrEqual, GreaterThan,
   Not, Equal, Plus, Minus, Star, Slash, 
   StringLiteral, BooleanLiteral, IntegerLiteral, DecimalLiteral,
@@ -71,6 +73,34 @@ export class ProgramParser extends CstParser {
   });
 
   type = this.RULE("type", () => {
+    this.OR([
+      {
+        // Function type: (type1, type2): returnType
+        GATE: () => this.LA(1).tokenType === LParen,
+        ALT: () => this.SUBRULE(this.functionType)
+      },
+      {
+        // Simple type: identifier with optional array suffixes
+        ALT: () => this.SUBRULE(this.simpleType)
+      }
+    ]);
+  });
+
+  functionType = this.RULE("functionType", () => {
+    this.CONSUME(LParen);
+    this.OPTION(() => {
+      this.SUBRULE(this.type);
+      this.MANY(() => {
+        this.CONSUME(Comma);
+        this.SUBRULE2(this.type);
+      });
+    });
+    this.CONSUME(RParen);
+    this.CONSUME(Colon);
+    this.SUBRULE3(this.type);
+  });
+
+  simpleType = this.RULE("simpleType", () => {
     this.CONSUME(Identifier);
     this.MANY(() => this.SUBRULE(this.arrayTypeSuffix));
   });
@@ -81,8 +111,9 @@ export class ProgramParser extends CstParser {
   });
 
   parameter = this.RULE("parameter", () => {
-    this.SUBRULE(this.type);
     this.CONSUME(Identifier);
+    this.CONSUME(Colon);
+    this.SUBRULE(this.type);
   });
 
   parameterList = this.RULE("parameterList", () => {
@@ -119,21 +150,40 @@ export class ProgramParser extends CstParser {
   classUnit = this.RULE("classUnit", () => {
     this.OR([
       {
-        GATE: () => this.LA(3).tokenType === LParen,
-        ALT: () => this.SUBRULE(this.methodDeclaration)
+        // Property statement: <identifier> = <expression> (no public/private keyword)
+        // Example: abstractInt = 777;
+        GATE: () => {
+          const la1 = this.LA(1).tokenType;
+          const la2 = this.LA(2).tokenType;
+          return la1 === Identifier && la2 === Equal;
+        },
+        ALT: () => this.SUBRULE(this.propertyStatement)
       },
-      { ALT: () => this.SUBRULE(this.propertyStatement) },
-      { ALT: () => this.SUBRULE(this.propertyDefinition) }
+      {
+        // Property definition: public/private <identifier> : <type>
+        // Example: public x: int = 5;
+        GATE: () => {
+          const la1 = this.LA(1).tokenType;
+          return la1 === PublicKeyword || la1 === PrivateKeyword;
+        },
+        ALT: () => this.SUBRULE(this.propertyDefinition)
+      },
+      // Method declaration: <identifier> (...): <type>
+      // Example: foo(a: string): int { ... }
+      // Everything else that doesn't match above alternatives
+      { ALT: () => this.SUBRULE(this.methodDeclaration) }
     ]);
   });
 
   methodDeclaration = this.RULE("methodDeclaration", () => {
-    this.SUBRULE(this.type);
     this.CONSUME(Identifier);
 
     this.CONSUME(LParen);
     this.OPTION(() => this.SUBRULE(this.parameterList));
     this.CONSUME(RParen);
+
+    this.CONSUME(Colon);
+    this.SUBRULE(this.type);
 
     this.SUBRULE(this.statementList);
   });
@@ -155,8 +205,10 @@ export class ProgramParser extends CstParser {
   });
 
   localVarDeclaration = this.RULE("localVarDeclaration", () => {
-    this.SUBRULE(this.type);
+    this.CONSUME(LetKeyword);
     this.CONSUME(Identifier);
+    this.CONSUME(Colon);
+    this.SUBRULE(this.type);
     this.CONSUME(Equal);
     this.SUBRULE(this.expression);
     this.CONSUME(Semi);
@@ -196,8 +248,9 @@ export class ProgramParser extends CstParser {
       { ALT: () => this.CONSUME(PrivateKeyword) },
     ])
 
-    this.SUBRULE(this.type);
     this.CONSUME(Identifier);
+    this.CONSUME(Colon);
+    this.SUBRULE(this.type);
 
     this.OPTION(() => {
       this.CONSUME(Equal);

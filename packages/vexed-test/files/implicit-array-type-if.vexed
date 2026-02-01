@@ -1,0 +1,13 @@
+# Test implicit type collection inside if statement block
+
+class Main() {
+  testNestedArray(flag: bool): int {
+    if (flag) {
+      return [ [ 1, 2 ], [ 3, 4 ] ][0][1];
+    } else {
+      return 0;
+    }
+  }
+
+  public output: int = this.testNestedArray(false);
+}
