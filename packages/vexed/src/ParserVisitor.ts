@@ -470,7 +470,7 @@ export function createVisitor(parser: ProgramParser, fileName: string) {
                     callee: base,
                     args: argsResult.args,
                     properties: argsResult.properties,
-                    location: createTokenLocation(fileName, ctx.arguments[0]),
+                    location: base.location,
                 } as AstFunctionCallExpression;
             }
             if (ctx.indexSuffix) {

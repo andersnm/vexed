@@ -141,6 +141,10 @@ export class TstRuntime {
             [RuntimeMeta]: { sealed },
         };
 
+        if (type instanceof PoisonTypeDefinition) {
+            return obj;
+        }
+
         this.setupInstanceScope(obj, type, args);
         return obj;
     }
