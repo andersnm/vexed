@@ -1,0 +1,22 @@
+# Test instance literals with inheritance
+
+class Base(baseValue: int) {
+    public baseValue: int = baseValue;
+    public baseName: string;
+}
+
+class Derived(baseValue: int, derivedValue: int) extends Base(baseValue) {
+    public derivedValue: int = derivedValue;
+    public derivedName: string;
+}
+
+class Main() {
+    public base: Base = Base(100) {
+        baseName = "Base Instance";
+    };
+
+    public derived: Derived = Derived(200, 300) {
+        baseName = "Derived Base Name";
+        derivedName = "Derived Name";
+    };
+}

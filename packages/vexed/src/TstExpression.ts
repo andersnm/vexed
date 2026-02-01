@@ -163,6 +163,7 @@ export interface TstNewExpression extends TstExpression {
     exprType: "new";
     type: TypeDefinition;
     args: TstExpression[];
+    properties?: TstInitializer[];
 }
 
 export interface TstNewArrayExpression extends TstExpression {

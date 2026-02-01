@@ -4,6 +4,11 @@ import { IToken } from "chevrotain";
 import { AstType, AstArrayType, AstIdentifierType, AstFunctionType } from "./AstType.js";
 import { AstLocation } from "./AstLocation.js";
 
+interface ArgumentsResult {
+    args: AstExpression[];
+    properties?: AstPropertyStatement[];
+}
+
 function createTokenLocation(fileName: string, tok: IToken): AstLocation {
     return {
         fileName: fileName,
@@ -459,10 +464,12 @@ export function createVisitor(parser: ProgramParser, fileName: string) {
                 } as AstMemberExpression;
             }
             if (ctx.arguments) {
+                const argsResult = this.visit(ctx.arguments);
                 return {
                     exprType: "functionCall",
                     callee: base,
-                    args: this.visit(ctx.arguments),
+                    args: argsResult.args,
+                    properties: argsResult.properties,
                     location: createTokenLocation(fileName, ctx.arguments[0]),
                 } as AstFunctionCallExpression;
             }
@@ -542,8 +549,10 @@ export function createVisitor(parser: ProgramParser, fileName: string) {
             throw new Error("Unexpected primary expression");
         }
 
-        arguments(ctx: any): AstExpression[] {
-            return this.visit(ctx.expressionList);
+        arguments(ctx: any): ArgumentsResult {
+            const args = this.visit(ctx.expressionList);
+            const properties = ctx.instanceLiteral ? ctx.instanceLiteral.map((il: any) => this.visit(il)).flat() : undefined;
+            return { args, properties };
         }
 
         indexSuffix(ctx: any): AstExpression {
@@ -562,6 +571,11 @@ export function createVisitor(parser: ProgramParser, fileName: string) {
 
         parenthesizedExpression(ctx: any): AstExpression {
             return this.visit(ctx.expression[0]);
+        }
+
+        instanceLiteral(ctx: any): AstPropertyStatement[] {
+            const properties = ctx.propertyStatement ? ctx.propertyStatement.map((p: any) => this.visit(p)) : [];
+            return properties;
         }
     }
 }

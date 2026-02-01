@@ -1,0 +1,14 @@
+# Test class instance literals
+
+class Config(defValue: string) {
+    public name: string;
+    public ip: string;
+    public defValue: string = defValue; 
+}
+
+class Main() {
+   public config: Config = Config("test") {
+     name = "Config Name";
+     ip = "1.0.0.120";
+   };
+}

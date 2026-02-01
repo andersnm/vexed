@@ -154,6 +154,22 @@ export class TstReduceExpressionVisitor extends TstReplaceVisitor {
 
         const instance = expr.type.createInstance(args);
 
+        // Set properties from instance literal if present
+        if (expr.properties) {
+            for (const prop of expr.properties) {
+                const propValue = this.visit(prop.argument);
+                const scopedValue = {
+                    exprType: "scoped",
+                    expr: propValue,
+                    scope: this.scope,
+                    comment: "instance literal property " + prop.name,
+                } as TstScopedExpression;
+                
+                // Set the property directly on the instance
+                instance[prop.name] = scopedValue;
+            }
+        }
+
         return {
             exprType: "instance",
             instance: instance,
