@@ -7,7 +7,8 @@
     "packages/vexed-browser",
     "packages/vexed-cli",
     "packages/vexed-test",
-    "packages/vexed-vscode"
+    "packages/vexed-vscode",
+    "packages/vexed-homepage"
   ],
   "_disabledWorkspaces":[
     "packages/vexed-digitalocean"
@@ -16,7 +17,9 @@
     "build": "npm run build -ws",
     "test": "npm run test -workspace vexed-test",
     "vexed-cli": "node --enable-source-maps packages/vexed-cli/dist/main.js",
-    "pack": "npm pack -w vexed -w vexed-cli && npm run build -w vexed-syntax"
+    "pack": "npm pack -w vexed -w vexed-cli && npm run build -w vexed-syntax",
+    "homepage:dev": "npm run dev -w vexed-homepage",
+    "homepage:build": "npm run build -w vexed-homepage"
   },
   "devDependencies": {
     "typescript": "^5.9.3"

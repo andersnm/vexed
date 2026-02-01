@@ -1,0 +1,27 @@
+{
+  "name": "vexed-homepage",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build --base=/vexed/",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "vexed": "file:../vexed",
+    "vexed-browser": "file:../vexed-browser",
+    "marked": "^15.0.6",
+    "codemirror": "^6.0.1",
+    "@codemirror/lang-javascript": "^6.2.2",
+    "@codemirror/theme-one-dark": "^6.1.2"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3",
+    "vite": "^7.2.4",
+    "tailwindcss": "^3.4.17",
+    "@tailwindcss/typography": "^0.5.16",
+    "postcss": "^8.4.49",
+    "autoprefixer": "^10.4.20"
+  }
+}
