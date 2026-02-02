@@ -7,8 +7,7 @@ export function renderHomePage(container: HTMLElement) {
             The Vexed Configuration Language
           </h1>
           <p class="text-xl text-gray-700 mb-8 max-w-3xl mx-auto">
-            A type-safe, declarative configuration language with powerful features 
-            like inheritance, computed properties, and strong type checking.
+            An <strong>EXPERIMENTAL</strong> type‑safe, declarative configuration language with functional and object‑oriented features.
           </p>
           <div class="flex justify-center gap-4">
             <a href="#demo" class="btn-primary">Try It Online</a>
@@ -28,7 +27,7 @@ export function renderHomePage(container: HTMLElement) {
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
               </svg>
               <div>
-                <strong class="text-gray-900">Strong Type System</strong>
+                <strong class="text-gray-900">Type System</strong>
                 <p class="text-gray-600">Built-in support for int, string, bool, arrays, and custom types with full type checking</p>
               </div>
             </li>
@@ -55,8 +54,26 @@ export function renderHomePage(container: HTMLElement) {
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
               </svg>
               <div>
+                <strong class="text-gray-900">Pure Functions</strong>
+                <p class="text-gray-600">Supports functions without side effects. Local variables are mutable</p>
+              </div>
+            </li>
+            <li class="flex items-start">
+              <svg class="w-6 h-6 text-green-500 mr-3 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <div>
+                <strong class="text-gray-900">Array Transformations</strong>
+                <p class="text-gray-600">Supports transformations using <code>array[].map()</code></p>
+              </div>
+            </li>
+            <li class="flex items-start">
+              <svg class="w-6 h-6 text-green-500 mr-3 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <div>
                 <strong class="text-gray-900">Lazy Evaluation</strong>
-                <p class="text-gray-600">Efficient runtime with lazy reduction model</p>
+                <p class="text-gray-600">Runtime with lazy reduction model</p>
               </div>
             </li>
             <li class="flex items-start">
@@ -111,7 +128,7 @@ export function renderHomePage(container: HTMLElement) {
       </div>
     </div>
 
-    <div class="bg-gray-50 py-16">
+    <!-- div class="bg-gray-50 py-16">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <h2 class="text-3xl font-bold text-gray-900 mb-8 text-center">Why Vexed?</h2>
         <div class="grid md:grid-cols-3 gap-8">
@@ -146,7 +163,7 @@ export function renderHomePage(container: HTMLElement) {
           </div>
         </div>
       </div>
-    </div>
+    </div -->
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
       <div class="text-center">

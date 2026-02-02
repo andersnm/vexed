@@ -103,7 +103,7 @@ class App {
             Vexed - A type-safe configuration language
           </p>
           <p class="text-gray-500 mt-2">
-            © 2024 Vexed Project. Open source under the MIT License.
+            © 2026 Vexed Project. Open source under the MIT License.
           </p>
         </div>
       </div>
