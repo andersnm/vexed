@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Vexed is a **configuration language** designed to be type-safe, declarative, and intuitive. It combines familiar syntax from TypeScript/JavaScript with powerful type checking and a lazy evaluation model that makes it ideal for configuration management.
+Vexed is a **configuration language** which compiles to **JSON**.
 
 ## Basic Syntax
 
@@ -16,7 +16,7 @@ Vexed supports single-line comments using the `#` symbol:
 
 ### Classes
 
-Classes are the fundamental building blocks in Vexed. Every Vexed program must have a `Main` class as the entry point:
+Classes are the building blocks in Vexed. Every Vexed program must have a `Main` class as the entry point:
 
 ```vexed
 class Main() {
@@ -51,26 +51,14 @@ class Main() extends Base(100) {
 
 ## Type System
 
-Vexed has a strong static type system with the following built-in types:
+Vexed has a static type system with the following built-in types:
 
 ### Primitive Types
 
 - **int**: Integer numbers (e.g., `42`, `100`, `-5`)
 - **string**: Text strings (e.g., `"hello"`, `"world"`)
 - **bool**: Boolean values (`true` or `false`)
-- **any**: Can hold any value
-
-### Type Declarations
-
-Variables must be declared with explicit types:
-
-```vexed
-class Main() {
-  public age: int = 25;
-  public name: string = "Alice";
-  public isActive: bool = true;
-}
-```
+- **any**: Used for interaction with native code
 
 ### Arrays
 
@@ -86,15 +74,11 @@ class Main() {
 
 ### Type Type
 
-The special `type` type refers to class types themselves:
+The `Type` type allows basic reflection type inspection:
 
 ```vexed
-class Helper() {
-  public value: int = 42;
-}
-
 class Main() {
-  public helperType: type = Helper;
+  public thisName: string = (typeof this).name;
   public scriptPath: string = (typeof this).scriptPath;
 }
 ```
@@ -119,6 +103,22 @@ Properties marked as `private` are not included in the JSON output:
 class Main() {
   private internal: int = 1;
   public result: int = this.internal * 2;
+}
+```
+
+### Abstract Properties
+
+Properties without initializer are effectively "abstract" and *must* be set when subclassing or in inline object literals:
+
+```vexed
+class Base() {
+  public baseNumber: int;
+  public baseString: string;
+}
+
+class Main() extends Base() {
+  baseNumber = 100;
+  baseString = "Hello World";
 }
 ```
 
@@ -280,21 +280,6 @@ class Main() {
 }
 ```
 
-### Const Declarations
-
-Immutable local variables using `const`:
-
-```vexed
-class Main() {
-  compute(): int {
-    const factor: int = 2;
-    return 10 * factor;
-  }
-
-  public value: int = this.compute();
-}
-```
-
 ### Variable Assignment
 
 Variables declared with `let` can be reassigned:
@@ -330,16 +315,18 @@ class Main() {
 }
 ```
 
-### Instance Literals
+### Inline Object Literals
 
-Create inline instances without defining separate classes:
+Constructors support initializer syntax:
 
 ```vexed
+class Config() {
+  public port: int;
+  public host: string;
+}
+
 class Main() {
-  public config: {
-    port: int,
-    host: string
-  } = {
+  public config: Config = Config() {
     port: 8080,
     host: "localhost"
   };
@@ -414,7 +401,7 @@ class Main() {
 
 ## Asynchronous Operations
 
-Vexed supports asynchronous operations through promises:
+Asynchronous operations through promises, but transparent to the user:
 
 ```vexed
 class Main() {
@@ -429,61 +416,6 @@ class Main() {
 }
 ```
 
-## Best Practices
-
-### 1. Use Strong Typing
-
-Always specify types explicitly for clarity and type safety:
-
-```vexed
-# Good
-public count: int = 42;
-
-# Avoid
-public count: any = 42;
-```
-
-### 2. Keep Methods Pure
-
-Methods should be pure functions without side effects:
-
-```vexed
-# Good
-add(a: int, b: int): int {
-  return a + b;
-}
-```
-
-### 3. Use Meaningful Names
-
-Choose descriptive names for classes, methods, and properties:
-
-```vexed
-# Good
-class ServerConfiguration(port: int) {
-  public serverPort: int = port;
-}
-
-# Avoid
-class SC(p: int) {
-  public sp: int = p;
-}
-```
-
-### 4. Leverage Inheritance
-
-Use inheritance to share common functionality:
-
-```vexed
-class BaseConfig(env: string) {
-  public environment: string = env;
-}
-
-class AppConfig() extends BaseConfig("production") {
-  public appName: string = "MyApp";
-}
-```
-
 ## Complete Example
 
 Here's a comprehensive example demonstrating multiple Vexed features:
@@ -495,7 +427,7 @@ class DatabaseConfig(host: string, port: int) {
   public connectionString: string = host + ":" + this.portAsString();
 
   portAsString(): string {
-    # Convert port to string (simplified)
+    # Convert port to string (TODO: not implemented yet)
     return "port";
   }
 }
@@ -557,7 +489,3 @@ This will produce a JSON output like:
   "uptimeDays": 30
 }
 ```
-
-## Conclusion
-
-Vexed provides a powerful yet intuitive way to express configurations with strong typing, inheritance, and computed properties. Its lazy evaluation model and type safety make it ideal for managing complex configurations declaratively.
