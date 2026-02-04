@@ -1,4 +1,5 @@
 import { AstArrayLiteralExpression, AstBinaryExpression, AstBooleanLiteralExpression, AstClass, AstClassUnit, AstDecimalLiteralExpression, AstExpression, AstFunctionCallExpression, AstIdentifierExpression, AstIfStatement, AstIndexExpression, AstIntegerLiteralExpression, AstLocalVarAssignment, AstLocalVarDeclaration, AstMemberExpression, AstMethodDeclaration, AstProgram, AstProgramUnit, AstPropertyDefinition, AstReturnStatement, AstStatement, AstStringLiteralExpression, AstUnaryExpression, formatAstTypeName, isAstArrayLiteral, isAstBinaryExpression, isAstBooleanLiteral, isAstDecimalLiteral, isAstFunctionCall, isAstIdentifier, isAstIfStatement, isAstIndexExpression, isAstIntegerLiteral, isAstLocalVarAssignment, isAstLocalVarDeclaration, isAstMember, isAstReturnStatement, isAstStringLiteral, isAstUnaryExpression, isClass, isMethodDeclaration, isPropertyDefinition } from "./AstProgram.js";
+import { TstBuilder } from "./TstBuilder.js";
 import { InstanceMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNewArrayExpression, TstNewExpression, TstParameterExpression, TstPoisonExpression, TstReturnStatement, TstStatement, TstThisExpression, TstUnaryExpression, TstVariableExpression } from "./TstExpression.js";
 import { TstRuntime } from "./TstRuntime.js";
 import { TypeDefinition, TypeParameter } from "./TstType.js";
@@ -7,13 +8,14 @@ import { FunctionTypeDefinition } from "./types/FunctionTypeDefinition.js";
 import { GenericUnresolvedTypeDefinition } from "./types/GenericUnresolvedTypeDefinition.js";
 import { PoisonTypeDefinition } from "./types/PoisonTypeDefinition.js";
 
-// A visitor class for converting AST expressions to TST nodes inside a class
-// or inside a method (inside a class).
+// Converts AST expressions to TST nodes witin a class or a method.
 
 export class AstTstExpressionVisitor {
+    runtime: TstRuntime;
     scope: TypeParameter[] = [];
 
-    constructor(private runtime: TstRuntime, private classDef: AstClass, private methodDef: AstMethodDeclaration | null) {
+    constructor(private builder: TstBuilder, private classDef: AstClass, private methodDef: AstMethodDeclaration | null) {
+        this.runtime = builder.runtime;
     }
 
     visitExpression(expr: AstExpression): TstExpression {
@@ -191,7 +193,7 @@ export class AstTstExpressionVisitor {
             }
 
             this.runtime.error(`Unknown identifier ${expr.value}`, expr.location);
-            const poisonType = this.runtime.createPoisonType(`<MissingIdentifier:${expr.value}>`);
+            const poisonType = this.builder.createPoisonType(`<MissingIdentifier:${expr.value}>`);
             return {
                 exprType: "poison",
                 poisonType: poisonType,
@@ -213,7 +215,7 @@ export class AstTstExpressionVisitor {
 
             return {
                 exprType: "poison",
-                poisonType: this.runtime.createPoisonType("<InvalidIndexExpression>"),
+                poisonType: this.builder.createPoisonType("<InvalidIndexExpression>"),
                 identifierName: "<InvalidIndexExpression>",
             } as TstPoisonExpression;
         }
@@ -282,7 +284,7 @@ export class AstTstExpressionVisitor {
             this.runtime.error(`Cannot return type ${returnExpressionType.name} from method with return type ${returnType.name}`, stmt.location);
             returnExpression = {
                 exprType: "poison",
-                poisonType: this.runtime.createPoisonType(`<InvalidReturn:${this.methodDef.name}>`),
+                poisonType: this.builder.createPoisonType(`<InvalidReturn:${this.methodDef.name}>`),
                 identifierName: this.methodDef.name,
             } as TstPoisonExpression;
         }
@@ -306,7 +308,7 @@ export class AstTstExpressionVisitor {
                 this.runtime.error(`Cannot assign type ${initializerType.name} to variable ${stmt.name} of type ${varType.name}`, stmt.location);
                 initializer = {
                     exprType: "poison",
-                    poisonType: this.runtime.createPoisonType(`<InvalidInitialization:${stmt.name}>`),
+                    poisonType: this.builder.createPoisonType(`<InvalidInitialization:${stmt.name}>`),
                     identifierName: stmt.name,
                 } as TstPoisonExpression;
             }
@@ -336,7 +338,7 @@ export class AstTstExpressionVisitor {
             this.runtime.error(`Cannot assign type ${exprType.name} to variable ${stmt.name} of type ${variable.type.name}`, stmt.location);
             expr = {
                 exprType: "poison",
-                poisonType: this.runtime.createPoisonType(`<InvalidAssignment:${variable.name}>`),
+                poisonType: this.builder.createPoisonType(`<InvalidAssignment:${variable.name}>`),
                 identifierName: variable.name,
             } as TstPoisonExpression;
         }
@@ -380,7 +382,7 @@ export class AstTstExpressionVisitor {
         // Implicitly inferred array literal types are not collected during the static pass and must be created.
         // F.ex "([[1,2],[3,4]])[0]"
         const arrayTypeName = type.name + "[]";
-        return this.runtime.createArrayType(arrayTypeName, type);
+        return this.builder.createArrayType(arrayTypeName, type);
     }
 
     constructGenericType(inputType: TypeDefinition, bindings: Map<string, TypeDefinition>): TypeDefinition {
@@ -393,7 +395,7 @@ export class AstTstExpressionVisitor {
             const elementType = this.constructGenericType(genericElementType, bindings);
             // Implicitly inferred specialized generic array return types are not collected during the static pass and must be created.
             // F.ex the return type of array .map() is T[]
-            return this.runtime.createArrayType(elementType.name + "[]", elementType);
+            return this.builder.createArrayType(elementType.name + "[]", elementType);
         }
 
         if (inputType instanceof GenericUnresolvedTypeDefinition) {
