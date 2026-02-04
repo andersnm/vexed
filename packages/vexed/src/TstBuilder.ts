@@ -1,14 +1,11 @@
-import { AstClass, AstExpression, AstMethodDeclaration, AstProgram, AstStatement, formatAstTypeName, isAstArrayLiteral, isAstBinaryExpression, isAstBooleanLiteral, isAstDecimalLiteral, isAstFunctionCall, isAstIdentifier, isAstIfStatement, isAstIndexExpression, isAstIntegerLiteral, isAstLocalVarAssignment, isAstLocalVarDeclaration, isAstMember, isAstReturnStatement, isAstStringLiteral, isAstUnaryExpression, isClass, isMethodDeclaration, isPropertyDefinition, isPropertyStatement } from "./AstProgram.js";
-import { InstanceMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstFunctionReferenceExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNewExpression, TstParameterExpression, TstReturnStatement, TstStatement, TstThisExpression, TstUnaryExpression, TstUnboundFunctionReferenceExpression, TstVariable, TstVariableExpression } from "./TstExpression.js";
+import { AstClass, AstMethodDeclaration, AstProgram, AstStatement, formatAstTypeName, isAstIfStatement, isAstLocalVarDeclaration, isClass, isMethodDeclaration, isPropertyDefinition, isPropertyStatement } from "./AstProgram.js";
+import { TstUnboundFunctionReferenceExpression } from "./TstExpression.js";
 import { TypeDefinition, TypeMethod, TypeParameter } from "./TstType.js";
 import { TstRuntime } from "./TstRuntime.js";
-import { TstExpressionTypeVisitor } from "./visitors/TstExpressionTypeVisitor.js";
 import { AstIdentifierType, AstType, isAstArrayType, isAstFunctionType, isAstIdentifierType } from "./AstType.js";
 import { FunctionTypeDefinition, getFunctionTypeName } from "./types/FunctionTypeDefinition.js";
-import { ArrayTypeDefinition } from "./types/ArrayBaseTypeDefinition.js";
 import { GenericUnresolvedTypeDefinition } from "./types/GenericUnresolvedTypeDefinition.js";
-import { PoisonTypeDefinition } from "./types/PoisonTypeDefinition.js";
-import { AstVisitor } from "./AstVisitor.js";
+import { AstTstExpressionVisitor } from "./AstTstExpressionVisitor.js";
 
 export class TstBuilder {
     private runtime: TstRuntime;
@@ -290,29 +287,29 @@ export class TstBuilder {
             if (isClass(programUnit)) {
                 const type = this.runtime.getType(programUnit.name);
 
-                const visitor = new AstVisitor(null, this.runtime, type, type.parameters);
+                const visitor = new AstTstExpressionVisitor(this.runtime, programUnit, null);
                 if (programUnit.extends && programUnit.extendsArguments) {
-                    type.extendsArguments = programUnit.extendsArguments.map(arg => visitor.resolveExpression(arg));
+                    type.extendsArguments = programUnit.extendsArguments.map(arg => visitor.visitExpression(arg));
                 }
 
                 for (let unit of programUnit.units) {
                     if (isPropertyStatement(unit)) {
                         // TODO: resolve with a target type? then we can deduce type for empty array literal "[]"
-                        type.initializers.push({ name: unit.name, argument: visitor.resolveExpression(unit.argument) })
+                        type.initializers.push({ name: unit.name, argument: visitor.visitExpression(unit.argument) })
                     } else
                     if (isPropertyDefinition(unit)) {
                         const typeProperty = type.properties.find(p => p.name === unit.name);
                         if (!typeProperty) throw new Error("Internal error: Property not found: " + unit.name);
 
-                        typeProperty.initializer = unit.argument ? visitor.resolveExpression(unit.argument) : undefined;
+                        typeProperty.initializer = unit.argument ? visitor.visitExpression(unit.argument) : undefined;
                     } else if (isMethodDeclaration(unit)) {
                         const typeMethod = type.methods.find(m => m.name === unit.name);
                         if (!typeMethod) throw new Error("Internal error: Method not found: " + unit.name);
 
-                        const methodVisitor = new AstVisitor(visitor, this.runtime, type, typeMethod.parameters);
+                        const methodVisitor = new AstTstExpressionVisitor(this.runtime, programUnit, unit);
 
                         for (let astStmt of unit.statementList) {
-                            const stmt = methodVisitor.resolveStatement(programUnit, unit, astStmt);
+                            const stmt = methodVisitor.visitStatement(astStmt);
                             typeMethod.body.push(stmt);
                         }
                     }
