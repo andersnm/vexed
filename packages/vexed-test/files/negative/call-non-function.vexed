@@ -1,0 +1,8 @@
+class Main() {
+    testMethod(): int {
+        # Trying to call a non-function value should error
+        let x: int = 5;
+        let result: any = x();
+        return 0;
+    }
+}

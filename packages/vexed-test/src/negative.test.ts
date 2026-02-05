@@ -160,3 +160,27 @@ test('Incompatible array index type error', async () => {
     assert.equal(error.errors.length, 1);
     assert.match(error.errors[0].message, /Index expression must be of type int/);
 });
+
+test('Array with mixed element types error', async () => {
+    const { error } = await loadScriptExpectingError("./files/negative/array-mixed-types.vexed");
+    assert.equal(error.errors.length, 1);
+    assert.match(error.errors[0].message, /Array elements must be of the same type/);
+});
+
+test('Empty array without type hint error', async () => {
+    const { error } = await loadScriptExpectingError("./files/negative/array-empty.vexed");
+    assert.equal(error.errors.length, 1);
+    assert.match(error.errors[0].message, /Cannot determine array element type for empty array/);
+});
+
+test('Call non-function value error', async () => {
+    const { error } = await loadScriptExpectingError("./files/negative/call-non-function.vexed");
+    assert.equal(error.errors.length, 1);
+    assert.match(error.errors[0].message, /Callee is not a function type/);
+});
+
+test('Function call with type mismatch error', async () => {
+    const { error } = await loadScriptExpectingError("./files/negative/function-call-type-mismatch.vexed");
+    assert.equal(error.errors.length, 1);
+    assert.match(error.errors[0].message, /Argument \d+ type mismatch: expected int, got string/);
+});

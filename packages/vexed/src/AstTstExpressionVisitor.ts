@@ -1,3 +1,4 @@
+import { AstLocation } from "./AstLocation.js";
 import { AstArrayLiteralExpression, AstBinaryExpression, AstBooleanLiteralExpression, AstClass, AstClassUnit, AstDecimalLiteralExpression, AstExpression, AstFunctionCallExpression, AstIdentifierExpression, AstIfStatement, AstIndexExpression, AstIntegerLiteralExpression, AstLocalVarAssignment, AstLocalVarDeclaration, AstMemberExpression, AstMethodDeclaration, AstProgram, AstProgramUnit, AstPropertyDefinition, AstReturnStatement, AstStatement, AstStringLiteralExpression, AstUnaryExpression, formatAstTypeName, isAstArrayLiteral, isAstBinaryExpression, isAstBooleanLiteral, isAstDecimalLiteral, isAstFunctionCall, isAstIdentifier, isAstIfStatement, isAstIndexExpression, isAstIntegerLiteral, isAstLocalVarAssignment, isAstLocalVarDeclaration, isAstMember, isAstReturnStatement, isAstStringLiteral, isAstUnaryExpression, isClass, isMethodDeclaration, isPropertyDefinition } from "./AstProgram.js";
 import { TstBuilder } from "./TstBuilder.js";
 import { InstanceMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNewArrayExpression, TstNewExpression, TstParameterExpression, TstPoisonExpression, TstReturnStatement, TstStatement, TstThisExpression, TstUnaryExpression, TstVariableExpression } from "./TstExpression.js";
@@ -52,7 +53,8 @@ export class AstTstExpressionVisitor {
         if (isAstUnaryExpression(expr)) {
             return this.visitUnaryExpression(expr);
         }
-        throw new Error(`AstBaseVisitor: Unhandled expression type: ${expr.exprType}`);
+
+        throw new Error(`Internal error: Unhandled expression type: ${expr.exprType}`);
     }
 
 
@@ -93,9 +95,15 @@ export class AstTstExpressionVisitor {
 
     visitArrayLiteral(expr: AstArrayLiteralExpression): TstExpression {
         const elements = expr.elements.map(e => this.visitExpression(e));
-        const arrayType = this.inferArrayType(elements);
+        const arrayType = this.inferArrayType(elements, expr.location);
         if (!arrayType) {
-            throw new Error("Could not determine array type for elements");
+            // inferArrayType has already reported the error, just return poison expression
+            const poisonType = this.builder.createPoisonType("<InvalidArrayLiteral>");
+            return {
+                exprType: "poison",
+                poisonType: poisonType,
+                identifierName: "<InvalidArrayLiteral>",
+            } as TstPoisonExpression;
         }
 
         // Return TstNewArrayExpression to defer array creation until reduction time
@@ -138,7 +146,13 @@ export class AstTstExpressionVisitor {
         }
 
         if (!(methodType instanceof FunctionTypeDefinition)) {
-            throw new Error("Callee is not a function type");
+            this.runtime.error(`Callee is not a function type, got type ${methodType.name}`, expr.callee.location);
+            const poisonType = this.builder.createPoisonType("<InvalidFunctionCall>");
+            return {
+                exprType: "poison",
+                poisonType: poisonType,
+                identifierName: "<InvalidFunctionCall>",
+            } as TstPoisonExpression;
         }
 
         const genericBindings = new Map<string, TypeDefinition>();
@@ -150,8 +164,28 @@ export class AstTstExpressionVisitor {
             const methodParameterType = methodType.parameterTypes[i];
             const argumentType = this.runtime.getExpressionType(argumentExpression);
 
+            // First try to infer generic type bindings
             if (!this.runtime.inferBindings(methodParameterType, argumentType, genericBindings)) {
-                throw new Error(`Cannot infer bindings for function call argument ${i}: expected ${methodParameterType.name}, got ${argumentType.name}`);
+                this.runtime.error(`Cannot infer bindings for function call argument ${i}: expected ${methodParameterType.name}, got ${argumentType.name}`, expr.args[i].location);
+                const poisonType = this.builder.createPoisonType("<InvalidFunctionCallArgs>");
+                return {
+                    exprType: "poison",
+                    poisonType: poisonType,
+                    identifierName: "<InvalidFunctionCallArgs>",
+                } as TstPoisonExpression;
+            }
+
+            // After inference, check if the argument type is actually assignable to the parameter type
+            // inferBindings handles generic type parameter inference but doesn't validate compatibility for concrete types
+            // This additional check catches concrete type mismatches (e.g., passing string when int is expected)
+            if (!this.runtime.isTypeAssignable(argumentType, methodParameterType, genericBindings)) {
+                this.runtime.error(`Argument ${i} type mismatch: expected ${methodParameterType.name}, got ${argumentType.name}`, expr.args[i].location);
+                const poisonType = this.builder.createPoisonType("<InvalidFunctionCallArgs>");
+                return {
+                    exprType: "poison",
+                    poisonType: poisonType,
+                    identifierName: "<InvalidFunctionCallArgs>",
+                } as TstPoisonExpression;
             }
         }
 
@@ -258,7 +292,8 @@ export class AstTstExpressionVisitor {
         if (isAstLocalVarAssignment(stmt)) {
             return this.visitLocalVarAssignment(stmt);
         }
-        throw new Error(`AstBaseVisitor: Unhandled statement type: ${stmt.stmtType}`);
+
+        throw new Error(`Internal error: Unhandled statement type: ${stmt.stmtType}`);
     }
 
     visitIfStatement(stmt: AstIfStatement): TstStatement {
@@ -272,7 +307,7 @@ export class AstTstExpressionVisitor {
 
     visitReturnStatement(stmt: AstReturnStatement): TstStatement {
         if (!this.methodDef) {
-            throw new Error("Return statement outside of method");
+            throw new Error("Internal error: Return statement outside of method");
         }
 
         let returnExpression = this.visitExpression(stmt.returnValue);
@@ -359,7 +394,7 @@ export class AstTstExpressionVisitor {
         return result;
     }
 
-    inferArrayType(elements: TstExpression[]): TypeDefinition | null {
+    inferArrayType(elements: TstExpression[], location: AstLocation): TypeDefinition | null {
         let type: TypeDefinition | null = null;
         // TODO: allow common base type
         for (let element of elements) {
@@ -370,13 +405,15 @@ export class AstTstExpressionVisitor {
             }
 
             if (type !== elementType) {
-                throw new Error("Array elements must be of the same type");
+                this.runtime.error(`Array elements must be of the same type, got ${type.name} and ${elementType.name}`, location);
+                return null;
             }
         }
 
         if (!type) {
             // Empty arrays should be handled explicitly earlier
-            throw new Error("Cannot determine array element type for empty array");
+            this.runtime.error("Cannot determine array element type for empty array", location);
+            return null;
         }
 
         // Implicitly inferred array literal types are not collected during the static pass and must be created.
@@ -401,7 +438,7 @@ export class AstTstExpressionVisitor {
         if (inputType instanceof GenericUnresolvedTypeDefinition) {
             const binding = bindings.get(inputType.name);
             if (!binding) {
-                throw new Error("Cannot resolve generic type: " + inputType.name);
+                throw new Error(`Internal error: Cannot resolve generic type ${inputType.name}`);
             }
 
             return binding;
