@@ -1,0 +1,7 @@
+class Main() {
+    testMethod(): int {
+        # Empty array without type hint should error
+        let arr: any = [];
+        return 0;
+    }
+}

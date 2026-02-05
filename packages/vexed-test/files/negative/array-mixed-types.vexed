@@ -1,0 +1,7 @@
+class Main() {
+    testMethod(): int {
+        # Array with mixed types should error
+        let arr: int[] = [1, "string"];
+        return 0;
+    }
+}

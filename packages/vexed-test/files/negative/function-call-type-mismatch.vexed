@@ -1,0 +1,11 @@
+class Main() {
+    helper(x: int): int {
+        return x;
+    }
+    
+    testMethod(): int {
+        # Calling function with wrong argument type
+        let result: int = this.helper("string");
+        return 0;
+    }
+}
