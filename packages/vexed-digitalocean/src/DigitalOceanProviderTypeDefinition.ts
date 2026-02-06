@@ -1,4 +1,4 @@
-import { InstanceMeta, printJsonObject, RuntimeMeta, TstExpression, TstInstanceExpression, TstInstanceObject, TstRuntime, TypeDefinition } from "vexed";
+import { InstanceMeta, printJsonObject, RuntimeMeta, TstExpression, TstInstanceExpression, TstInstanceObject, TstRuntime, TypeDefinition, AstIdentifierType, AstPropertyDefinition } from "vexed";
 import { DigitalOceanApi, DigitalOceanRepository } from "./DigitalOceanRepository.js";
 
 export interface DigitalOceanProviderInfo {
@@ -9,20 +9,30 @@ export interface DigitalOceanProviderInfo {
 export class DigitalOceanProviderTypeDefinition extends TypeDefinition {
     constructor(runtime: TstRuntime) {
         super(runtime, "DigitalOceanProvider", undefined);
-    }
 
-    initializeType(): void {
-        this.properties.push({
-            modifier: "public",
-            name: "apiToken",
-            type: this.runtime.getType("string")!,
-        });
-
-        this.properties.push({
-            modifier: "public",
-            name: "region",
-            type: this.runtime.getType("string")!,
-        });
+        this.astNode = {
+            type: "class",
+            name: "DigitalOceanProvider",
+            parameters: [],
+            extends: "any",
+            extendsArguments: [],
+            units: [
+                {
+                    modifier: "public",
+                    type: "propertyDefinition",
+                    name: "apiToken",
+                    propertyType: { type: "identifier", typeName: "string" } as AstIdentifierType,
+                    argument: null,
+                } as AstPropertyDefinition,
+                {
+                    modifier: "public",
+                    type: "propertyDefinition",
+                    name: "region",
+                    propertyType: { type: "identifier", typeName: "string" } as AstIdentifierType,
+                    argument: null,
+                } as AstPropertyDefinition,
+            ],
+        };
     }
 
     sealedInstance(instance: TstInstanceObject) {
@@ -30,8 +40,6 @@ export class DigitalOceanProviderTypeDefinition extends TypeDefinition {
 
         const apiToken = jsonOutput.apiToken as string;
         const region = jsonOutput.region as string;
-
-        // console.log("[DigitalOcean] Sealing the provider instance: " + apiToken + ", " + region);
 
         const api = new DigitalOceanApi(apiToken, region);
         const repository = new DigitalOceanRepository(api);

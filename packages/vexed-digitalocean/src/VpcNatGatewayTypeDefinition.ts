@@ -1,4 +1,4 @@
-import { InstanceMeta, TstExpression, TstInstanceExpression, TstInstanceObject, TstMissingInstanceExpression, TstPromiseExpression, TstRuntime, TypeDefinition, TypeMeta } from "vexed";
+import { InstanceMeta, TstExpression, TstInstanceExpression, TstInstanceObject, TstMissingInstanceExpression, TstPromiseExpression, TstRuntime, TypeDefinition, TypeMeta, AstArrayType, AstIdentifierType, AstParameter, AstPropertyDefinition } from "vexed";
 import { getInstanceMetaFromScopeParameter, hasNameInstance, makeThisRemoteNativeMemberExpression } from "./TstAsyncProperty.js";
 import { DigitalOceanProviderInfo } from "./DigitalOceanProviderTypeDefinition.js";
 import { VpcNatGatewayInfo } from "./DigitalOceanRepository.js";
@@ -14,7 +14,7 @@ async function vpcNatGatewayGetter(instance: TstInstanceObject, propertyName: st
     try {
         const gateway = await provider.repository.getVpcNatGatewayByName(name);
         if (!gateway) {
-            throw new Error("No such VPC NAT Gateway"); // uses exceptions for flow :(
+            throw new Error("No such VPC NAT Gateway");
         }
 
         const infoType = instanceType.runtime.getType("VpcNatGatewayInfo");
@@ -41,88 +41,133 @@ async function vpcNatGatewayGetter(instance: TstInstanceObject, propertyName: st
 export class VpcNatGatewayInfoTypeDefinition extends TypeDefinition {
     constructor(runtime: TstRuntime) {
         super(runtime, "VpcNatGatewayInfo", undefined);
-        // opaque object
+        
+        this.astNode = {
+            type: "class",
+            name: "VpcNatGatewayInfo",
+            parameters: [],
+            extends: "any",
+            extendsArguments: [],
+            units: [],
+        };
     }
 }
 
 export class VpcNatGatewayVpcTypeDefinition extends TypeDefinition {
     constructor(runtime: TstRuntime) {
         super(runtime, "VpcNatGatewayVpc", undefined);
-    }
-    
-    initializeType(): void {
-        this.properties.push({ // "input"
-            modifier: "public",
-            name: "vpc_uuid",
-            type: this.runtime.getType("string")!,
-        });
-
-        this.properties.push({ // "input"
-            modifier: "public",
-            name: "default_gateway",
-            type: this.runtime.getType("bool")!,
-        });
+        
+        this.astNode = {
+            type: "class",
+            name: "VpcNatGatewayVpc",
+            parameters: [],
+            extends: "any",
+            extendsArguments: [],
+            units: [
+                {
+                    modifier: "public",
+                    type: "propertyDefinition",
+                    name: "vpc_uuid",
+                    propertyType: { type: "identifier", typeName: "string" } as AstIdentifierType,
+                    argument: null,
+                } as AstPropertyDefinition,
+                {
+                    modifier: "public",
+                    type: "propertyDefinition",
+                    name: "default_gateway",
+                    propertyType: { type: "identifier", typeName: "bool" } as AstIdentifierType,
+                    argument: null,
+                } as AstPropertyDefinition,
+            ],
+        };
     }
 }
 
 export class VpcNatGatewayTypeDefinition extends TypeDefinition {
     constructor(runtime: TstRuntime) {
         super(runtime, "VpcNatGateway", undefined);
+        
+        this.astNode = {
+            type: "class",
+            name: "VpcNatGateway",
+            parameters: [
+                {
+                    name: "provider",
+                    type: { type: "identifier", typeName: "DigitalOceanProvider" } as AstIdentifierType,
+                } as AstParameter,
+            ],
+            extends: "Resource",
+            extendsArguments: [],
+            units: [
+                {
+                    modifier: "public",
+                    type: "propertyDefinition",
+                    name: "id",
+                    propertyType: { type: "identifier", typeName: "string" } as AstIdentifierType,
+                    argument: null,
+                } as AstPropertyDefinition,
+                {
+                    modifier: "public",
+                    type: "propertyDefinition",
+                    name: "name",
+                    propertyType: { type: "identifier", typeName: "string" } as AstIdentifierType,
+                    argument: null,
+                } as AstPropertyDefinition,
+                {
+                    modifier: "public",
+                    type: "propertyDefinition",
+                    name: "region",
+                    propertyType: { type: "identifier", typeName: "string" } as AstIdentifierType,
+                    argument: null,
+                } as AstPropertyDefinition,
+                {
+                    modifier: "public",
+                    type: "propertyDefinition",
+                    name: "type",
+                    propertyType: { type: "identifier", typeName: "string" } as AstIdentifierType,
+                    argument: null,
+                } as AstPropertyDefinition,
+                {
+                    modifier: "public",
+                    type: "propertyDefinition",
+                    name: "size",
+                    propertyType: { type: "identifier", typeName: "int" } as AstIdentifierType,
+                    argument: null,
+                } as AstPropertyDefinition,
+                {
+                    modifier: "public",
+                    type: "propertyDefinition",
+                    name: "vpcs",
+                    propertyType: {
+                        type: "array",
+                        arrayItemType: { type: "identifier", typeName: "VpcNatGatewayVpc" } as AstIdentifierType,
+                    } as AstArrayType,
+                    argument: null,
+                } as AstPropertyDefinition,
+                {
+                    modifier: "private",
+                    type: "propertyDefinition",
+                    name: "remote",
+                    propertyType: { type: "identifier", typeName: "VpcNatGatewayInfo" } as AstIdentifierType,
+                    argument: null,
+                } as AstPropertyDefinition,
+            ],
+        };
     }
     
-    initializeType(): void {
-        this.extends = this.runtime.getType("Resource");
-
-        this.parameters.push({
-            name: "provider",
-            type: this.runtime.getType("DigitalOceanProvider")!,
-        });
-
-        this.properties.push({ // "output", resource must exist
-            modifier: "public",
-            name: "id",
-            type: this.runtime.getType("string")!,
-            initializer: makeThisRemoteNativeMemberExpression(this.runtime.getType("string")!, "id", (remoteInstance: TstInstanceObject) => {
-                const natGateway = remoteInstance[InstanceMeta] as VpcNatGatewayInfo;
-                return this.runtime.createString(natGateway.id);
-            }),
-        });
-
-        this.properties.push({ // "input"
-            modifier: "public",
-            name: "name",
-            type: this.runtime.getType("string")!,
-        });
-
-        this.properties.push({ // "input"
-            modifier: "public",
-            name: "region",
-            type: this.runtime.getType("string")!,
-        });
-
-        this.properties.push({ // "input"
-            modifier: "public",
-            name: "type", // "PUBLIC"
-            type: this.runtime.getType("string")!,
-        });
-
-        this.properties.push({ // "input"
-            modifier: "public",
-            name: "size",
-            type: this.runtime.getType("int")!,
-        });
-
-        this.properties.push({ // "input"
-            modifier: "public",
-            name: "vpcs",
-            type: this.runtime.getType("VpcNatGatewayVpc[]")!,
-        });
-
-        this.properties.push({
-            modifier: "private",
-            name: "remote",
-            type: this.runtime.getType("VpcNatGatewayInfo")!,
-        });
+    initializeProperties(): void {
+        // Set the initializer for the id property after types are registered
+        const idProperty = this.properties.find(p => p.name === "id");
+        if (idProperty) {
+            idProperty.initializer = makeThisRemoteNativeMemberExpression(
+                this.runtime.getType("string")!,
+                "id",
+                (remoteInstance: TstInstanceObject) => {
+                    const natGateway = remoteInstance[InstanceMeta] as VpcNatGatewayInfo;
+                    return this.runtime.createString(natGateway.id);
+                }
+            );
+        }
     }
 
     resolveProperty(instance: TstInstanceObject, propertyName: string): TstExpression | null {

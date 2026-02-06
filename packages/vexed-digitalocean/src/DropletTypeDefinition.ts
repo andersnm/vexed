@@ -1,4 +1,4 @@
-import { InstanceMeta, TstExpression, TstInstanceExpression, TstInstanceObject, TstMissingInstanceExpression, TstPromiseExpression, TstRuntime, TypeDefinition, TypeMeta } from "vexed";
+import { InstanceMeta, TstExpression, TstInstanceExpression, TstInstanceObject, TstMissingInstanceExpression, TstPromiseExpression, TstRuntime, TypeDefinition, TypeMeta, AstIdentifierType, AstParameter, AstPropertyDefinition } from "vexed";
 import { DropletInfo } from "./DigitalOceanRepository.js";
 import { getInstanceMetaFromScopeParameter, hasNameInstance, makeThisRemoteNativeMemberExpression } from "./TstAsyncProperty.js";
 import { DigitalOceanProviderInfo } from "./DigitalOceanProviderTypeDefinition.js";
@@ -14,7 +14,7 @@ async function dropletGetter(instance: TstInstanceObject, propertyName: string):
     try {
         const droplet = await provider.repository.getDroplet(name);
         if (!droplet) {
-            throw new Error("No such Droplet"); // uses exceptions for flow :(
+            throw new Error("No such Droplet");
         }
         
         const dropletInfoType = instanceType.runtime.getType("DropletInfo");
@@ -42,63 +42,93 @@ async function dropletGetter(instance: TstInstanceObject, propertyName: string):
 export class DropletInfoTypeDefinition extends TypeDefinition {
     constructor(runtime: TstRuntime) {
         super(runtime, "DropletInfo", undefined);
-        // this shall be an opaque object, only the InstanceMeta is used with VpcInfo and rejection error
-        // use nativeMember expression to read stuff
+        
+        this.astNode = {
+            type: "class",
+            name: "DropletInfo",
+            parameters: [],
+            extends: "any",
+            extendsArguments: [],
+            units: [],
+        };
     }
 }
 
 export class DropletTypeDefinition extends TypeDefinition {
     constructor(runtime: TstRuntime) {
         super(runtime, "Droplet", undefined);
+        
+        this.astNode = {
+            type: "class",
+            name: "Droplet",
+            parameters: [
+                {
+                    name: "provider",
+                    type: { type: "identifier", typeName: "DigitalOceanProvider" } as AstIdentifierType,
+                } as AstParameter,
+            ],
+            extends: "Resource",
+            extendsArguments: [],
+            units: [
+                {
+                    modifier: "public",
+                    type: "propertyDefinition",
+                    name: "id",
+                    propertyType: { type: "identifier", typeName: "int" } as AstIdentifierType,
+                    argument: null,
+                } as AstPropertyDefinition,
+                {
+                    modifier: "public",
+                    type: "propertyDefinition",
+                    name: "name",
+                    propertyType: { type: "identifier", typeName: "string" } as AstIdentifierType,
+                    argument: null,
+                } as AstPropertyDefinition,
+                {
+                    modifier: "public",
+                    type: "propertyDefinition",
+                    name: "size",
+                    propertyType: { type: "identifier", typeName: "string" } as AstIdentifierType,
+                    argument: null,
+                } as AstPropertyDefinition,
+                {
+                    modifier: "public",
+                    type: "propertyDefinition",
+                    name: "image",
+                    propertyType: { type: "identifier", typeName: "string" } as AstIdentifierType,
+                    argument: null,
+                } as AstPropertyDefinition,
+                {
+                    modifier: "public",
+                    type: "propertyDefinition",
+                    name: "vpc_uuid",
+                    propertyType: { type: "identifier", typeName: "string" } as AstIdentifierType,
+                    argument: null,
+                } as AstPropertyDefinition,
+                {
+                    modifier: "private",
+                    type: "propertyDefinition",
+                    name: "remote",
+                    propertyType: { type: "identifier", typeName: "DropletInfo" } as AstIdentifierType,
+                    argument: null,
+                } as AstPropertyDefinition,
+            ],
+        };
     }
     
-    initializeType(): void {
-        this.extends = this.runtime.getType("Resource");
-
-        this.parameters.push({
-            name: "provider",
-            type: this.runtime.getType("DigitalOceanProvider")!,
-        });
-
-        this.properties.push({ // id is "output" - depends on resource exists
-            modifier: "public",
-            name: "id",
-            type: this.runtime.getType("int")!,
-            initializer: makeThisRemoteNativeMemberExpression(this.runtime.getType("int")!, "id", (remoteInstance: TstInstanceObject) => {
-                const droplet = remoteInstance[InstanceMeta] as DropletInfo;
-                return this.runtime.createInt(droplet.id);
-            }),
-        });
-
-        this.properties.push({ // name is "input", maps 1:1 w/DO droplet name
-            modifier: "public",
-            name: "name",
-            type: this.runtime.getType("string")!,
-        });
-
-        this.properties.push({ // size is "input", maps 1:1 w/DO droplet size
-            modifier: "public",
-            name: "size",
-            type: this.runtime.getType("string")!,
-        });
-
-        this.properties.push({ // image is "input", maps 1:1 w/DO droplet image
-            modifier: "public",
-            name: "image",
-            type: this.runtime.getType("string")!,
-        });
-
-        this.properties.push({ // vpc_uuid is "input"
-            modifier: "public",
-            name: "vpc_uuid",
-            type: this.runtime.getType("string")!,
-        });
-
-        this.properties.push({
-            modifier: "private",
-            name: "remote",
-            type: this.runtime.getType("DropletInfo")!,
-        });
+    initializeProperties(): void {
+        // Set the initializer for the id property after types are registered
+        const idProperty = this.properties.find(p => p.name === "id");
+        if (idProperty) {
+            idProperty.initializer = makeThisRemoteNativeMemberExpression(
+                this.runtime.getType("int")!,
+                "id",
+                (remoteInstance: TstInstanceObject) => {
+                    const droplet = remoteInstance[InstanceMeta] as DropletInfo;
+                    return this.runtime.createInt(droplet.id);
+                }
+            );
+        }
     }
 
     resolveProperty(instance: TstInstanceObject, propertyName: string): TstExpression | null {
