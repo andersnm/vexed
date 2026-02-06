@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { jsonCommand } from "./jsonCommand.js";
 import { astCommand } from "./astCommand.js";
+import { diffCommand } from "./diffCommand.js";
 
 // Commands:
 //   - json: evaluate -> output state as JSON
@@ -19,6 +20,7 @@ function helpCommand(args: string[]) {
     console.log("Commands:");
     console.log("  json <file>        Evaluate Vexed script and output JSON representation");
     console.log("  ast  <file>        Evaluate Vexed script and output AST representation");
+    console.log("  diff <file>        Evaluate Vexed script and output infrastructure diff");
 }
 
 async function main() {
@@ -32,6 +34,11 @@ async function main() {
 
     if (positionals[0] === "ast") {
         await astCommand(positionals.slice(1));
+        return;
+    }
+
+    if (positionals[0] === "diff") {
+        await diffCommand(positionals.slice(1));
         return;
     }
 

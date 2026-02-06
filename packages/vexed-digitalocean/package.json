@@ -1,13 +1,12 @@
 {
-  "name": "vexed-cli",
+  "name": "vexed-digitalocean",
   "version": "0.0.1",
   "private": false,
   "type": "module",
-  "bin": {
-    "vexed-cli": "./dist/main.js"
-  },
+  "types": "./dist/index.d.ts",
+  "main": "./dist/index.js",
+  "source": "./src/index.ts",
   "scripts": {
-    "start": "tsc && node --enable-source-maps ./dist/main",
     "build": "tsc"
   },
   "devDependencies": {
@@ -15,8 +14,6 @@
   },
   "dependencies": {
     "vexed": "file:../vexed",
-    "vexed-nodejs": "file:../vexed-nodejs",
-    "vexed-digitalocean": "file:../vexed-digitalocean",
     "tslib": "^2.4.1"
   }
 }
