@@ -1,4 +1,4 @@
-import { InstanceMeta, isInstanceExpression, ScopeMeta, TstExpression, TstInstanceExpression, TstInstanceObject, TstMemberExpression, TstNativeMemberExpression, TstPromiseExpression, TstRuntime, TypeDefinition, TypeMeta, AstNativeMemberExpression } from "vexed";
+import { InstanceMeta, isInstanceExpression, ScopeMeta, TstExpression, TstInstanceExpression, TstInstanceObject, TstMemberExpression, TstNativeMemberExpression, TstPromiseExpression, TstRuntime, TypeDefinition, TypeMeta, AstNativeMemberExpression, AstIdentifierExpression } from "vexed";
 import { getScopeParameter } from "vexed/dist/visitors/TstReduceExpressionVisitor.js";
 
 export function getInstanceMetaFromScopeParameter<T>(instance: TstInstanceObject, parameterName: string): T {
@@ -27,7 +27,7 @@ export function makeAstThisRemoteNativeMemberExpression(memberTypeName: string, 
             exprType: "identifier",
             value: "__this_remote__", // Placeholder - will be converted to this.remote in visitor
             location: { fileName: "<native>", line: 0, column: 0 },
-        } as any,
+        } as AstIdentifierExpression,
         memberTypeName,
         memberName,
         location: { fileName: "<native>", line: 0, column: 0 },

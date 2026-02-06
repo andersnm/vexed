@@ -278,7 +278,7 @@ export class AstTstExpressionVisitor {
             memberType: memberType,
             memberName: memberName,
             callback: callback,
-        } as any; // TstNativeMemberExpression
+        } as TstNativeMemberExpression;
     }
 
     visitIndexExpression(expr: AstIndexExpression): TstExpression {
