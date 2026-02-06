@@ -41,6 +41,7 @@ export interface VpcInfo {
 
 interface VpcList {
     vpcs: VpcInfo[];
+    meta?: { total: number };
 }
 
 interface VpcNatGatewayVpc {
@@ -61,6 +62,7 @@ export interface VpcNatGatewayInfo {
 
 interface VpcNatGatewayList {
     vpc_nat_gateways: VpcNatGatewayInfo[];
+    meta?: { total: number };
 }
 
 const ubuntuImage: DropletImageInfo = {

@@ -28,7 +28,7 @@ async function vpcNatGatewayGetter(instance: TstInstanceObject, propertyName: st
             exprType: "missingInstance",
             error: err as Error,
             meta: {
-                resourceType: "Vpc",
+                resourceType: "VpcNatGateway",
                 name,
             },
             instance,

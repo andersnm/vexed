@@ -3,7 +3,7 @@ import { ResourceTypeDefinition, DigitalOceanProviderTypeDefinition, DropletInfo
 
 // Import ArrayTypeDefinition from the internal path since it's not exported from main index
 // We need to create the array type manually
-class ArrayTypeDefinition extends TypeDefinition {
+class LocalArrayTypeDefinition extends TypeDefinition {
     constructor(runtime: TstRuntime, name: string, public elementType: TypeDefinition) {
         super(runtime, name, undefined);
         this.astNode = {
@@ -34,7 +34,7 @@ export function registerDigitalOcean(runtime: TstRuntime) {
     
     // Create VpcNatGatewayVpc type and its array type
     const vpcNatGatewayVpcType = new VpcNatGatewayVpcTypeDefinition(runtime);
-    const vpcNatGatewayVpcArrayType = new ArrayTypeDefinition(
+    const vpcNatGatewayVpcArrayType = new LocalArrayTypeDefinition(
         runtime, 
         "VpcNatGatewayVpc[]", 
         vpcNatGatewayVpcType
