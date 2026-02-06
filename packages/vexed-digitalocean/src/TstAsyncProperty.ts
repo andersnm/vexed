@@ -1,4 +1,4 @@
-import { InstanceMeta, isInstanceExpression, ScopeMeta, TstExpression, TstInstanceExpression, TstInstanceObject, TstMemberExpression, TstNativeMemberExpression, TstPromiseExpression, TstRuntime, TypeDefinition, TypeMeta } from "vexed";
+import { InstanceMeta, isInstanceExpression, ScopeMeta, TstExpression, TstInstanceExpression, TstInstanceObject, TstMemberExpression, TstNativeMemberExpression, TstPromiseExpression, TstRuntime, TypeDefinition, TypeMeta, AstNativeMemberExpression } from "vexed";
 import { getScopeParameter } from "vexed/dist/visitors/TstReduceExpressionVisitor.js";
 
 export function getInstanceMetaFromScopeParameter<T>(instance: TstInstanceObject, parameterName: string): T {
@@ -17,6 +17,24 @@ export function getInstanceMetaFromScopeParameter<T>(instance: TstInstanceObject
     return parameterExpression.instance[InstanceMeta] as T;
 }
 
+// Helper for creating AST native member expression for accessing this.remote.memberName
+export function makeAstThisRemoteNativeMemberExpression(memberTypeName: string, memberName: string): AstNativeMemberExpression {
+    // The object will be set to this.remote during TST conversion
+    // We use a placeholder identifier here
+    return {
+        exprType: "nativeMember",
+        object: {
+            exprType: "identifier",
+            value: "__this_remote__", // Placeholder - will be converted to this.remote in visitor
+            location: { fileName: "<native>", line: 0, column: 0 },
+        } as any,
+        memberTypeName,
+        memberName,
+        location: { fileName: "<native>", line: 0, column: 0 },
+    } as AstNativeMemberExpression;
+}
+
+// Legacy helper for creating TST native member expression (used by runtime code)
 export function makeThisRemoteNativeMemberExpression(memberType: TypeDefinition, memberName: string, callback: (remoteInstance: TstInstanceObject) => TstInstanceObject): TstNativeMemberExpression {
     return {
         exprType: "nativeMember", // invokes callback and reduces when object is an instance
@@ -46,4 +64,3 @@ export function hasNameInstance(instance: TstInstanceObject): boolean {
 
     return true;
 }
-

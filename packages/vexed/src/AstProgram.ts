@@ -61,6 +61,10 @@ export function isAstUnaryExpression(expr: AstExpression): expr is AstUnaryExpre
     return expr.exprType === "unary";
 }
 
+export function isAstNativeMember(expr: AstExpression): expr is AstNativeMemberExpression {
+    return expr.exprType === "nativeMember";
+}
+
 export function isAstIfStatement(expr: AstStatement): expr is AstIfStatement {
     return expr.stmtType === "if";
 }
@@ -142,6 +146,13 @@ export interface AstUnaryExpression extends AstExpression {
     exprType: "unary";
     operator: string;
     operand: AstExpression;
+}
+
+export interface AstNativeMemberExpression extends AstExpression {
+    exprType: "nativeMember";
+    object: AstExpression;
+    memberName: string;
+    memberTypeName: string;
 }
 
 export interface AstParameter {

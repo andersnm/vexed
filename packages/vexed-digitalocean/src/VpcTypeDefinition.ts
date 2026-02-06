@@ -1,5 +1,5 @@
 import { InstanceMeta, TstExpression, TstInstanceExpression, TstInstanceObject, TstMissingInstanceExpression, TstPromiseExpression, TstRuntime, TypeDefinition, TypeMeta, AstIdentifierType, AstParameter, AstPropertyDefinition } from "vexed";
-import { getInstanceMetaFromScopeParameter, hasNameInstance, makeThisRemoteNativeMemberExpression } from "./TstAsyncProperty.js";
+import { getInstanceMetaFromScopeParameter, hasNameInstance, makeAstThisRemoteNativeMemberExpression } from "./TstAsyncProperty.js";
 import { VpcInfo } from "./DigitalOceanRepository.js";
 import { DigitalOceanProviderInfo } from "./DigitalOceanProviderTypeDefinition.js";
 
@@ -74,7 +74,7 @@ export class VpcTypeDefinition extends TypeDefinition {
                     type: "propertyDefinition",
                     name: "id",
                     propertyType: { type: "identifier", typeName: "string" } as AstIdentifierType,
-                    argument: null,
+                    argument: makeAstThisRemoteNativeMemberExpression("string", "id"),
                 } as AstPropertyDefinition,
                 {
                     modifier: "public",
@@ -113,21 +113,6 @@ export class VpcTypeDefinition extends TypeDefinition {
                 } as AstPropertyDefinition,
             ],
         };
-    }
-    
-    initializeProperties(): void {
-        // Set the initializer for the id property after types are registered
-        const idProperty = this.properties.find(p => p.name === "id");
-        if (idProperty) {
-            idProperty.initializer = makeThisRemoteNativeMemberExpression(
-                this.runtime.getType("string")!,
-                "id",
-                (remoteInstance: TstInstanceObject) => {
-                    const vpc = remoteInstance[InstanceMeta] as VpcInfo;
-                    return this.runtime.createString(vpc.id);
-                }
-            );
-        }
     }
 
     resolveProperty(instance: TstInstanceObject, propertyName: string): TstExpression | null {

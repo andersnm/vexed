@@ -1,4 +1,4 @@
-import { AstArrayLiteralExpression, AstBinaryExpression, AstBooleanLiteralExpression, AstClass, AstClassUnit, AstDecimalLiteralExpression, AstExpression, AstFunctionCallExpression, AstIdentifierExpression, AstIfStatement, AstIndexExpression, AstIntegerLiteralExpression, AstLocalVarAssignment, AstLocalVarDeclaration, AstMemberExpression, AstMethodDeclaration, AstProgram, AstProgramUnit, AstPropertyDefinition, AstPropertyStatement, AstReturnStatement, AstStatement, AstStringLiteralExpression, AstUnaryExpression, isAstArrayLiteral, isAstBinaryExpression, isAstBooleanLiteral, isAstDecimalLiteral, isAstFunctionCall, isAstIdentifier, isAstIfStatement, isAstIndexExpression, isAstIntegerLiteral, isAstLocalVarAssignment, isAstLocalVarDeclaration, isAstMember, isAstReturnStatement, isAstStringLiteral, isAstUnaryExpression, isClass, isMethodDeclaration, isPropertyDefinition, isPropertyStatement } from "../AstProgram.js";
+import { AstArrayLiteralExpression, AstBinaryExpression, AstBooleanLiteralExpression, AstClass, AstClassUnit, AstDecimalLiteralExpression, AstExpression, AstFunctionCallExpression, AstIdentifierExpression, AstIfStatement, AstIndexExpression, AstIntegerLiteralExpression, AstLocalVarAssignment, AstLocalVarDeclaration, AstMemberExpression, AstMethodDeclaration, AstNativeMemberExpression, AstProgram, AstProgramUnit, AstPropertyDefinition, AstPropertyStatement, AstReturnStatement, AstStatement, AstStringLiteralExpression, AstUnaryExpression, isAstArrayLiteral, isAstBinaryExpression, isAstBooleanLiteral, isAstDecimalLiteral, isAstFunctionCall, isAstIdentifier, isAstIfStatement, isAstIndexExpression, isAstIntegerLiteral, isAstLocalVarAssignment, isAstLocalVarDeclaration, isAstMember, isAstNativeMember, isAstReturnStatement, isAstStringLiteral, isAstUnaryExpression, isClass, isMethodDeclaration, isPropertyDefinition, isPropertyStatement } from "../AstProgram.js";
 
 // A replacing visitor base class for traversing AST nodes
 
@@ -104,6 +104,9 @@ export class AstReplaceVisitor {
         if (isAstMember(expr)) {
             return this.visitMember(expr);
         }
+        if (isAstNativeMember(expr)) {
+            return this.visitNativeMember(expr);
+        }
         if (isAstIndexExpression(expr)) {
             return this.visitIndexExpression(expr);
         }
@@ -181,6 +184,16 @@ export class AstReplaceVisitor {
             property: expr.property,
             location: expr.location,
         } as AstMemberExpression;
+    }
+
+    visitNativeMember(expr: AstNativeMemberExpression): AstExpression {
+        return {
+            exprType: expr.exprType,
+            object: this.visitExpression(expr.object),
+            memberTypeName: expr.memberTypeName,
+            memberName: expr.memberName,
+            location: expr.location,
+        } as AstNativeMemberExpression;
     }
 
     visitIndexExpression(expr: AstIndexExpression): AstExpression {

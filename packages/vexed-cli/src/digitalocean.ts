@@ -15,7 +15,4 @@ export function registerDigitalOcean(runtime: TstRuntime) {
     ];
 
     runtime.registerTypes(doTypes);
-    
-    // Initialize property initializers that depend on runtime types being available
-    doTypes.forEach(t => (t as any).initializeProperties?.());
 }

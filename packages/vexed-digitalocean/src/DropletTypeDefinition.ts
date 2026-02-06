@@ -1,6 +1,6 @@
 import { InstanceMeta, TstExpression, TstInstanceExpression, TstInstanceObject, TstMissingInstanceExpression, TstPromiseExpression, TstRuntime, TypeDefinition, TypeMeta, AstIdentifierType, AstParameter, AstPropertyDefinition } from "vexed";
 import { DropletInfo } from "./DigitalOceanRepository.js";
-import { getInstanceMetaFromScopeParameter, hasNameInstance, makeThisRemoteNativeMemberExpression } from "./TstAsyncProperty.js";
+import { getInstanceMetaFromScopeParameter, hasNameInstance, makeAstThisRemoteNativeMemberExpression } from "./TstAsyncProperty.js";
 import { DigitalOceanProviderInfo } from "./DigitalOceanProviderTypeDefinition.js";
 
 async function dropletGetter(instance: TstInstanceObject, propertyName: string): Promise<TstExpression> {
@@ -75,7 +75,7 @@ export class DropletTypeDefinition extends TypeDefinition {
                     type: "propertyDefinition",
                     name: "id",
                     propertyType: { type: "identifier", typeName: "int" } as AstIdentifierType,
-                    argument: null,
+                    argument: makeAstThisRemoteNativeMemberExpression("int", "id"),
                 } as AstPropertyDefinition,
                 {
                     modifier: "public",
@@ -114,21 +114,6 @@ export class DropletTypeDefinition extends TypeDefinition {
                 } as AstPropertyDefinition,
             ],
         };
-    }
-    
-    initializeProperties(): void {
-        // Set the initializer for the id property after types are registered
-        const idProperty = this.properties.find(p => p.name === "id");
-        if (idProperty) {
-            idProperty.initializer = makeThisRemoteNativeMemberExpression(
-                this.runtime.getType("int")!,
-                "id",
-                (remoteInstance: TstInstanceObject) => {
-                    const droplet = remoteInstance[InstanceMeta] as DropletInfo;
-                    return this.runtime.createInt(droplet.id);
-                }
-            );
-        }
     }
 
     resolveProperty(instance: TstInstanceObject, propertyName: string): TstExpression | null {
