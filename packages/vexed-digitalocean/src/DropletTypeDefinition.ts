@@ -50,7 +50,9 @@ export class DropletInfoTypeDefinition extends TypeDefinition {
 export class DropletTypeDefinition extends TypeDefinition {
     constructor(runtime: TstRuntime) {
         super(runtime, "Droplet", undefined);
-        
+    }
+    
+    initializeType(): void {
         this.extends = this.runtime.getType("Resource");
 
         this.parameters.push({

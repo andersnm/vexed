@@ -18,25 +18,39 @@ class ArrayTypeDefinition extends TypeDefinition {
 }
 
 export function registerDigitalOcean(runtime: TstRuntime) {
+    // Register Resource base type first
+    const resourceType = new ResourceTypeDefinition(runtime);
+    runtime.types.push(resourceType);
+    
+    // Then register provider type
+    const providerType = new DigitalOceanProviderTypeDefinition(runtime);
+    runtime.types.push(providerType);
+    
+    // Register info types (they don't depend on anything)
+    const dropletInfoType = new DropletInfoTypeDefinition(runtime);
+    const vpcInfoType = new VpcInfoTypeDefinition(runtime);
+    const vpcNatGatewayInfoType = new VpcNatGatewayInfoTypeDefinition(runtime);
+    runtime.types.push(dropletInfoType, vpcInfoType, vpcNatGatewayInfoType);
+    
+    // Create VpcNatGatewayVpc type and its array type
     const vpcNatGatewayVpcType = new VpcNatGatewayVpcTypeDefinition(runtime);
     const vpcNatGatewayVpcArrayType = new ArrayTypeDefinition(
         runtime, 
         "VpcNatGatewayVpc[]", 
         vpcNatGatewayVpcType
     );
+    runtime.types.push(vpcNatGatewayVpcType, vpcNatGatewayVpcArrayType);
 
-    const doTypes = [
-        new ResourceTypeDefinition(runtime),
-        new DigitalOceanProviderTypeDefinition(runtime),
-        new DropletTypeDefinition(runtime),
-        new DropletInfoTypeDefinition(runtime),
-        new VpcTypeDefinition(runtime),
-        new VpcInfoTypeDefinition(runtime),
-        new VpcNatGatewayTypeDefinition(runtime),
-        new VpcNatGatewayInfoTypeDefinition(runtime),
-        vpcNatGatewayVpcType,
-        vpcNatGatewayVpcArrayType,
-    ];
-
-    runtime.types.push(...doTypes);
+    // Now create resource types
+    const dropletType = new DropletTypeDefinition(runtime);
+    const vpcType = new VpcTypeDefinition(runtime);
+    const vpcNatGatewayType = new VpcNatGatewayTypeDefinition(runtime);
+    runtime.types.push(dropletType, vpcType, vpcNatGatewayType);
+    
+    // Initialize types after all are registered
+    providerType.initializeType?.();
+    vpcNatGatewayVpcType.initializeType?.();
+    dropletType.initializeType?.();
+    vpcType.initializeType?.();
+    vpcNatGatewayType.initializeType?.();
 }

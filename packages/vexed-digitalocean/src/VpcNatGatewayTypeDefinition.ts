@@ -48,7 +48,9 @@ export class VpcNatGatewayInfoTypeDefinition extends TypeDefinition {
 export class VpcNatGatewayVpcTypeDefinition extends TypeDefinition {
     constructor(runtime: TstRuntime) {
         super(runtime, "VpcNatGatewayVpc", undefined);
-        
+    }
+    
+    initializeType(): void {
         this.properties.push({ // "input"
             modifier: "public",
             name: "vpc_uuid",
@@ -66,7 +68,9 @@ export class VpcNatGatewayVpcTypeDefinition extends TypeDefinition {
 export class VpcNatGatewayTypeDefinition extends TypeDefinition {
     constructor(runtime: TstRuntime) {
         super(runtime, "VpcNatGateway", undefined);
-        
+    }
+    
+    initializeType(): void {
         this.extends = this.runtime.getType("Resource");
 
         this.parameters.push({

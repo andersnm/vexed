@@ -1,0 +1,32 @@
+class VpcWrap(vpc: Vpc) {
+  public id: string = vpc.id;
+}
+
+class Provider() extends DigitalOceanProvider() {
+  apiToken = "abc";
+  region = "nyc3";
+}
+
+class ExampleDroplet(provider: Provider, vpc: VpcWrap) extends Droplet(provider) {
+  name = "example-droplet2";
+  vpc_uuid = vpc.id;
+  size = "s-1vcpu-2gb";
+  image = "ubuntu-20-04-x64";
+}
+
+class DefaultVpc(provider: Provider) extends Vpc(provider) {
+  name = "default-vpc";
+  region = provider.region;
+  description = "Default VPC";
+  ip_range = "10.0.0.0/16";
+}
+
+class Main() {
+  public provider: Provider = Provider();
+  public vpc: DefaultVpc = DefaultVpc(this.provider);
+  public droplet: ExampleDroplet = ExampleDroplet(this.provider, VpcWrap(this.vpc));
+
+  public dropletId: int = this.droplet.id;
+  public dropletName: string = this.droplet.name;
+  public vpcId: string = this.vpc.id;
+}

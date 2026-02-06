@@ -48,7 +48,9 @@ export class VpcInfoTypeDefinition extends TypeDefinition {
 export class VpcTypeDefinition extends TypeDefinition {
     constructor(runtime: TstRuntime) {
         super(runtime, "Vpc", undefined);
-        
+    }
+    
+    initializeType(): void {
         this.extends = this.runtime.getType("Resource");
 
         this.parameters.push({

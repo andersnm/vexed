@@ -9,7 +9,9 @@ export interface DigitalOceanProviderInfo {
 export class DigitalOceanProviderTypeDefinition extends TypeDefinition {
     constructor(runtime: TstRuntime) {
         super(runtime, "DigitalOceanProvider", undefined);
+    }
 
+    initializeType(): void {
         this.properties.push({
             modifier: "public",
             name: "apiToken",
