@@ -230,7 +230,8 @@ class DiffVm {
 
             const propertyExpression = object[expr.member];
             if (typeof propertyExpression === "string") {
-                throw new Error("Property " + expr.member + " not found on object " + object.__ID__);
+                const objectId = (object as any).__ID__ ?? "unknown";
+                throw new Error("Property " + expr.member + " not found on object " + objectId);
             }
 
             if (!propertyExpression) {
@@ -258,7 +259,7 @@ class DiffVm {
             const scope = this.scopes[this.scopes.length - 1];
             const parameterExpression = scope[expr.name];
             if (!parameterExpression) {
-                throw new Error("Parameter not found")
+                throw new Error("Parameter not found: " + expr.name);
             }
 
             return this.evaluateExpression(parameterExpression);
