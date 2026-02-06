@@ -7,3 +7,4 @@ export * from "./ScriptError.js";
 export * from "./AstProgram.js";
 export * from "./AstType.js";
 export { TstScope } from "./visitors/TstReduceExpressionVisitor.js";
+export { ArrayTypeDefinition } from "./types/ArrayBaseTypeDefinition.js";

@@ -1,7 +1,7 @@
 import { AstLocation } from "./AstLocation.js";
-import { AstArrayLiteralExpression, AstBinaryExpression, AstBooleanLiteralExpression, AstClass, AstClassUnit, AstDecimalLiteralExpression, AstExpression, AstFunctionCallExpression, AstIdentifierExpression, AstIfStatement, AstIndexExpression, AstIntegerLiteralExpression, AstLocalVarAssignment, AstLocalVarDeclaration, AstMemberExpression, AstMethodDeclaration, AstProgram, AstProgramUnit, AstPropertyDefinition, AstReturnStatement, AstStatement, AstStringLiteralExpression, AstUnaryExpression, formatAstTypeName, isAstArrayLiteral, isAstBinaryExpression, isAstBooleanLiteral, isAstDecimalLiteral, isAstFunctionCall, isAstIdentifier, isAstIfStatement, isAstIndexExpression, isAstIntegerLiteral, isAstLocalVarAssignment, isAstLocalVarDeclaration, isAstMember, isAstReturnStatement, isAstStringLiteral, isAstUnaryExpression, isClass, isMethodDeclaration, isPropertyDefinition } from "./AstProgram.js";
+import { AstArrayLiteralExpression, AstBinaryExpression, AstBooleanLiteralExpression, AstClass, AstClassUnit, AstDecimalLiteralExpression, AstExpression, AstFunctionCallExpression, AstIdentifierExpression, AstIfStatement, AstIndexExpression, AstIntegerLiteralExpression, AstLocalVarAssignment, AstLocalVarDeclaration, AstMemberExpression, AstMethodDeclaration, AstNativeMemberExpression, AstProgram, AstProgramUnit, AstPropertyDefinition, AstReturnStatement, AstStatement, AstStringLiteralExpression, AstUnaryExpression, formatAstTypeName, isAstArrayLiteral, isAstBinaryExpression, isAstBooleanLiteral, isAstDecimalLiteral, isAstFunctionCall, isAstIdentifier, isAstIfStatement, isAstIndexExpression, isAstIntegerLiteral, isAstLocalVarAssignment, isAstLocalVarDeclaration, isAstMember, isAstNativeMember, isAstReturnStatement, isAstStringLiteral, isAstUnaryExpression, isClass, isMethodDeclaration, isPropertyDefinition } from "./AstProgram.js";
 import { TstBuilder } from "./TstBuilder.js";
-import { InstanceMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNewArrayExpression, TstNewExpression, TstParameterExpression, TstPoisonExpression, TstReturnStatement, TstStatement, TstThisExpression, TstUnaryExpression, TstVariableExpression } from "./TstExpression.js";
+import { InstanceMeta, TstBinaryExpression, TstExpression, TstFunctionCallExpression, TstIfStatement, TstIndexExpression, TstInstanceExpression, TstInstanceObject, TstLocalVarAssignment, TstLocalVarDeclaration, TstMemberExpression, TstNativeMemberExpression, TstNewArrayExpression, TstNewExpression, TstParameterExpression, TstPoisonExpression, TstReturnStatement, TstStatement, TstThisExpression, TstUnaryExpression, TstVariableExpression } from "./TstExpression.js";
 import { TstRuntime } from "./TstRuntime.js";
 import { TypeDefinition, TypeParameter } from "./TstType.js";
 import { ArrayBaseTypeDefinition } from "./types/ArrayBaseTypeDefinition.js";
@@ -46,6 +46,9 @@ export class AstTstExpressionVisitor {
         }
         if (isAstIndexExpression(expr)) {
             return this.visitIndexExpression(expr);
+        }
+        if (isAstNativeMember(expr)) {
+            return this.visitNativeMember(expr);
         }
         if (isAstBinaryExpression(expr)) {
             return this.visitBinaryExpression(expr);
@@ -238,6 +241,44 @@ export class AstTstExpressionVisitor {
 
     visitMember(expr: AstMemberExpression): TstExpression {
         return { exprType: "member", object: this.visitExpression(expr.object), property: expr.property } as TstMemberExpression;
+    }
+
+    visitNativeMember(expr: AstNativeMemberExpression): TstExpression {
+        // Get the member type
+        const memberType = this.runtime.getType(expr.memberTypeName);
+        
+        // Handle the special __this_remote__ placeholder
+        let objectExpr: TstExpression;
+        if (isAstIdentifier(expr.object) && expr.object.value === "__this_remote__") {
+            // Convert to this.remote
+            objectExpr = {
+                exprType: "member",
+                object: { exprType: "this" },
+                property: "remote",
+            } as TstMemberExpression;
+        } else {
+            objectExpr = this.visitExpression(expr.object);
+        }
+        
+        // Create a callback that extracts the member from the remote instance
+        const memberName = expr.memberName;
+        const callback = (remoteInstance: TstInstanceObject) => {
+            const value = remoteInstance[InstanceMeta][memberName];
+            const instance = memberType.createInstance([]);
+            instance[InstanceMeta] = value;
+            return {
+                exprType: "instance",
+                instance: instance,
+            } as TstInstanceExpression;
+        };
+        
+        return {
+            exprType: "nativeMember",
+            object: objectExpr,
+            memberType: memberType,
+            memberName: memberName,
+            callback: callback,
+        } as TstNativeMemberExpression;
     }
 
     visitIndexExpression(expr: AstIndexExpression): TstExpression {

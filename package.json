@@ -8,10 +8,10 @@
     "packages/vexed-cli",
     "packages/vexed-test",
     "packages/vexed-vscode",
-    "packages/vexed-homepage"
+    "packages/vexed-homepage",
+    "packages/vexed-digitalocean"
   ],
   "_disabledWorkspaces":[
-    "packages/vexed-digitalocean"
   ],
   "scripts": {
     "build": "npm run build -ws",
